@@ -82,6 +82,24 @@ dans le `package.json` racine dès qu'il existe (requis par `pnpm/action-setup` 
   fois** dans `.github/sql/db-fingerprint.sql` (la liste figée) **et** dans
   `.github/sql/witness-data.sql` — sinon elle n'est couverte par aucun contrôle, et la CI restera
   verte à tort.
+- **Le contrôle regarde aussi le SCHÉMA, pas seulement les données.**
+  `.github/sql/schema-fingerprint.sql` inventorie les objets de `public` — colonnes (type, not null,
+  défaut), contraintes, index, déclencheurs, RLS activée/forcée, policies, privilèges réels de
+  `anon`/`authenticated`/`service_role`, options de vue (`security_invoker`), fonctions — et le job
+  `sql` le compare **avant/après** la réapplication. Sans lui, supprimer une policy ou un `grant` ne
+  changerait aucune ligne : la comparaison de données resterait verte.
+- **Aucun objet de `.github/sql/schema-baseline.txt` ne doit disparaître.** C'est la **référence** des
+  objets que les migrations produisent, et le **seul** contrôle qui voit une destruction **rejouée à
+  l'identique** : mesuré — un `drop index … if exists` détruit dans les deux passes, donc les
+  comparaisons avant/après restent vertes, la référence non. Bénéfice de bord : désactiver la RLS
+  d'une table ne fait échouer aucun test actuel et ne change aucune ligne — la référence le voit.
+  Une suppression **voulue** régénère la référence **dans la même PR**, sur une base neuve :
+  ```bash
+  bash .github/sql/apply-migrations.sh
+  psql -q -tA -f .github/sql/schema-fingerprint.sql | LC_ALL=C sort > .github/sql/schema-baseline.txt
+  ```
+  Les **ajouts** (colonne, index, table, policy) ne demandent aucune régénération : la comparaison
+  ne signale **que les disparitions**, pour ne pas transformer chaque migration additive en péage.
 - **RLS activée sur toute table créée**, et **aucune policy pour `anon`** (exigence du cahier des charges §4).
 - La clé `service_role` est réservée à n8n : elle ne sort **jamais** des credentials n8n,
   jamais dans le dashboard, jamais dans Git, jamais dans un prompt.
@@ -138,7 +156,7 @@ dans le `package.json` racine dès qu'il existe (requis par `pnpm/action-setup` 
 
 | Job | Statut | Sens |
 |---|---|---|
-| `sql` | **actif** | Migrations sur un Postgres neuf → seed → **tous** les tests de `supabase/tests/` → **données témoins** → **réapplication des migrations** sur cette base peuplée, empreinte avant/après (idempotence) |
+| `sql` | **actif** | Migrations sur un Postgres neuf → seed → **tous** les tests de `supabase/tests/` → **données témoins** → **réapplication des migrations**, puis **trois** comparaisons : données avant/après, schéma avant/après, et aucun objet perdu par rapport à `.github/sql/schema-baseline.txt` |
 | `secrets` | **actif** | Refuse tout JWT / clé privée commité |
 | `node` | **auto-désactivé** | Aucun projet Node avant S5 : le job le **signale** (notice) au lieu de faire semblant de passer. À supprimer dès que `apps/dashboard/package.json` existe — suivi dans `docs/sprint-01.md` §7 |
 

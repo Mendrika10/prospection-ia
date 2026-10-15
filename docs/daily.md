@@ -13,6 +13,41 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, nuit) — le contrôle d'idempotence regarde aussi le **schéma**, et une **référence** retient les objets perdus
+
+- **Demandé** : détecter aussi les objets de schéma perdus par une migration (colonnes, index,
+  contraintes, policies RLS). Le contrôle ne comparait que des **données** : supprimer une policy, un
+  index, un `grant` ou `security_invoker` ne change **aucune ligne**, donc il ne voyait rien.
+- **Fait** : `.github/sql/schema-fingerprint.sql` — 175 objets de `public` (colonnes avec type/not
+  null/défaut, contraintes, index, déclencheurs, RLS activée/forcée, policies, privilèges **réels**
+  de `anon`/`authenticated`/`service_role`, options de vue, fonctions, séquences, extensions,
+  privilèges par défaut) ; et `.github/sql/schema-baseline.txt`, la référence committée. Le job `sql`
+  fait désormais **trois** comparaisons : données avant/après, schéma avant/après, et « aucun objet de
+  la référence n'a disparu ».
+- **La troisième était nécessaire, et je l'ai mesurée avant de l'écrire** : une destruction **rejouée à
+  l'identique** est invisible aux comparaisons avant/après — `drop index … if exists` détruit dans les
+  deux passes. Démontré, quatre mutations que **rien d'autre** ne voit : index du dashboard détruit
+  (`DONNEES=OK SCHEMA=OK` mais `REFERENCE=OBJET_PERDU`), **RLS désactivée sur `leads`** (aucun test ne
+  la couvre, aucune ligne ne change), défaut de colonne `created_at` retiré, contrainte `CHECK`
+  supprimée. Symétriquement, les quatre cas précédents (données) restent détectés : `truncate`,
+  `update` destructeur, `delete`, et la migration non idempotente qui échoue à la réapplication.
+- **Deux pièges de conception traités** : `pg_proc.provolatile` et `pg_default_acl.defaclobjtype` sont
+  de type `"char"`, où `||` est ambigu (erreur SQL silencieusement avalée par ma redirection → 0 objet
+  mesuré : sans le contrôle « 175 lignes », j'aurais livré une empreinte vide) ; et la version
+  d'extension est **exclue** de l'empreinte, car elle change avec l'image Postgres, pas avec nos
+  migrations.
+- **Propriété vérifiée** : la référence est **reproduisible** (régénérée sur une base neuve → identique)
+  et **indépendante des données** (régénérée après seed + tests + témoins → identique), ce qui autorise
+  la comparaison sur la base peuplée. Retrait **volontairement** non signalé : la référence ne bloque
+  que les disparitions — une migration additive ne demande aucune régénération.
+- **Un piège dans mon propre harnais, encore une fois** : un fichier de mutation laissé dans
+  `supabase/migrations/` par une série interrompue a fait échouer le cas **nominal**. Le contrôle était
+  juste ; c'est mon banc d'essai qui mentait. Rejoué sur une base propre :
+  `TESTS=OK DONNEES=OK SCHEMA=OK REFERENCE=OK`.
+- **Règle écrite dans `AGENTS.md` §4** : aucun objet de la référence ne doit disparaître ; une suppression
+  voulue régénère la référence dans la **même** PR.
+- **Bloqué** : `S0-04` — inchangé.
+
 ## 2026-10-15 (jeudi, nuit) — le garde-fou d'idempotence était **aveugle sur quatre des six tables**
 
 - **Le défaut, mesuré avant d'être corrigé** : le contrôle ajouté juste avant réappliquait les migrations
