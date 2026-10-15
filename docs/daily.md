@@ -25,6 +25,15 @@ Format :
   critère qui **ne pouvait pas échouer**. Les **4 lignes du Sprint 0** restées ouvertes ont leur sort
   écrit dans le planning (3 verrous ou reports assumés, 1 case qui se ferme au premier run réel) :
   « pas dans ce sprint » n'est pas « oublié ». Deux décisions écrites (D-006, D-007).
+- **Conformité au brief, contrôlée** : les **8 décisions** ont les 7 rubriques du §8, une date, un
+  statut et au moins 3 options écartées. Trois défauts du **brief lui-même** corrigés : le §2 annonçait
+  « cinq » verrous humains pour **quatre** listés (reliquat d'une correction antérieure, incomplète) ;
+  le §6 confiait au PO la mémoire `AGENTS.md` §10 que le §9 lui interdisait d'écrire ; le gabarit du §8
+  réclamait un libellé « statut » absent des 8 titres.
+- **Écart de périmètre, déclaré** : la session a corrigé des compteurs faux dans le §10 de
+  `methode-equipe-agents.md`, que le §9 ne listait pas comme modifiable. Résolution : ce **seul tableau
+  d'inventaire** entre dans le périmètre d'écriture du PO, sans droit de toucher aux règles.
+  **À confirmer ou à annuler par l'humain** — je ne m'accorde pas moi-même une permission.
 - **Refusé** : `S1-07` (documentation d'exploitation) sort du sprint — on documenterait une procédure
   qui n'a **jamais tourné**, elle serait réécrite au premier incident. Retour conditionné à la première
   collecte réelle.
