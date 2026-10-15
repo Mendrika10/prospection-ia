@@ -13,6 +13,32 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, nuit) — le garde-fou d'idempotence était **aveugle sur quatre des six tables**
+
+- **Le défaut, mesuré avant d'être corrigé** : le contrôle ajouté juste avant réappliquait les migrations
+  **juste après le seed**, quand `companies`, `analyses`, `leads` et `blocklist` sont **vides**. Or sur une
+  table vide, une migration destructrice ne change **rien** à l'empreinte : elle passe inaperçue.
+  Les deux cas, exécutés : `delete from public.blocklist` **sans** données témoins →
+  `VERDICT=OK_SANS_CHANGEMENT` (la destruction est laissée passer) ; **avec** témoins →
+  `VERDICT=DONNEES_MODIFIEES` (`blocklist 1 → 0`). **Une empreinte ne prouve que ce qu'il y a à perdre.**
+- **Fait** : `.github/sql/witness-data.sql` — une ligne témoin par table, données manifestement fausses
+  (le dépôt est public, `D-004`), idempotent. Et **réordonnancement** du job `sql` : migrations → seed →
+  **tests** → données témoins → **réapplication + empreinte avant/après**.
+- **Pourquoi la réapplication vient maintenant après les tests** : `rls.sql` compte des lignes **exactes**
+  (« 1 lead ») et insère des SIREN fixes. Peupler la base avant lui rendrait ses assertions fausses, et
+  je refuse d'affaiblir un test pour faire passer mon propre contrôle. Avant, la réapplication était après
+  le seed et avant les tests ; les tests, eux, ne sont pas touchés.
+- **Cinq cas rejoués localement sur un Postgres 16.15** (l'image de la CI), dans l'ordre exact de la CI :
+  **1** nominal → `OK_SANS_CHANGEMENT` · **2** `create table` sans garde → `ECHEC_A_LA_REAPPLICATION`
+  (`relation "mut_a" already exists`) · **3** `truncate runs` → `DONNEES_MODIFIEES` (`runs 3 → 0`) ·
+  **4** `update campaigns` (nombre de lignes **inchangé**) → `DONNEES_MODIFIEES` · **5/6** le cas `blocklist`
+  ci-dessus. Tables mesurées avant la réapplication : `analyses 2, blocklist 1, campaigns 2, companies 2,
+  leads 2, runs 3` — **six sur six non vides**, ce qui était l'objectif.
+- **Règle transmise à `AGENTS.md` §4** : toute nouvelle table de données doit être déclarée **à la fois**
+  dans `.github/sql/db-fingerprint.sql` et dans `.github/sql/witness-data.sql` — sinon elle n'est couverte
+  par aucun contrôle et la CI restera verte **à tort**.
+- **Bloqué** : `S0-04` — inchangé.
+
 ## 2026-10-15 (jeudi, nuit) — la CI réapplique les migrations sur une base **déjà peuplée**
 
 - **Fait** : le job `sql` applique désormais les migrations **deux fois** — la seconde **après le
