@@ -1,21 +1,9 @@
-# Le dépôt est développé sous Windows et la CI tourne sous Linux : on normalise.
-# Sans ça, Git réécrit les fichiers en CRLF au checkout, ce qui casse les scripts
-# shell et fait du bruit dans chaque diff.
-* text=auto eol=lf
+# Les scripts shell sont exécutés par la CI sous Linux : des fins de ligne CRLF
+# feraient échouer le shebang (« bad interpreter: /usr/bin/env bash^M »).
+# On force LF quel que soit `core.autocrlf` de la machine qui contribue —
+# il vaut `true` sur le poste Windows de ce projet.
+*.sh text eol=lf
 
-# Scripts destinés à Windows uniquement
-*.bat text eol=crlf
-*.cmd text eol=crlf
-*.ps1 text eol=crlf
-
-# Binaires : jamais de conversion
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.ico binary
-*.gif binary
-*.pdf binary
-*.zip binary
-
-# Verrou de paquets : diff illisible, on ne le normalise pas à la légère
-pnpm-lock.yaml -diff linguist-generated
+# Les fichiers SQL et de configuration restent normalisés par Git.
+*.sql text
+*.yml text
