@@ -57,28 +57,6 @@ jobs:
       - name: Seed de développement
         run: psql -v ON_ERROR_STOP=1 -q -f supabase/seed.sql
 
-      # -------------------------------------------------------------------------
-      # Réapplication des migrations sur la base DÉJÀ PEUPLÉE par le seed.
-      # C'est le scénario réel d'un projet Supabase en service : la migration arrive
-      # alors que les tables contiennent déjà des données.
-      #
-      # On ne se contente pas de l'exit code : un `truncate` réussit (code 0) et détruit
-      # les données. La comparaison d'une empreinte AVANT/APRÈS — nombre de lignes ET
-      # contenu — est la seule preuve. Un `update` destructeur ne change pas le nombre
-      # de lignes, mais change l'empreinte.
-      # -------------------------------------------------------------------------
-      - name: Réappliquer les migrations sur une base peuplée (idempotence)
-        run: |
-          set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql > /tmp/empreinte-avant.txt
-          bash .github/sql/apply-migrations.sh
-          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql > /tmp/empreinte-apres.txt
-          if ! diff -u /tmp/empreinte-avant.txt /tmp/empreinte-apres.txt; then
-            echo "::error::Réapplication des migrations : des données ont changé (voir le diff ci-dessus). Une migration doit être réapplicable sans perte ni duplication — AGENTS.md §4."
-            exit 1
-          fi
-          echo "OK — migrations réappliquées sans modifier une seule ligne"
-
       # Tous les tests SQL de supabase/tests/*.sql, dans l'ordre alphabétique.
       # Sort en code ≠ 0 si un test échoue : c'est le garde-fou principal.
       - name: Tests SQL
@@ -94,6 +72,45 @@ jobs:
             echo "→ $f"
             psql -v ON_ERROR_STOP=1 -f "$f"
           done
+
+      # -------------------------------------------------------------------------
+      # Réapplication des migrations sur la base DÉJÀ PEUPLÉE.
+      # C'est le scénario réel d'un projet Supabase en service : la migration arrive
+      # alors que les tables contiennent déjà des données.
+      #
+      # Cette étape vient APRÈS les tests SQL, pour deux raisons :
+      #   * les tests comptent des lignes exactes (`1 lead`) et insèrent des SIREN fixes :
+      #     peupler la base avant eux les rendrait faux, ou obligerait à affaiblir leurs
+      #     assertions — ce qu'on refuse ;
+      #   * la comparaison d'empreinte a besoin d'un maximum de données en place.
+      #
+      # On ne se contente pas de l'exit code : un `truncate` réussit (code 0) et détruit les
+      # données. La comparaison d'une empreinte AVANT/APRÈS — nombre de lignes ET contenu —
+      # est la seule preuve. Un `update` destructeur ne change pas le nombre de lignes, mais
+      # change l'empreinte.
+      # -------------------------------------------------------------------------
+      # Avant de comparer, il faut qu'il y ait quelque chose à perdre dans CHAQUE table :
+      # après le seed seul, quatre des six tables sont vides (`companies`, `analyses`,
+      # `leads`, `blocklist`) et une migration qui viderait `companies` ne changerait
+      # l'empreinte de RIEN. D'où une ligne témoin par table, insérée juste avant la mesure.
+      - name: Données témoins (une ligne par table, avant réapplication)
+        run: psql -v ON_ERROR_STOP=1 -q -f .github/sql/witness-data.sql
+
+      - name: Réappliquer les migrations sur une base peuplée (idempotence)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql > /tmp/empreinte-avant.txt
+          # Affichée volontairement : elle prouve DANS LE LOG ce qui a été mesuré, et que chaque
+          # table était peuplée au moment de la mesure (une table vide ne prouve rien).
+          echo "Empreinte AVANT (table|nb lignes|md5 du contenu) :"
+          cat /tmp/empreinte-avant.txt
+          bash .github/sql/apply-migrations.sh
+          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql > /tmp/empreinte-apres.txt
+          if ! diff -u /tmp/empreinte-avant.txt /tmp/empreinte-apres.txt; then
+            echo "::error::Réapplication des migrations : des données ont changé (voir le diff ci-dessus). Une migration doit être réapplicable sans perte ni duplication — AGENTS.md §4."
+            exit 1
+          fi
+          echo "OK — migrations réappliquées sans modifier une seule ligne"
 
   # ---------------------------------------------------------------------------
   # Job « secrets » : applique le point « aucun secret dans le code » de la DoD.
