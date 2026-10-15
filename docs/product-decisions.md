@@ -258,7 +258,7 @@ moitié du sprint), je réordonne pour terminer `S1-09` + `S1-08` + `S1-01` et j
 
 ---
 
-## D-007 — Le filtre d'effectif est conditionnel, et son absence est tracée · 2026-10-15 · en vigueur
+## D-007 — Le filtre d'effectif est conditionnel, et son absence est tracée · 2026-10-15 · **révisée par D-008** (déclencheur atteint le 2026-10-15)
 
 **Décision** : le filtre `tranche_effectif_salarie` n'est appliqué à une collecte **que si** son code
 est confirmé par une requête qui le prouve. Sinon la campagne est collectée **sans** ce filtre, et
@@ -294,3 +294,63 @@ codes attendus **et seulement eux**, sur deux codes distincts), je rends le filt
 les campagnes qui déclarent un `effectif_min`.
 
 **Qui exécute** : Architecte (consigner le vocabulaire retenu) · Automation (`S1-02`).
+
+---
+
+## D-008 — Le filtre d'effectif devient obligatoire, et il s'exprime en **bandes** · 2026-10-15 · en vigueur
+
+**Décision** : le filtre `tranche_effectif_salarie` n'est plus conditionnel. Il est appliqué **dès
+qu'une campagne déclare un effectif minimum**. Le vocabulaire est **figé** aux 15 tranches d'effectif
+salarié de l'unité légale (`00 01 02 03 11 12 21 22 31 32 41 42 51 52 53`). L'API ne filtrant que par
+**bandes** et acceptant une **liste**, `campaigns.effectif_min` est traduit en **union de bandes** :
+la bande qui contient la valeur demandée, **puis toutes les bandes supérieures**, en **une seule**
+requête. Les bandes réellement appliquées sont écrites dans `runs.details`.
+
+**Pourquoi** : `D-007` s'était engagé à rendre le filtre obligatoire « dès qu'une requête prouve le
+vocabulaire ». La preuve est apportée le 2026-10-15 (revue du planning, API appelée) : les 15 codes
+sont acceptés avec résultats, et 9 valeurs hors vocabulaire — dont `50` et `54`, syntaxiquement
+valides — sont refusées en **HTTP 400**. La crainte qui justifiait la conditionnalité (un filtre faux
+qui passe **silencieusement**) tombe pour un code prouvé : un code faux produit une **erreur visible**.
+Le seul cas resté dangereux est le **nom** de paramètre mal orthographié, ignoré en silence — d'où
+l'exigence de vérifier le nom exact, déjà inscrite à `S1-02`. Objectif servi : RF-01 (cibler par
+tranche d'effectif). Règle d'arbitrage : (valeur × certitude) / effort — effort d'une requête,
+certitude **mesurée**, valeur portée par une exigence explicite.
+
+**Options écartées** :
+
+- *Rester conditionnel (statu quo de `D-007`)* : le déclencheur est atteint ; garder un filtre « au cas
+  où » ferait porter aux données une imprécision qu'on sait désormais mesurer.
+- *Ajouter une colonne `effectif_tranche` et retirer `effectif_min`* : migration et changement de modèle
+  pour rien, alors que « au moins N salariés » reste l'expression naturelle du besoin (RF-01).
+- *Filtrer sur la seule bande contenant `effectif_min`* : **faux** — « au moins 60 salariés » traduit en
+  bande `21` (50-99) **exclurait** les entreprises de 100 salariés et plus, qui satisfont l'exigence.
+  C'est un sous-ensemble, donc un faux négatif **silencieux** : exactement le défaut que `D-007`
+  cherchait à éviter.
+- *Post-filtrer sur l'effectif exact* : impossible, l'API ne renvoie que la **bande**, jamais l'effectif.
+
+**Preuves utilisées** (API appelée le 2026-10-15, tous NAF confondus, sorties reproduisibles) :
+```
+acceptés : 00 01 02 03 11 12 21 22 31 32 41 42 51 52 53   (HTTP 200, résultats > 0)
+refusés  : 13 23 33 43 50 54 55 99 A1 ZZ                  (HTTP 400)
+tranche_effectif_salarie=52,53                            -> 263 = 172 + 91   (union)
+tranche_effectif_salarie=52&tranche_effectif_salarie=53   ->  91              (le dernier gagne)
+```
+Les 15 codes acceptés sont les tranches INSEE (`00` = 0 salarié … `53` = 10 000 et plus), corroborées
+par l'INSEE et par `etalab/sirene_as_api`. Le « 0 résultat » observé sur `43.21A` × `53` était une
+**intersection** NAF × effectif, pas une preuve d'invalidité : `53` seul renvoie 91 entreprises.
+
+**Conséquence / coût** : le filtre est un **sur-ensemble assumé**. Pour `effectif_min = 60`, on accepte
+aussi des entreprises de 50 à 59 salariés ; l'écart maximal est la **largeur de la bande contenant la
+valeur demandée**. **Changement de comportement à déclarer** : les campagnes existantes
+(`effectif_min = 1`) excluront désormais les unités à **0 salarié** (bande `00`) — moins de volume,
+meilleurs leads. À surveiller : le volume par campagne après application, et le taux de rejet
+(> 60 % = campagne trop large, brief §5).
+
+**Ce qui me ferait changer d'avis** : une chute de plus de **50 %** du volume collecté d'une campagne
+existante après application du filtre, ou une campagne dont `effectif_min` rend la bande contenante
+manifestement trop large (demander 200 salariés et recevoir des entreprises de 100). Dans ce cas, la
+campagne déclarera ses **bandes** explicitement, au lieu d'un entier.
+
+**Qui exécute** : Automation (`S1-02`) · Backend/Data (`S1-08`, pour la trace des bandes appliquées).
+**Origine** : revue [`reviews/2026-10-15-planning-sprint-1.md`](reviews/2026-10-15-planning-sprint-1.md),
+constat n° 4.
