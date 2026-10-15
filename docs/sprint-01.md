@@ -51,7 +51,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-02 | Schéma initial + RLS + test SQL | Backend/Data | M | S0-01 | ✅ |
 | S0-03 | n8n édition communautaire en Docker local | DevOps | S | S0-01 | ✅ |
 | S0-04 | Projet Supabase « dev » + clés | **PO** | S | — | 🟡 projet créé, `.env` et migrations à faire |
-| S0-05 | Dépôt GitHub privé + board + `main` protégée | DevOps (**validation PO**) | S | — | 🟡 dépôt + CI faits ; board et protection bloqués (voir ticket) |
+| S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps (**validation PO**) | S | — | 🟡 dépôt, CI et protection faits ; board bloqué (scope jeton) |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **PO** | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cron, campagnes actives, log `runs` | Automation | M | S0-04 | ⬜ |
 | S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ⬜ |
@@ -158,40 +158,58 @@ OK  authenticated ne peut pas écrire dans runs
 
 ---
 
-### S0-05 — Dépôt GitHub privé + board + `main` protégée ⬜
+### S0-05 — Dépôt GitHub public + board + `main` protégée 🟡
 
 **Objectif** : que le travail passe par des PR et que la CI bloque un merge rouge.
 
 **Critères d'acceptation**
-- [x] Dépôt **privé** `prospection-ia` créé et `main` poussée — <https://github.com/Mendrika10/prospection-ia>
+- [x] Dépôt `prospection-ia` créé et `main` poussée — <https://github.com/Mendrika10/prospection-ia>
 - [x] Branche renommée `master` → **`main`**
-- [x] La CI tourne sur GitHub : 3 jobs verts sur la PR #1 (`sql` 24 s, `secrets` 5 s, `node` 8 s),
-      et le job `sql` a bien exécuté les 12 assertions (vérifié dans le log, pas seulement au statut)
+- [x] La CI tourne sur GitHub : 3 jobs verts sur la PR #1 (`sql` 21-24 s, `secrets` 5 s, `node` 7-8 s),
+      et le job `sql` a bien exécuté les 12 assertions (vérifié **dans le log**, pas seulement au statut)
+- [x] **Merge dans `main` impossible avec une CI rouge** — appliqué ET testé, voir ci-dessous
+- [x] Workflow Git en place : `feat/s1-05-garde-fou-naf` poussée, PR #1 ouverte depuis `main`
 - [ ] Board Projects avec les colonnes `Backlog → Prêt → En cours → Review → Fait`
 - [ ] Les tickets de ce fichier existent comme *issues* (modèle `.github/ISSUE_TEMPLATE/ticket.md`)
-- [x] Workflow Git en place : `feat/s1-05-garde-fou-naf` poussée, PR #1 ouverte depuis `main`
-- [ ] Merge dans `main` impossible avec une CI rouge — **✗ irréalisable en l'état, voir ci-dessous**
 
-**Conclusion sur la protection de branche (vérifiée le 2026-10-15)**
+#### Protection de branche : la décision et sa vérification
 
-C'était l'incertitude signalée dans ce ticket. La réponse est tombée, et elle est négative :
+L'incertitude signalée dans ce ticket était réelle. Réponses vérifiées contre l'API GitHub :
 
-| Tentative | Réponse de l'API GitHub |
+| Tentative | Réponse |
 |---|---|
-| `PUT /repos/.../branches/main/protection` | **403** « Upgrade to GitHub Pro or make this repository public to enable this feature » |
-| `POST /repos/.../rulesets` (alternative) | **403**, même message |
+| Protection sur dépôt **privé** | **403** « Upgrade to GitHub Pro or make this repository public » |
+| Rulesets sur dépôt **privé** (alternative) | **403**, même message |
+| Protection après passage en **public** | **200** — appliquée |
 
-Sur un dépôt **privé** en offre gratuite, aucun verrou technique n'est disponible. Trois issues :
+Décision du Product Owner (2026-10-15) : **dépôt public**, pour obtenir un vrai verrou sans payer
+(GitHub Pro serait contraire à la contrainte « 0 € »).
 
-1. **Rester privé et assumer la convention** (recommandé : 0 €, et le code ne sort pas) — la CI
-   reste visible sur la PR, mais elle n'empêche rien techniquement.
-2. Rendre le dépôt **public** — la protection devient disponible, mais la logique commerciale,
-   les exports de workflows et ce cahier des charges deviennent publics.
-3. **GitHub Pro** — payant, contraire à la contrainte « 0 € ».
+Configuration en place, relue depuis GitHub :
 
-Décision en attente du Product Owner (voir `docs/daily.md`).
+```
+required_status_checks : [sql, secrets, node]   strict: true
+enforce_admins         : true
+allow_force_pushes     : false
+allow_deletions        : false
+```
 
-**Board Projects — bloqué** : le jeton `gh` n'a pas le scope `project`
+**Et le verrou fonctionne** — ce n'est pas déduit de la configuration, c'est testé. Tentative de
+push direct sur `main` avec un commit vide :
+
+```
+remote: error: GH006: Protected branch update failed for refs/heads/main.
+remote: - 3 of 3 required status checks are expected.
+! [remote rejected] main -> main (protected branch hook declined)
+```
+
+Contrôle complémentaire : le hash de `origin/main` est identique avant et après la tentative.
+
+> **Conséquence à assumer** (et elle est notée dans `AGENTS.md` §10) : le dépôt est public. Aucune
+donnée d'entreprise, aucun secret et aucun export contenant des identifiants ne doit y entrer.
+> Scan de **tout l'historique** relancé après le passage en public : aucune correspondance.
+
+**Board Projects — encore bloqué** : le jeton `gh` n'a pas le scope `project`
 (`error: your authentication token is missing required scopes [project read:project]`).
 Déblocage : `gh auth refresh -s project,read:project` (ouvre le navigateur), **ou** création
 manuelle du board dans l'UI. Les 5 colonnes et la limite WIP se règlent ensuite dans l'UI :
