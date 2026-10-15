@@ -3,6 +3,11 @@
 > Rôle : **Reviewer** (`prompts/roles.md` §7) · Date : 2026-10-15 · Auteur du livrable relu :
 > la session **Product Owner** du même jour.
 
+> **Ancres de lignes** : elles désignent l'état relu, celui de `main` au commit **`bcbb5d1`**
+> (avant application des corrections ci-dessous — elles décalent les numéros de lignes).
+> Les citations de texte, elles, sont celles du livrable **tel qu'il a été relu** ; quand elles ne
+> se retrouvent plus dans le fichier, c'est que la correction correspondante a été appliquée.
+
 ## Ce qui était relu
 
 `docs/sprint-01.md` §2 (planning : Definition of Ready, ordre de passage, refus) ·
