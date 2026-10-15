@@ -33,9 +33,12 @@ dans le `package.json` racine dès qu'il existe (requis par `pnpm/action-setup` 
 
 - Commits conventionnels : `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
 - Trunk-based : branches courtes `feat/<ticket>-<slug>`, **vie < 1 jour**.
-- `main` : merge interdit sans **CI verte** ni revue. ⚠️ C'est une **convention d'équipe**, pas un
-  verrou technique : GitHub refuse la protection de branche **et** les rulesets sur un dépôt **privé**
-  en offre gratuite. Voir §10 — ne jamais écrire qu'un merge est « bloqué par la CI ».
+- `main` est **protégée, et ce n'est pas qu'une convention** : push direct refusé, merge impossible
+  sans les 3 checks verts (`sql`, `secrets`, `node`), force-push et suppression interdits.
+  **Toute modification passe donc par une branche + une PR.** Vérifié le 2026-10-15 par une tentative
+  de push direct rejetée par GitHub (`GH006 … 3 of 3 required status checks are expected`).
+  Pourquoi c'est possible : le dépôt est **public** — GitHub refuse la protection sur un dépôt privé
+  en offre gratuite (voir §10).
 - PR < **300 lignes** ; au-delà, on découpe le ticket.
 - **Un ticket = une branche = un agent.** Jamais deux agents sur les mêmes fichiers.
 
@@ -118,12 +121,18 @@ comme une preuve que le produit fonctionne.
   de Supabase. Hors Supabase, les créer via `.github/sql/roles.sql` avant de jouer les migrations.
 - **Vercel Hobby est réservé à l'usage non commercial** (risque R4 du cahier des charges) :
   à trancher avant toute mise en production, pas après.
-- **La protection de branche n'existe pas sur un dépôt privé en offre gratuite.** Vérifié le
-  2026-10-15 sur `Mendrika10/prospection-ia` : `PUT /repos/.../branches/main/protection` et
-  `POST /repos/.../rulesets` renvoient tous deux **403 « Upgrade to GitHub Pro or make this
-  repository public »**. Conséquence à assumer : un merge rouge est **techniquement possible**.
-  Ce qui bloque réellement, c'est la discipline de l'agent et la validation du PO. D'où la règle :
-  un rapport de tâche cite la sortie de la CI, jamais une intention de la respecter.
+- **La protection de branche suppose un dépôt public (ou payant).** Vérifié le 2026-10-15 sur
+  `Mendrika10/prospection-ia` : en **privé** + offre gratuite, `PUT /branches/main/protection` **et**
+  `POST /rulesets` renvoient tous deux **403 « Upgrade to GitHub Pro or make this repository
+  public »**. Le dépôt a donc été passé **public** pour obtenir le verrou. Conséquence à assumer :
+  tout ce qui entre dans le dépôt est public — aucune donnée d'entreprise, aucun secret, aucun
+  export contenant des identifiants. Vérifier avant de commiter, pas après.
+- **« Repository has been locked » (403) juste après un changement de visibilité** : erreur
+  **transitoire** de propagation chez GitHub. Réessayer 30 s plus tard suffit — ne pas conclure
+  trop vite à un blocage définitif.
+- **`$?` après un pipe ne vaut rien** : dans `commande | tail`, `$?` renvoie le code de `tail`.
+  Un « EXIT=0 » obtenu ainsi ne prouve pas que la commande testée a réussi. Utiliser
+  `${PIPESTATUS[0]}`, ou comparer un état observable (hash, compteur de lignes).
 - **API Recherche d'entreprises (`recherche-entreprises.api.gouv.fr`)** — contrat vérifié le 2026-10-15,
   ces quatre pièges coûtent une demi-journée chacun si on les découvre en production :
   1. Le filtre d'activité est **`activite_principale`**, pas `code_naf`. Un **nom de paramètre inconnu

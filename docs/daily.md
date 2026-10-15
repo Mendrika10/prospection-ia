@@ -13,6 +13,18 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, fin de journée) — `main` est protégée, et c'est vérifié
+
+- **Fait** : décision PO appliquée — dépôt passé **public** pour obtenir le verrou (GitHub Pro étant
+  contraire à la contrainte « 0 € »). Protection de `main` configurée puis **testée par une vraie
+  tentative de push direct**, rejetée par GitHub (`GH006 … 3 of 3 required status checks are
+  expected`), avec contrôle du hash de `origin/main` avant/après. Scan de **tout l'historique**
+  relancé après le passage en public : aucun secret. Trois pièges ajoutés à la mémoire d'équipe
+  (`AGENTS.md` §10), dont un que j'ai moi-même rencontré ce soir.
+- **Prévu** : revue de la PR #1 puis son merge (premier passage complet du cycle ticket → PR → CI →
+  merge) ; application des 2 migrations Supabase par le PO ; board Projects.
+- **Bloqué** : board Projects (scope `project` absent du jeton `gh`) ; `.env` Supabase non rempli.
+
 ## 2026-10-15 (jeudi, après-midi) — S0-05 lancé sur autorisation du PO
 
 - **Fait** : dépôt **privé** créé — <https://github.com/Mendrika10/prospection-ia>. `main` et la branche
@@ -59,7 +71,7 @@ Format :
 |---|---|---|---|---|
 | Ciblage local : filtrer sur le siège | [ADR 0005](adr/0005-ciblage-des-entreprises-locales.md) | PO | avant S1-02 | ✅ accepté le 2026-10-15 |
 | Créer le dépôt GitHub privé et pousser `main` | `S0-05` | PO | dès que possible | ✅ fait le 2026-10-15 |
-| Dépôt **privé sans protection** ou **public avec protection** ? | `S0-05` | PO | avant le prochain merge | ⬜ en attente |
+| Dépôt **privé sans protection** ou **public avec protection** ? | `S0-05` | PO | avant le prochain merge | ✅ décidé : public, protection testée |
 | Scope `project` sur le jeton `gh` (board) | `S0-05` | PO | à ta convenance | ⬜ en attente |
 | Remplir `.env` + appliquer les 2 migrations sur Supabase | `S0-04` | PO | bloque S1-01..S1-04 | ⬜ en attente (les clés ne doivent **pas** passer par un prompt d'agent — `AGENTS.md` §7) |
 | Vercel Hobby (usage non commercial, risque R4) | ADR à écrire | PO | avant S7, mais à ne pas oublier | ⬜ |
