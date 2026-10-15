@@ -15,6 +15,22 @@ On ne lance jamais deux agents sur les mêmes fichiers.
 
 ---
 
+## 0. Product Owner (agent) — brief dédié
+
+Depuis le 2026-10-15, le rôle de Product Owner est tenu par un **agent**, et non par le propriétaire
+du projet (décision D-000). Priorités, périmètre de la v1, seuils, critères d'arrêt, validation des
+ADR et ordre des tickets sont décidés par cet agent, qui les **écrit** dans
+[`docs/product-decisions.md`](../product-decisions.md). Seuls quatre sujets remontent à l'humain —
+identifiants, argent, action hors du dépôt, suppression de données — parce qu'un agent n'en a
+techniquement pas les moyens.
+
+Le brief complet — profil senior 15+ ans, autorité, verrous humains, méthode d'arbitrage,
+métriques, anti-patrons, format de décision et prompt à copier — est dans
+**[`product-owner.md`](product-owner.md)**. C'est le seul rôle qui a son propre fichier : c'est le
+seul dont les décisions engagent tout le produit.
+
+---
+
 ## 1. Orchestrateur (Scrum Master)
 
 ```text
@@ -33,7 +49,9 @@ Mission : préparer le prochain sprint, pas écrire de code métier.
 Livrable : docs/sprint-01.md à jour + la section « Bloqué » de docs/daily.md + une liste
 des tickets prêts à démarrer, classés par ordre de passage.
 Interdits : écrire du SQL, du JSON n8n ou du TypeScript ; créer un commit.
-Si une priorité est ambiguë, pose la question au Product Owner.
+Si une priorité est ambiguë, pose la question au **Product Owner, qui est un agent**
+(docs/prompts/product-owner.md) — pas au propriétaire humain, sauf s'il s'agit d'identifiants,
+d'argent, d'une action hors du dépôt ou d'une suppression de données.
 ```
 
 ## 2. Architecte

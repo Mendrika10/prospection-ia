@@ -12,16 +12,19 @@ Next.js sur Vercel · GitHub.
 
 ## Comment on travaille
 
-Le projet est mené comme une **équipe Scrum** : le Product Owner (toi) arbitre, des **agents**
-avec un rôle et un périmètre précis exécutent, testent et relisent. Un ticket = une branche =
-un agent, et rien n'est fusionné sans CI verte ni validation humaine.
+Le projet est mené comme une **équipe Scrum** dont **tous les rôles sont tenus par des agents** —
+y compris le Product Owner, qui arbitre les priorités, le périmètre et les seuils. Toi, tu
+n'interviens que là où un agent ne peut pas : fournir un identifiant, engager de l'argent, agir
+hors du dépôt. Un ticket = une branche = un agent, et rien n'est fusionné sans CI verte.
 
 | À lire | Pour quoi |
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | **Conventions + règles de travail + pièges connus** — contexte partagé de tout agent |
 | [`docs/methode-equipe-agents.md`](docs/methode-equipe-agents.md) | La méthode : rôles, rituels, Definition of Ready / Done, CI |
 | [`docs/sprint-01.md`](docs/sprint-01.md) | Le sprint en cours : cadre, rituels, tableau et **tickets** |
-| [`docs/prompts/roles.md`](docs/prompts/roles.md) | Les 9 prompts de rôle prêts à copier |
+| [`docs/prompts/product-owner.md`](docs/prompts/product-owner.md) | **Le Product Owner (agent)** : autorité, méthode d'arbitrage, anti-patrons, format de décision |
+| [`docs/product-decisions.md`](docs/product-decisions.md) | Le journal des décisions produit (D-000 à D-005) |
+| [`docs/prompts/roles.md`](docs/prompts/roles.md) | Les 9 autres prompts de rôle prêts à copier |
 | [`docs/adr/`](docs/adr/README.md) | Les décisions d'architecture (et celles en attente de ta décision) |
 | [`docs/daily.md`](docs/daily.md) | Le daily asynchrone : fait / prévu / bloqué |
 

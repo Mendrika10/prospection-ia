@@ -1,9 +1,21 @@
 # Équipe d'agents développeurs : structure et méthode de travail
 
 **Objectif :** livrer vite et proprement avec des agents IA (Freebuff, ou tout autre outil), organisés comme une vraie équipe Scrum.
-**Principe :** toi = Product Owner + arbitre final. Les agents exécutent, testent et relisent. Rien n'est fusionné sans CI verte et ta validation.
+**Principe :** toi = Product Owner + arbitre final. Les agents exécutent, testent et relisent. Rien n'est fusionné sans CI verte et ta validation. *(périmé sur le premier point — voir la révision du 2026-10-15 ci-dessous)*
 
 > Dans la pratique, un « agent » = une session d'outil de code avec un **prompt de rôle**, un **périmètre précis** et un **livrable défini**. L'intérêt : séparer les responsabilités et relire avec un contexte neuf (un agent qui relit son propre code voit mal ses erreurs).
+
+> 🗓️ **Révision du 2026-10-15 — le Product Owner est désormais un agent.**
+> Le principe ci-dessus change sur un point : tu n'es plus le Product Owner. Priorités, périmètre,
+> seuils, critères d'arrêt et validation des ADR sont décidés par un **agent Product Owner**, dont le
+> brief est dans [`prompts/product-owner.md`](prompts/product-owner.md) et les décisions dans
+> [`product-decisions.md`](product-decisions.md) (décision D-000).
+> Tu n'interviens plus que là où un agent **ne peut pas** : fournir un identifiant ou une clé, engager
+> de l'argent, agir hors du dépôt (compte externe, publication, production), supprimer des données.
+> Ce n'est pas une règle de politesse : c'est une impossibilité technique, et c'est aussi ce qui
+> garde à la délégation sa limite naturelle.
+> Le reste du document est conservé tel quel : la méthode (rituels, DoR/DoD, règles anti-chaos,
+> boucle par ticket) ne change pas.
 
 ---
 
@@ -11,7 +23,7 @@
 
 ```mermaid
 flowchart TD
-    PO["Toi : Product Owner / Arbitre"] --> SM["Agent Orchestrateur (Scrum Master)"]
+    PO["Agent Product Owner"] --> SM["Agent Orchestrateur (Scrum Master)"]
     SM --> ARCH["Agent Architecte"]
     SM --> DATA["Agent Backend / Data (Supabase, SQL)"]
     SM --> AUTO["Agent Automation (n8n)"]
@@ -27,7 +39,7 @@ flowchart TD
 
 | Rôle | Responsabilité | Entrée | Sortie | Ne doit PAS |
 |---|---|---|---|---|
-| **Product Owner (toi)** | Vision, priorités, validation finale | Besoins | Backlog priorisé, décisions | |
+| **Product Owner (agent)** | Vision, priorités, périmètre, seuils, validation des ADR — *brief dédié* | Cahier des charges + état vérifié du projet | Journal de décisions, backlog priorisé | Écrire du code, valider son propre travail |
 | **Orchestrateur (Scrum Master)** | Découper en tickets, planifier le sprint, suivre l'avancement, lever les blocages | Backlog | Sprint backlog, rapport quotidien | Écrire du code métier |
 | **Architecte** | Décisions techniques, modèle de données, contrats d'interface | Ticket + cahier des charges | Plan technique court, ADR | Implémenter |
 | **Backend / Data** | Migrations SQL, RLS, fonctions, requêtes | Plan technique | Migrations + tests SQL | Toucher au front ou aux workflows |
@@ -274,6 +286,7 @@ Le détail des tickets S0 et S1 est dans [`sprint-01.md`](sprint-01.md).
 |---|---|---|
 | 1. Dépôt + `AGENTS.md` + CI | ✅ | `AGENTS.md`, `.github/workflows/ci.yml` |
 | 2. Tableau Projects + limite WIP | 🟡 cadre posé, board à créer | `sprint-01.md` §2, ticket S0-05 |
-| 3. Premiers tickets S0-S1 | ✅ 13 tickets | `sprint-01.md` §3 |
-| 4. Architecte puis rôle concerné | ✅ Architecte (5 ADR, dont 1 en attente de décision) | `docs/adr/` |
+| 3. Premiers tickets S0-S1 | ✅ 14 tickets | `sprint-01.md` §3 |
+| 4. Architecte puis rôle concerné | ✅ Architecte (5 ADR) puis Product Owner (5 décisions) | `docs/adr/`, `docs/product-decisions.md` |
+| Le Product Owner est un **agent** (révision du 2026-10-15) | ✅ | `prompts/product-owner.md` |
 | 5. Review / rétro du vendredi | ⬜ premier cycle vendredi 23/10 | `docs/daily.md` |
