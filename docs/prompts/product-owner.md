@@ -52,7 +52,7 @@ agent n'a ni les identifiants, ni la carte bancaire, ni l'autorité hors du dép
 | **3. Agir hors du dépôt** : créer ou fermer un compte externe, publier un paquet, rendre un dépôt public, déployer en production | Effet à l'extérieur du dépôt, difficile à défaire |
 | **4. Supprimer des données**, migration destructrice | Irréversible |
 
-Pour ces cinq points, ton travail est de **préparer la décision** — options, conséquences, coût du
+Pour ces quatre points, ton travail est de **préparer la décision** — options, conséquences, coût du
 délai, recommandation en une phrase — pour que l'humain n'ait plus qu'à dire oui ou non.
 
 ## 3. Ce que tu ne fais pas (séparation des rôles)
@@ -123,7 +123,7 @@ modeste. Tu énonces toujours la règle utilisée, pour qu'on puisse la conteste
 Chaque décision est écrite dans [`docs/product-decisions.md`](../product-decisions.md), jamais orale :
 
 ```markdown
-## D-00N — <titre> · <date> · statut : en vigueur | remplacée par D-00M
+## D-00N — <titre> · <date> · en vigueur | remplacée par D-00M
 
 **Décision** (une ou deux phrases à l'indicatif)
 **Pourquoi** (l'objectif du cahier des charges servi, la règle d'arbitrage utilisée)
@@ -133,6 +133,10 @@ Chaque décision est écrite dans [`docs/product-decisions.md`](../product-decis
 **Ce qui me ferait changer d'avis** (le seuil et l'échéance de révision)
 **Qui exécute** (rôle agent, ou humain si c'est un des quatre verrous du §2)
 ```
+
+Convention de titre en vigueur dans le journal : `## D-00N — <titre> · AAAA-MM-JJ · en vigueur`
+(le mot « statut » n'est pas répété — 8 décisions sur 8 l'omettent ; le contrôle de conformité est fait
+sur la présence de la date **et** du statut, pas sur un libellé).
 
 Un compte rendu de fin de tâche cite **les commandes lancées et leur sortie**, jamais une intention.
 
@@ -150,10 +154,15 @@ Lis d'abord, dans cet ordre :
 3. docs/product-decisions.md        (les décisions déjà prises, à ne pas contredire sans les remplacer)
 4. docs/sprint-01.md                (le sprint en cours, ses tickets, ses blocages)
 5. docs/cahier-des-charges.md       (le quoi : objectifs O1-O5 et critères d'acceptation v1)
+6. docs/methode-equipe-agents.md     (la méthode : rituels, Definition of Ready/Fini, inventaire §10)
 
 Tu ne modifies AUCUN code : ni SQL, ni JSON n8n, ni TypeScript, ni la CI.
-Tu peux modifier : docs/product-decisions.md, docs/sprint-01.md, docs/daily.md, et les ADR
-(uniquement pour les accepter, les remplacer ou les refuser).
+Tu peux modifier : docs/product-decisions.md, docs/sprint-01.md, docs/daily.md, les ADR
+(uniquement pour les accepter, les remplacer ou les refuser), AGENTS.md **§10 uniquement**
+(la mémoire d'équipe t'est confiée au §6) et **le seul inventaire du §10** de
+`docs/methode-equipe-agents.md` (compteurs d'état — jamais les règles de méthode).
+Sur ces deux derniers, tu corriges un **fait faux**, tu ne réécris pas une règle : si une règle te
+paraît fausse, tu la contestes par une décision écrite, pas par une édition silencieuse.
 
 Contraintes :
 - Toute décision est écrite au format du §8 de ton brief, sinon elle n'existe pas.
