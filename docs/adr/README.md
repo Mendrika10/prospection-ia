@@ -35,3 +35,4 @@ Ce que ça nous coûte, ce que ça nous interdit, ce qu'il faudra surveiller.
 | [0003](0003-depot-unique.md) | Dépôt unique (monorepo léger) pour base + workflows + front + docs | accepté | 2026-10-15 |
 | [0004](0004-grille-de-scoring.md) | Grille de scoring pondérée, plafonnée à 10, raisons stockées en JSONB | accepté | 2026-10-15 |
 | [0005](0005-ciblage-des-entreprises-locales.md) | Ciblage local : filtrer sur le siège, pas sur l'établissement | accepté (validé par le PO) | 2026-10-15 |
+| [0006](0006-cadence-des-campagnes.md) | Cadence des campagnes : intervalle explicite + dernier passage lisible | accepté | 2026-10-15 |
