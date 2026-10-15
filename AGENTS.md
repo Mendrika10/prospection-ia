@@ -97,7 +97,7 @@ dans le `package.json` racine dès qu'il existe (requis par `pnpm/action-setup` 
 |---|---|---|
 | `sql` | **actif** | Applique les migrations sur un Postgres neuf, joue `supabase/tests/rls.sql` |
 | `secrets` | **actif** | Refuse tout JWT / clé privée commité |
-| `node` | **auto-désactivé** | Aucun projet Node avant S5 : le job le **signale** (notice) au lieu de faire semblant de passer. À supprimer dès que `apps/dashboard/package.json` existe (ticket S5-01) |
+| `node` | **auto-désactivé** | Aucun projet Node avant S5 : le job le **signale** (notice) au lieu de faire semblant de passer. À supprimer dès que `apps/dashboard/package.json` existe — suivi dans `docs/sprint-01.md` §7 |
 
 Une CI verte aujourd'hui ne prouve donc **que** le SQL. Ne pas présenter un « CI verte »
 comme une preuve que le produit fonctionne.

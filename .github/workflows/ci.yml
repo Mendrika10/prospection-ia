@@ -108,7 +108,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # Job « node » : lint, types, tests du dashboard Next.js (sprint S5).
   # Aucun code Node n'existe avant S5 : le job le signale explicitement au lieu
-  # de prétendre vérifier quelque chose. Le garde-fou disparaît avec le ticket S5-01.
+  # de prétendre vérifier quelque chose. Sa suppression est suivie dans docs/sprint-01.md §7.
   # ---------------------------------------------------------------------------
   node:
     name: node
@@ -124,7 +124,7 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Job node ignoré::Pas de package.json/pnpm-lock.yaml — lint/typecheck/test arrivent avec apps/dashboard (sprint S5, ticket S5-01)."
+            echo "::notice title=Job node ignoré::Pas de package.json/pnpm-lock.yaml — lint/typecheck/test arriveront avec apps/dashboard (sprint S5). Ce garde-fou est alors à supprimer (docs/sprint-01.md §7)."
           fi
 
       # pnpm/action-setup@v4 lit « packageManager » dans package.json.

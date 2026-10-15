@@ -405,3 +405,16 @@ Ces deux étapes exigent le dépôt GitHub (`S0-05`) — d'où le statut « en r
 2. La limite WIP de 2 a-t-elle réellement été respectée ? Si non, pourquoi ?
 3. Quelles erreurs se sont répétées ? → à ajouter dans `AGENTS.md` §10 (pièges connus).
 4. Le découpage de WF1 en 4 tickets (S1-01..S1-04) était-il le bon grain, ou trop fin ?
+
+---
+
+## 7. Reporté aux sprints suivants (à ne pas perdre)
+
+Ces points ne sont pas des tickets de ce sprint : ils appartiennent à un sprint dont le backlog
+n'est pas encore écrit. Ils sont listés ici pour ne pas disparaître entre deux sprints.
+
+| Élément | Sprint | Pourquoi c'est noté |
+|---|---|---|
+| Supprimer le garde-fou `node` de `.github/workflows/ci.yml` | S5 | Tant qu'il est là, une CI « verte » ne prouve que le SQL : le job `node` s'annonce ignoré au lieu de vérifier quoi que ce soit |
+| Écrire l'ADR hébergement front (Vercel Hobby non commercial, risque R4) | S7 | Décision à trancher **avant** la mise en production, pas après |
+| Trancher le sens de `runs.items_processed` (récupérées / écartées / écrites) | S1-04 | Conséquence d'ADR 0005 : le compteur devra distinguer les trois, sinon le filtre de ciblage n'est pas calibrable |
