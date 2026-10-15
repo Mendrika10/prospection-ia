@@ -49,22 +49,35 @@ jobs:
       - name: Rôles Supabase (anon / authenticated / service_role)
         run: psql -v ON_ERROR_STOP=1 -q -f .github/sql/roles.sql
 
-      - name: Appliquer les migrations (ordre alphabétique = ordre chronologique)
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          files=(supabase/migrations/*.sql)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "::error::Aucune migration trouvée dans supabase/migrations/"
-            exit 1
-          fi
-          for f in "${files[@]}"; do
-            echo "→ $f"
-            psql -v ON_ERROR_STOP=1 -q -f "$f"
-          done
+      # Le script est réutilisé tel quel pour la réapplication (étape suivante) :
+      # une seule boucle à maintenir, pas deux copies qui divergeraient.
+      - name: Appliquer les migrations sur une base neuve
+        run: bash .github/sql/apply-migrations.sh
 
       - name: Seed de développement
         run: psql -v ON_ERROR_STOP=1 -q -f supabase/seed.sql
+
+      # -------------------------------------------------------------------------
+      # Réapplication des migrations sur la base DÉJÀ PEUPLÉE par le seed.
+      # C'est le scénario réel d'un projet Supabase en service : la migration arrive
+      # alors que les tables contiennent déjà des données.
+      #
+      # On ne se contente pas de l'exit code : un `truncate` réussit (code 0) et détruit
+      # les données. La comparaison d'une empreinte AVANT/APRÈS — nombre de lignes ET
+      # contenu — est la seule preuve. Un `update` destructeur ne change pas le nombre
+      # de lignes, mais change l'empreinte.
+      # -------------------------------------------------------------------------
+      - name: Réappliquer les migrations sur une base peuplée (idempotence)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql > /tmp/empreinte-avant.txt
+          bash .github/sql/apply-migrations.sh
+          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql > /tmp/empreinte-apres.txt
+          if ! diff -u /tmp/empreinte-avant.txt /tmp/empreinte-apres.txt; then
+            echo "::error::Réapplication des migrations : des données ont changé (voir le diff ci-dessus). Une migration doit être réapplicable sans perte ni duplication — AGENTS.md §4."
+            exit 1
+          fi
+          echo "OK — migrations réappliquées sans modifier une seule ligne"
 
       # Tous les tests SQL de supabase/tests/*.sql, dans l'ordre alphabétique.
       # Sort en code ≠ 0 si un test échoue : c'est le garde-fou principal.

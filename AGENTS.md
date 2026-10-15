@@ -68,6 +68,13 @@ dans le `package.json` racine dès qu'il existe (requis par `pnpm/action-setup` 
 
 - Une migration = un fichier daté `supabase/migrations/AAAAMMJJHHMMSS_<slug>.sql`.
 - **Jamais de modification d'une migration déjà appliquée** → nouvelle migration à la place.
+- **Toute migration doit être réapplicable sans perte ni duplication.** La CI les applique
+  **deux fois** : la seconde après le seed, donc sur une base **déjà peuplée** — le cas réel d'un
+  projet Supabase en service. Elle compare une empreinte **avant/après** (nombre de lignes **et**
+  contenu), et échoue si quoi que ce soit a bougé. D'où : `if not exists`, `do $$ … if not exists …`,
+  `create or replace`, et des migrations de données écrites pour être rejouables
+  (`insert … on conflict do nothing`, `update` idempotent). Dans le doute, rejouer les migrations
+  en local : `bash .github/sql/apply-migrations.sh`.
 - **RLS activée sur toute table créée**, et **aucune policy pour `anon`** (exigence du cahier des charges §4).
 - La clé `service_role` est réservée à n8n : elle ne sort **jamais** des credentials n8n,
   jamais dans le dashboard, jamais dans Git, jamais dans un prompt.
@@ -124,7 +131,7 @@ dans le `package.json` racine dès qu'il existe (requis par `pnpm/action-setup` 
 
 | Job | Statut | Sens |
 |---|---|---|
-| `sql` | **actif** | Applique les migrations sur un Postgres neuf, joue `supabase/tests/rls.sql` |
+| `sql` | **actif** | Applique les migrations sur un Postgres neuf, **les réapplique sur la base peuplée par le seed** (idempotence, empreinte avant/après), puis joue **tous** les tests de `supabase/tests/` |
 | `secrets` | **actif** | Refuse tout JWT / clé privée commité |
 | `node` | **auto-désactivé** | Aucun projet Node avant S5 : le job le **signale** (notice) au lieu de faire semblant de passer. À supprimer dès que `apps/dashboard/package.json` existe — suivi dans `docs/sprint-01.md` §7 |
 

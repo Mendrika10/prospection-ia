@@ -13,6 +13,29 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, nuit) — la CI réapplique les migrations sur une base **déjà peuplée**
+
+- **Fait** : le job `sql` applique désormais les migrations **deux fois** — la seconde **après le
+  seed**, donc sur une base **peuplée**, qui est le cas réel d'un projet Supabase en service recevant
+  une migration — et compare une **empreinte avant/après** : nombre de lignes **et contenu**
+  ([`.github/sql/db-fingerprint.sql`](../.github/sql/db-fingerprint.sql)). L'exit code seul ne suffit
+  pas : `truncate` sort en **code 0** en détruisant les données.
+- **Trois mutations prouvent que le contrôle mord** : migration **non idempotente** (`create table`
+  sans garde) → échec de la réapplication (`relation "mut_a" already exists`) ; `truncate public.runs`
+  → **données modifiées détectées** (`runs 1 → 0`) ; `update campaigns set name = …` → **détecté alors
+  que le nombre de lignes ne bouge pas**. C'est ce dernier cas qui justifie l'empreinte de **contenu**
+  plutôt qu'un simple comptage.
+- **Un défaut dans mon propre harnais, corrigé** : ma première mutation « non idempotente » était
+  créée **après** la première passe, donc elle créait la table pour la première fois et passait —
+  elle ne testait rien. Une migration non idempotente doit exister **dès la passe 1**.
+- **Conséquence écrite dans `AGENTS.md` §4** : une migration doit être **réapplicable sans perte ni
+  duplication**. C'est désormais une règle que la CI fait respecter, pas une préférence.
+- **Deux pièges traités au passage** : `core.autocrlf=true` sur ce poste Windows pouvait livrer un
+  shebang en CRLF (« bad interpreter » en CI) → `.gitattributes` force `*.sh` en `eol=lf`, vérifié sur
+  le blob **indexé** ; et le contrôle est ajouté **à l'étape existante** du job `sql`, donc le nom du
+  statut requis par la protection de branche **ne change pas**.
+- **Bloqué** : rien de nouveau — `S0-04` reste le verrou du sprint.
+
 ## 2026-10-15 (jeudi, nuit) — `S1-08` et `S1-09` implémentés en SQL, et vérifiés localement
 
 - **Fait** : les deux tickets atteignables **sans Supabase** sont implémentés, chacun dans sa branche,
