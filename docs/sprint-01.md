@@ -1,8 +1,9 @@
 # Sprint 0 & Sprint 1 — cadre, rituels et tickets
 
-> Source de vérité du sprint en cours. Mis à jour par l'agent **Orchestrateur** (et par le PO).
+> Source de vérité du sprint en cours. Mis à jour par l'agent **Product Owner** et l'agent **Orchestrateur**.
 > Rappels de méthode : [`methode-equipe-agents.md`](methode-equipe-agents.md) ·
-> conventions : [`../AGENTS.md`](../AGENTS.md) · rôle à jouer : [`prompts/roles.md`](prompts/roles.md)
+> conventions : [`../AGENTS.md`](../AGENTS.md) · rôle PO : [`prompts/product-owner.md`](prompts/product-owner.md) ·
+> autres rôles : [`prompts/roles.md`](prompts/roles.md) · décisions produit : [`product-decisions.md`](product-decisions.md)
 
 ---
 
@@ -13,7 +14,7 @@
 | Dates | 2026-10-15 → 2026-10-17 (3 j) | **2026-10-19 → 2026-10-23** (lun → ven) |
 | Objectif | Environnement prêt, méthode en place | **Une campagne configurée déclenche WF1 et alimente `companies` sans doublon** (1er critère d'acceptation du cahier des charges) |
 | Durée | Sprints de 1 semaine | idem |
-| Taille du backlog | 6 tickets | 7 tickets |
+| Taille du backlog | 6 tickets | 8 tickets |
 | Limite WIP | **2 tickets « En cours » maximum** | idem |
 | Branches | `feat/<ticket>-<slug>`, vie < 1 jour | idem |
 | Intégration | CI verte obligatoire avant merge | idem |
@@ -21,23 +22,27 @@
 **Définition de « En cours »** : la limite de 2 inclut l'attente de relecture. Un ticket en Review
 compte comme En cours — sinon on empile les PR ouvertes.
 
-### Ordre de passage (Sprint 1)
+### Ordre de passage (Sprint 1) — révisé le 2026-10-15 par **D-003**
 
-1. `S0-04` (compte Supabase) — **bloque tout le reste** : c'est une action PO, à faire en premier.
-2. `S1-01` → squelette WF1, qui donne une base importable et testable.
-3. `S1-02` → le cœur métier (API + règle de ciblage), dépend d'`ADR 0005` **et** de `S0-04`.
-4. `S1-03`, `S1-04`, `S1-05` en parallèle possible (fichiers distincts).
-5. `S1-06`, `S1-07` en fin de sprint.
+1. `S0-04` (clés Supabase + migrations) — **bloque tout le reste** : action **humaine**, à faire en premier.
+2. `S1-01` → squelette WF1 : une base importable et testable.
+3. `S1-02` → le cœur métier (API + règle de ciblage) ; applique `ADR 0005`.
+4. **`S1-06`** → observabilité, *remontée volontairement avant l'upsert* : on n'ajoute pas
+   d'écritures en volume avant de pouvoir voir les échecs. Portée réduite à la trace en base.
+5. `S1-03` → upsert (dédoublonnage) : c'est ici que l'écriture en volume commence.
+6. `S1-04` et `S1-08` en parallèle (fichiers distincts : workflow / schéma).
+7. `S1-07` → documentation d'exploitation, en fin de sprint.
+8. `S1-05` est **déjà fait** (en review).
 
 ### Rituels du Sprint 1
 
 | Rituel | Quand | Contenu | Qui |
 |---|---|---|---|
-| Sprint Planning | **lundi 19/10, 30 min** | Valider les tickets `Prêt`, confirmer l'ordre de passage | PO + Orchestrateur |
+| Sprint Planning | **lundi 19/10, 30 min** | Valider les tickets `Prêt`, confirmer l'ordre de passage | Agent PO + Orchestrateur |
 | Daily asynchrone | chaque jour, 5 min | `docs/daily.md` : fait / prévu / bloqué | Orchestrateur |
-| Affinage backlog | **mercredi 21/10, 20 min** | Découper les tickets trop gros, lever `ADR 0005` | PO + Architecte |
-| Sprint Review | **vendredi 23/10, 20 min** | Démo de ce qui tourne réellement (base alimentée) | PO |
-| Rétrospective | **vendredi 23/10, 15 min** | 1 à garder, 1 à arrêter, 1 à essayer → mise à jour `AGENTS.md` | PO + Orchestrateur |
+| Affinage backlog | **mercredi 21/10, 20 min** | Découper les gros tickets, lever les décisions en attente | Agent PO + Architecte |
+| Sprint Review | **vendredi 23/10, 20 min** | Démo de ce qui tourne réellement (base alimentée) + métriques | Agent PO |
+| Rétrospective | **vendredi 23/10, 15 min** | 1 à garder, 1 à arrêter, 1 à essayer → mise à jour `AGENTS.md` §10 | Agent PO + Orchestrateur |
 
 ---
 
@@ -50,16 +55,17 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-01 | Structure du dépôt, `AGENTS.md`, CI | DevOps + Architecte | M | — | ✅ |
 | S0-02 | Schéma initial + RLS + test SQL | Backend/Data | M | S0-01 | ✅ |
 | S0-03 | n8n édition communautaire en Docker local | DevOps | S | S0-01 | ✅ |
-| S0-04 | Projet Supabase « dev » + clés | **PO** | S | — | 🟡 projet créé, `.env` et migrations à faire |
-| S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps (**validation PO**) | S | — | 🟡 dépôt, CI et protection faits ; board bloqué (scope jeton) |
-| S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **PO** | S | — | ⬜ |
+| S0-04 | Projet Supabase « dev » + clés | **Humain** (identifiants) | S | — | 🟡 projet créé, `.env` et migrations à faire |
+| S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps | S | — | 🟡 dépôt, CI et protection faits et testés ; board reporté (D-005) |
+| S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **Humain** (comptes) | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cron, campagnes actives, log `runs` | Automation | M | S0-04 | ⬜ |
 | S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ⬜ |
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | 🟦 en review |
-| S1-06 | WF5 — workflow d'erreurs + notification d'échec | Automation | S | S0-06 | ⬜ |
+| S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ⬜ |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ⬜ |
+| S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | ⬜ |
 
 ---
 
@@ -143,7 +149,8 @@ OK  authenticated ne peut pas écrire dans runs
 **Objectif** : disposer d'une base réelle pour appliquer les migrations et brancher n8n.
 
 **Contexte** : ADR 0001 (Supabase) · cahier des charges §6.4 (environnements).
-**Action externe : compte à créer — validation PO requise.**
+**Action humaine obligatoire** : le projet existe déjà, mais il reste à remplir `.env` et à appliquer
+les migrations — un agent n'a ni les clés ni l'accès DDL. Aucun agent ne peut se substituer à toi ici.
 
 **Critères d'acceptation**
 - [ ] Projet Supabase `prospection-dev` créé, région **`eu-west-3`** (proche des cibles françaises)
@@ -154,7 +161,8 @@ OK  authenticated ne peut pas écrire dans runs
 - [ ] Aucune de ces clés n'apparaît dans `git status`
 
 **Périmètre** : `.env` (ignoré par Git) — **interdit** : commiter `.env`
-**Dépendances** : aucune · **Bloque** : S1-01, S1-02, S1-03, S1-04 · **Taille** : S · **Rôle** : PO
+**Dépendances** : aucune · **Bloque** : S1-01, S1-02, S1-03, S1-04
+**Taille** : S · **Rôle** : **Humain** (identifiants — verrou du §2 du brief PO)
 
 ---
 
@@ -215,7 +223,8 @@ Déblocage : `gh auth refresh -s project,read:project` (ouvre le navigateur), **
 manuelle du board dans l'UI. Les 5 colonnes et la limite WIP se règlent ensuite dans l'UI :
 `gh` n'expose pas la suppression des options par défaut du champ `Status`.
 
-**Périmètre** : configuration GitHub · **Taille** : S · **Rôle** : DevOps (validation PO)
+**Périmètre** : configuration GitHub · **Taille** : S
+**Rôle** : DevOps pour le travail, **humain** pour le scope `gh` (verrou du §2 du brief PO)
 
 ---
 
@@ -229,8 +238,8 @@ manuelle du board dans l'UI. Les 5 colonnes et la limite WIP se règlent ensuite
 - [ ] Message de test reçu sur le chat visé depuis n8n
 - [ ] Les deux secrets sont saisis dans les **credentials n8n**, pas dans un fichier du dépôt
 
-**Périmètre** : comptes externes + credentials n8n · **Bloque** : S1-06 (WF5), S4 (WF4)
-**Taille** : S · **Rôle** : PO
+**Périmètre** : comptes externes + credentials n8n · **Bloque** : S4 (WF4) uniquement
+**Taille** : S · **Rôle** : **Humain** (comptes externes) — **ne bloque plus S1-06** depuis D-003
 
 ---
 
@@ -384,14 +393,18 @@ Ces deux étapes exigent le dépôt GitHub (`S0-05`) — d'où le statut « en r
 
 **Contexte** : cahier des charges §4 (observabilité), §7.2 (WF5), risque R7.
 
+**Portée réduite par D-003 (2026-10-15)** : la trace en base est **obligatoire**, la notification
+Telegram est un **plus non bloquant**. Le ticket ne dépend donc plus de `S0-06`.
+
 **Critères d'acceptation**
 - [ ] WF5 déclenché par un *Error Trigger* n8n
-- [ ] Notification envoyée (Telegram) contenant : nom du workflow, heure, message d'erreur
-- [ ] `runs.status = 'error'` écrit avec le message dans `runs.error`
-- [ ] Testé en provoquant volontairement une erreur dans WF1 (et la preuve est collée dans la PR)
+- [ ] `runs.status = 'error'` écrit avec le message dans `runs.error` — **c'est le cœur du ticket**
+- [ ] Testé en provoquant volontairement une erreur dans WF1 (preuve collée dans la PR)
 - [ ] Une notification en échec **ne relance pas** WF5 en boucle
+- [ ] *(facultatif, seulement si `S0-06` est fait)* notification Telegram contenant le nom du
+      workflow, l'heure et le message d'erreur
 
-**Périmètre** : `n8n/workflows/wf5-erreurs.json` · **Dépendances** : S0-06
+**Périmètre** : `n8n/workflows/wf5-erreurs.json` · **Dépendances** : aucune
 **Taille** : S · **Rôle** : Automation
 
 ---
@@ -413,14 +426,46 @@ Ces deux étapes exigent le dépôt GitHub (`S0-05`) — d'où le statut « en r
 
 ---
 
+### S1-08 — `runs.details` : distinguer récupérées / écartées / écrites (**D-002**) ⬜
+
+**Objectif** : rendre le ciblage calibrable en séparant trois compteurs aujourd'hui confondus.
+
+**Contexte** : décision produit **D-002** ([`product-decisions.md`](product-decisions.md)) ·
+conséquence d'`ADR 0005` (règle de ciblage sur le siège) · cahier des charges §4 (observabilité).
+
+**Critères d'acceptation**
+- [ ] Une migration ajoute `runs.details jsonb` — **ne pas modifier** la migration initiale, déjà appliquée
+- [ ] `runs.items_processed` garde un sens **unique** : nombre de lignes **écrites** en base
+- [ ] `runs.details` contient au minimum `recuperees` et `ecartees` (entiers), documentés par un
+      `comment on column` — la colonne doit s'expliquer toute seule, sans ce fichier
+- [ ] Un test SQL vérifie que les trois valeurs coexistent et s'interrogent séparément
+      (cas d'usage réel : le taux de rejet par campagne)
+- [ ] Un test vérifie que `details` est du JSONB exploitable, pas une chaîne de texte
+- [ ] Le fichier de test ne laisse aucune ligne derrière lui (`begin; … rollback;`) et la CI passe
+
+**Pourquoi maintenant** : le taux de rejet est la seule métrique qui dit si une campagne est trop
+large (seuil d'alerte : > 60 %, brief PO §5). Sans lui, aucun calibrage n'est possible — et D-001
+prévoit un arrêt de la collecte à 100 analyses si les faux positifs dépassent 30 %.
+
+**Périmètre** : `supabase/migrations/`, `supabase/tests/` — **interdit** : `n8n/`, `apps/`
+**Dépendances** : aucune · **Taille** : S · **Rôle** : Backend/Data
+
+---
+
 ## 4. Ce qui bloque le sprint
 
-| Blocage | Impact | Levée |
-|---|---|---|
-| `S0-04` Supabase non créé | Aucun ticket S1 ne peut être **vérifié** (le DoD exige une exécution réelle) | Action PO, 10 min |
-| `S0-05` dépôt GitHub absent | Pas de PR, pas de CI, pas de board : la revue par un agent tiers n'existe pas. **S1-05 est bloqué en `en review` pour cette raison** | Action DevOps + validation PO |
+Chaque blocage nomme **qui peut le lever** : un agent pour le travail, un humain pour les quatre
+verrous du §2 du brief Product Owner (identifiants, argent, hors dépôt, suppression).
 
-*(Le blocage `ADR 0005` est levé : décision PO du 2026-10-15, voir `docs/adr/0005-*.md`.)*
+| Blocage | Impact | Levée | Qui peut lever |
+|---|---|---|---|
+| `S0-04` — clés Supabase absentes, migrations non appliquées | Aucun ticket S1 ne peut être **vérifié** : la DoD exige une exécution réelle | Coller les 2 migrations dans l'éditeur SQL + remplir `.env` (~10 min) | **Humain** (identifiants) |
+| `S0-05` — board Projects absent | **Aucun impact sur le sprint** : D-005 a tranché, le tableau versionné est la source de vérité | `gh auth refresh -s project,read:project` | **Humain** (scope du jeton) |
+| `S0-06` — bot Telegram | Ne bloque plus rien (D-003) ; requis seulement pour WF4 (S4) et la notification de WF5 | Créer le bot | **Humain** (compte externe) |
+| PR #1 non relue | `S1-05` reste `en review`, pas `fait` : la DoD exige une relecture en contexte neuf | Lancer une session `Reviewer` | **Agent** (`prompts/roles.md` §7) |
+
+*Blocages levés : `ADR 0005` (décision du 2026-10-15) · `S0-05` dépôt, CI et protection — faits
+et **testés** (push direct et merge anticipé refusés par GitHub).*
 
 ## 5. Métriques à relever en review (vendredi 23/10)
 
@@ -450,4 +495,8 @@ n'est pas encore écrit. Ils sont listés ici pour ne pas disparaître entre deu
 |---|---|---|
 | Supprimer le garde-fou `node` de `.github/workflows/ci.yml` | S5 | Tant qu'il est là, une CI « verte » ne prouve que le SQL : le job `node` s'annonce ignoré au lieu de vérifier quoi que ce soit |
 | Écrire l'ADR hébergement front (Vercel Hobby non commercial, risque R4) | S7 | Décision à trancher **avant** la mise en production, pas après |
-| Trancher le sens de `runs.items_processed` (récupérées / écartées / écrites) | S1-04 | Conséquence d'ADR 0005 : le compteur devra distinguer les trois, sinon le filtre de ciblage n'est pas calibrable |
+| Réévaluer la visibilité du dépôt dès qu'une donnée d'entreprise réelle entre dans le pipeline | fin S1 | Point de révision explicite de **D-004** : le dépôt est public, aucune donnée d'entreprise ne peut y entrer |
+| Protocole de calibrage de la grille (30 fiches relues à la main) | S3 | Point de déclenchement de **D-001** : à 100 analyses réelles, avant toute nouvelle collecte |
+
+*(Le sens de `runs.items_processed` a été tranché par **D-002** : ce n'est plus un report, c'est le
+ticket **S1-08**.)*

@@ -13,6 +13,20 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, nuit) — le Product Owner devient un agent, et il a déjà décidé
+
+- **Fait** : le rôle de Product Owner passe à un **agent** (décision D-000), avec un brief senior
+  15+ ans : [`product-owner.md`](prompts/product-owner.md) — autorité, quatre verrous humains,
+  méthode d'arbitrage, métriques et anti-métriques, 7 anti-patrons, format de décision obligatoire.
+  Puis le PO agent a **exercé** le rôle au lieu de rester une étiquette : 5 décisions écrites dans
+  [`product-decisions.md`](product-decisions.md), dont trois qui changent le sprint :
+  protocole de calibrage **chiffré** (D-001), sens unique donné à `runs.items_processed` (D-002 →
+  nouveau ticket **S1-08**), et observabilité **remontée avant l'upsert** avec une portée réduite
+  pour ne plus dépendre de Telegram (D-003).
+- **Prévu** : revue de la PR #1 (`S1-05`), puis `S1-01` dès que `S0-04` est débloqué.
+- **Bloqué** : `S0-04` (clés + migrations) et le board — **actions humaines**, désormais nommées
+  comme telles partout, avec la raison : un agent n'a ni les clés ni le scope `gh`.
+
 ## 2026-10-15 (jeudi, fin de journée) — `main` est protégée, et c'est vérifié
 
 - **Fait** : décision PO appliquée — dépôt passé **public** pour obtenir le verrou (GitHub Pro étant
@@ -65,14 +79,22 @@ Format :
 - **Bloqué** : rien de bloqué techniquement. Trois actions **PO** conditionnent le Sprint 1 :
   le compte Supabase (`S0-04`), le dépôt GitHub (`S0-05`) et la décision `ADR 0005`.
 
-## Décisions en attente
+## Décisions : qui décide, et où c'est écrit
 
-| Décision | Ticket / ADR | Qui | Quand | Statut |
-|---|---|---|---|---|
-| Ciblage local : filtrer sur le siège | [ADR 0005](adr/0005-ciblage-des-entreprises-locales.md) | PO | avant S1-02 | ✅ accepté le 2026-10-15 |
-| Créer le dépôt GitHub privé et pousser `main` | `S0-05` | PO | dès que possible | ✅ fait le 2026-10-15 |
-| Dépôt **privé sans protection** ou **public avec protection** ? | `S0-05` | PO | avant le prochain merge | ✅ décidé : public, protection testée |
-| Scope `project` sur le jeton `gh` (board) | `S0-05` | PO | à ta convenance | ⬜ en attente |
-| Remplir `.env` + appliquer les 2 migrations sur Supabase | `S0-04` | PO | bloque S1-01..S1-04 | ⬜ en attente (les clés ne doivent **pas** passer par un prompt d'agent — `AGENTS.md` §7) |
+Les décisions **produit** sont prises par l'agent Product Owner et vivent dans
+[`product-decisions.md`](product-decisions.md). Seuls les quatre verrous du §2 de son brief remontent
+à l'humain — identifiants, argent, action hors du dépôt, suppression de données.
+
+| Décision | Qui décide | Où c'est écrit | Statut |
+|---|---|---|---|
+| Le Product Owner est un agent | Propriétaire humain | `product-decisions.md` D-000 | ✅ en vigueur |
+| Ciblage local : filtrer sur le siège | Agent PO | [ADR 0005](adr/0005-ciblage-des-entreprises-locales.md) | ✅ accepté |
+| Protocole de calibrage et arrêt de la grille de scoring | Agent PO | `product-decisions.md` **D-001** | ✅ en vigueur, déclenchement à 100 analyses |
+| `runs.items_processed` = lignes écrites ; compteurs dans `runs.details` | Agent PO | `product-decisions.md` **D-002** → ticket **S1-08** | ✅ en vigueur |
+| Observabilité avant l'upsert, sans attendre Telegram | Agent PO | `product-decisions.md` **D-003** | ✅ en vigueur |
+| Dépôt public : aucune donnée d'entreprise n'y entre | Agent PO | `product-decisions.md` **D-004** | ✅ en vigueur — **révision fin S1** |
+| Le board Projects ne bloque aucune décision | Agent PO | `product-decisions.md` **D-005** | ✅ en vigueur |
+| Scope `project` du jeton `gh` | **Humain** | ticket `S0-05` | ⬜ non bloquant |
+| `.env` Supabase + application des 2 migrations | **Humain** | ticket `S0-04` | ⛔ **bloquant** pour tout le sprint 1 |
 | Vercel Hobby (usage non commercial, risque R4) | ADR à écrire | PO | avant S7, mais à ne pas oublier | ⬜ |
 | Nom de domaine / réputation d'envoi (v2) | hors périmètre v1 | PO | plus tard | ⬜ |

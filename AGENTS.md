@@ -9,6 +9,28 @@
 
 ---
 
+## 0. Organisation : qui décide quoi
+
+Le **Product Owner est un agent**, pas le propriétaire du projet (décision D-000). Son brief :
+[`docs/prompts/product-owner.md`](docs/prompts/product-owner.md). Ses décisions :
+[`docs/product-decisions.md`](docs/product-decisions.md).
+
+| Sujet | Décide | Où c'est écrit |
+|---|---|---|
+| Priorités, périmètre, seuils, ordre des tickets, critères d'arrêt | **Agent Product Owner** | `docs/product-decisions.md` |
+| Décisions techniques (modèle de données, contrats, outillage) | **Agent Architecte**, validées par le PO | `docs/adr/` |
+| Conformité au ticket et qualité du code | **Agent Reviewer** (contexte neuf) + CI | la PR |
+| Fournir un identifiant ou une clé, dépenser de l'argent, agir hors du dépôt (compte externe, publication, production), supprimer des données | **Propriétaire humain** — un agent n'en a pas les moyens | ticket + `docs/daily.md` |
+
+Trois règles qui en découlent :
+
+1. **Un agent ne valide jamais son propre travail** : implémentation et relecture sont deux sessions.
+2. **L'agent PO n'écrit aucun code** : il décide, priorise, et écrit ses motifs.
+3. **Un blocage ne se lève qu'en nommant qui peut le lever** — un agent pour le travail, un humain
+   pour l'un des quatre sujets ci-dessus.
+
+---
+
 ## 1. Langue et style
 
 - Code (identifiants, fichiers, branches) : **anglais**. Commentaires, docs, tickets, commits : **français**.
@@ -92,7 +114,9 @@ dans le `package.json` racine dès qu'il existe (requis par `pnpm/action-setup` 
 2. Si une information manque : **poser la question** plutôt que deviner.
 3. Fin de tâche = **résumé écrit** : fichiers modifiés, commandes lancées + résultat, points d'attention.
 4. **Décisions irréversibles = validation humaine** : migration destructrice, suppression de données,
-   gestion de secrets, déploiement en production, création de compte externe.
+   gestion de secrets, déploiement en production, création de compte externe. À l'inverse, une
+   décision **produit** qui engage la suite est prise par l'agent PO — à condition qu'elle soit écrite
+   dans le journal avec l'hypothèse assumée et le point de révision (`docs/product-decisions.md`).
 5. Le **Reviewer** travaille avec un contexte neuf : il ne voit que la PR et les critères
    d'acceptation, pas l'historique de l'implémentation.
 
