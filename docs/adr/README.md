@@ -34,4 +34,4 @@ Ce que ça nous coûte, ce que ça nous interdit, ce qu'il faudra surveiller.
 | [0002](0002-n8n-auto-heberge-docker.md) | n8n édition communautaire auto-hébergée (Docker) comme orchestrateur | accepté | 2026-10-15 |
 | [0003](0003-depot-unique.md) | Dépôt unique (monorepo léger) pour base + workflows + front + docs | accepté | 2026-10-15 |
 | [0004](0004-grille-de-scoring.md) | Grille de scoring pondérée, plafonnée à 10, raisons stockées en JSONB | accepté | 2026-10-15 |
-| [0005](0005-ciblage-des-entreprises-locales.md) | Ciblage local : filtrer sur le siège, pas sur l'établissement | **proposé** — décision PO attendue avant S1-02 | 2026-10-15 |
+| [0005](0005-ciblage-des-entreprises-locales.md) | Ciblage local : filtrer sur le siège, pas sur l'établissement | accepté (validé par le PO) | 2026-10-15 |

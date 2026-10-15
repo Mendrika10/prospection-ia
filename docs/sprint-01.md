@@ -54,10 +54,10 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-05 | Dépôt GitHub privé + board + `main` protégée | DevOps (**validation PO**) | S | — | ⬜ |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **PO** | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cron, campagnes actives, log `runs` | Automation | M | S0-04 | ⬜ |
-| S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04, ADR 0005 | ⬜ |
+| S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ⬜ |
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
-| S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ⬜ |
+| S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | 🟦 en review |
 | S1-06 | WF5 — workflow d'erreurs + notification d'échec | Automation | S | S0-06 | ⬜ |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ⬜ |
 
@@ -228,7 +228,7 @@ suppression des options par défaut du champ `Status`.
 
 **Objectif** : WF1 récupère réellement les entreprises ciblées par campagne, sans faux positifs géographiques.
 
-**Contexte** : RF-04 · **ADR 0005 (à valider avant d'écrire)** · `AGENTS.md` §10 (contrat de l'API).
+**Contexte** : RF-04 · **ADR 0005 — accepté le 2026-10-15, à appliquer tel quel** · `AGENTS.md` §10 (contrat de l'API).
 
 **Contrat vérifié le 2026-10-15** (ne pas réinventer, ne pas se fier au code HTTP) :
 - `GET https://recherche-entreprises.api.gouv.fr/search`
@@ -298,28 +298,48 @@ suppression des options par défaut du champ `Status`.
 
 ---
 
-### S1-05 — Garde-fou de format des codes NAF ⬜
+### S1-05 — Garde-fou de format des codes NAF 🟦 en review
 
 **Objectif** : rendre impossible l'erreur qui a produit le bug du seed : un code NAF au mauvais format.
 
 **Contexte** : `AGENTS.md` §10 (l'API rejette le format compact en HTTP 400) · règle « tests d'abord ».
 
 **Critères d'acceptation**
-- [ ] Un test dans `supabase/tests/schema.sql` : insérer une campagne avec `naf_codes = ['4321A']`
+- [x] Un test dans `supabase/tests/schema.sql` : insérer une campagne avec `naf_codes = ['4321A']`
       **doit échouer** ; avec `['43.21A']` doit réussir
-- [ ] Une nouvelle migration ajoute la contrainte (fonction `immutable` appelée dans un `check`) —
-      **ne pas modifier** la migration initiale déjà appliquée
-- [ ] La contrainte accepte le tableau vide `'{}'` (une campagne peut être en cours de configuration)
-- [ ] Le test ne laisse aucune ligne derrière lui (`begin; … rollback;`)
-- [ ] La CI joue bien les deux fichiers de test (`supabase/tests/*.sql`)
+- [x] Une nouvelle migration ajoute la contrainte (fonction `immutable` appelée dans un `check`) —
+      la migration initiale n'a **pas** été modifiée
+- [x] La contrainte accepte le tableau vide `'{}'` (une campagne peut être en cours de configuration)
+- [x] Le test ne laisse aucune ligne derrière lui (`begin; … rollback;`)
+- [x] La CI joue bien les deux fichiers de test (`supabase/tests/*.sql`)
 
-**Esquisse** (à valider par le rôle Backend/Data) :
-```sql
-create or replace function public.naf_codes_valides(codes text[])
-returns boolean language sql immutable as $$
-  select coalesce(bool_and(c ~ '^[0-9]{2}\.[0-9]{2}[A-Z]$'), true) from unnest(codes) as c;
-$$;
+**Preuve — rouge d'abord, vert ensuite** (Postgres 16 dans Docker, 2026-10-15) :
+
 ```
+# AVANT la migration — le test doit détecter l'absence de contrainte
+OK  code NAF pointé (43.21A, 43.99C) accepté
+ERROR:  ECHEC  le code NAF compact 4321A a été accepté (l'API le rejette en HTTP 400)
+>>> EXIT=3
+
+# APRÈS la migration — les 5 cas passent
+OK  code NAF pointé (43.21A, 43.99C) accepté
+OK  code NAF compact (4321A) refusé
+OK  tableau de codes vide accepté (campagne en cours de configuration)
+OK  code NAF en minuscules (43.21a) refusé
+OK  code NAF tronqué (43.2A) refusé
+=== TESTS DE SCHEMA : PASSENT ===        (EXIT=0)
+```
+
+Le premier cas (acceptation d'un code valide) est placé **avant** les cas négatifs pour une raison
+précise : sans lui, un refus pour *permission denied* ferait passer les tests négatifs pour la bonne
+raison apparente alors qu'ils ne prouveraient rien. Chaque cas négatif vérifie donc que l'échec est
+bien une `check_violation` (23514) et pas une `insufficient_privilege` (42501).
+
+**Historique de la branche** : `feat/s1-05-garde-fou-naf` (commit non fusionné).
+
+**Reste à faire avant `fait`** (DoD) : revue par un agent **Reviewer** en contexte neuf, et validation PO.
+Ces deux étapes exigent le dépôt GitHub (`S0-05`) — d'où le statut « en review » et non « fait ».
+
 **Périmètre** : `supabase/migrations/`, `supabase/tests/` · **Dépendances** : aucune
 **Taille** : S · **Rôle** : Backend/Data
 
@@ -365,8 +385,9 @@ $$;
 | Blocage | Impact | Levée |
 |---|---|---|
 | `S0-04` Supabase non créé | Aucun ticket S1 ne peut être **vérifié** (le DoD exige une exécution réelle) | Action PO, 10 min |
-| `ADR 0005` non validé | S1-02 écrit puis doit être réécrit → perte d'une demi-journée | Décision PO, à prendre avant lundi |
-| `S0-05` dépôt GitHub absent | Pas de PR, pas de CI, pas de board : la revue par un agent tiers n'existe pas | Action DevOps + validation PO |
+| `S0-05` dépôt GitHub absent | Pas de PR, pas de CI, pas de board : la revue par un agent tiers n'existe pas. **S1-05 est bloqué en `en review` pour cette raison** | Action DevOps + validation PO |
+
+*(Le blocage `ADR 0005` est levé : décision PO du 2026-10-15, voir `docs/adr/0005-*.md`.)*
 
 ## 5. Métriques à relever en review (vendredi 23/10)
 

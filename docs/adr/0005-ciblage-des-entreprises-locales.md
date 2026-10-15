@@ -1,6 +1,6 @@
 # ADR 0005 — Ciblage local : filtrer sur le siège, pas sur l'établissement
 
-- Statut : **proposé** (en attente de validation du Product Owner — décision attendue avant le ticket S1-02)
+- Statut : **accepté** (validé par le Product Owner le 2026-10-15)
 - Date : 2026-10-15
 - Décideur : Product Owner
 - Rôle auteur : Architecte
@@ -25,7 +25,7 @@ C'est exactement le type de faux positif qui consomme du temps commercial pour r
 
 ## Décision
 
-À valider par le PO. Recommandation de l'Architecte, en deux règles :
+Validée par le Product Owner le 2026-10-15, en deux règles :
 
 1. **Ne conserver que les unités légales dont `siege.departement` correspond au ciblage.**
    Le filtre serveur reste utile — il réduit le volume avant de trier — mais il ne suffit pas :
@@ -37,7 +37,7 @@ Critère de rejet à l'écriture : si `siege.departement` ne fait pas partie des
 campagne, l'entreprise est écartée et **comptée comme écartée** dans `runs` (et non silencieusement
 perdue) — sinon on ne saura jamais calibrer ce filtre.
 
-## Alternatives écartées
+## Alternatives écartées (au moment de la décision)
 
 - **Garder les établissements locaux des groupes nationaux** : l'adresse serait locale, mais la
   décision d'achat ne l'est pas. Un site de groupe se refait au niveau du groupe, pas de l'agence.
@@ -52,8 +52,8 @@ perdue) — sinon on ne saura jamais calibrer ce filtre.
 
 ## Conséquences
 
-- WF1 doit lire `siege.departement` et comparer aux `campaigns.departements`. **Cela conditionne le
-  ticket S1-02** : la règle doit être décidée avant l'écriture du workflow, sinon il faudra le réécrire.
+- WF1 doit lire `siege.departement` et comparer aux `campaigns.departements`. La règle est arrêtée :
+  le ticket S1-02 l'applique telle quelle, sans réinterprétation.
 - Le volume de leads utiles est **divisé par ~2** sur un ciblage départemental : l'objectif O1
   (≥ 500 entreprises/semaine) se calcule donc sur des entreprises collectées, pas sur des entreprises
   conservées. À suivre dans les métriques de collecte.
