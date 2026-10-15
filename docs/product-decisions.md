@@ -196,7 +196,9 @@ rédigés et versionnés ; les dupliquer créerait deux sources de vérité qui 
 c'est un coût humain réel, pas une difficulté technique.
 
 **Conséquence / coût** : le suivi reste dans Git, en lecture seule sur GitHub. Quand le board sera
-créé, il faudra y recopier les 13 tickets — travail mécanique, à faire une fois, sans valeur ajoutée.
+créé, il faudra y recopier tout le backlog — travail mécanique, à faire une fois, sans valeur ajoutée.
+(Le nombre n'est volontairement pas écrit ici : un compteur figé dans une instruction vivante devient
+faux au ticket suivant — défaut trouvé au planning du 2026-10-15.)
 Assumé, parce que le report est gratuit et l'attente ne l'est pas.
 
 **Ce qui me ferait changer d'avis** : dès qu'un deuxième agent travaille en parallèle sur le même
@@ -204,3 +206,91 @@ sprint, la lecture d'un fichier partagé ne suffit plus à éviter les collision
 nécessaire et je le remets en tête de sprint.
 
 **Qui exécute** : propriétaire humain (scope `gh`, quand il veut) · surveillance : PO.
+
+---
+
+## D-006 — Périmètre, ordre et règle d'exécution du Sprint 1 · 2026-10-15 · en vigueur
+
+**Décision** : le Sprint 1 retient **7 tickets** (`S1-01`, `S1-02`, `S1-03`, `S1-04`, `S1-06`,
+`S1-08`, `S1-09`) plus `S1-05` déjà fait. Il **refuse `S1-07`** et **crée `S1-09`** en prérequis.
+Ordre : `S1-09` → `S1-08` → `S1-01` → `S1-02` → `S1-06` → `S1-03` → `S1-04`.
+Règle d'exécution : développement contre un **Postgres local** (celui de la CI), Definition of Done
+**vérifiée sur Supabase** avant tout `fait`.
+
+**Pourquoi** : la validation de la Definition of Ready a montré que deux tickets n'étaient pas
+implémentables tels qu'écrits (`S1-01` demandait un cron par campagne lu à l'exécution, impossible
+dans n8n et sans trace du dernier passage). Un sprint qui démarre sur un ticket impossible produit du
+retravail, pas de la valeur. Et le sprint n'est **pas** limité par la capacité (7 tickets ≤ cible de 8)
+mais par un **verrou humain** (`S0-04`) : je préfère l'écrire et réordonner pour rendre faire ce qui
+est faisable dès maintenant, plutôt que de présenter un sprint qui ne peut pas finir.
+
+**Options écartées** :
+
+- *Garder les 9 tickets tels quels* : `S1-01` non implémentable, la découverte du problème aurait eu
+  lieu en cours d'implémentation, au prix d'une demi-journée et d'un ticket à réécrire.
+- *Ne rien lancer avant que `S0-04` soit levé* : deux tickets (`S1-08`, `S1-09`) peuvent atteindre
+  leur DoD **complète** dès maintenant, sans identifiant ni accès Supabase. Attendre serait du temps perdu
+  pour préserver une illusion d'ordre.
+- *Refuser `S1-04` (politesse de crawl) plutôt que `S1-07`* : la politesse de crawl est un **contrat
+  avec une API publique** dès le premier appel (risques R2/R6), pas du confort. Le coût du délai de
+  `S1-04` est élevé ; celui de `S1-07` est quasi nul avant la première collecte réelle.
+- *Descendre la limite WIP à 1 pour compenser* : la contrainte est le verrou humain, pas la
+  concurrence entre agents. Abaisser le WIP n'aurait rien débloqué et aurait allongé le délai.
+
+**Preuves utilisées** : les quatre constats du planning, chacun vérifiable dans `docs/sprint-01.md` §3 —
+`S1-01` (aucune trace du dernier passage de campagne dans le schéma), `S1-02` (le contrat de l'API
+n'offre pas de confirmation du vocabulaire d'effectif : `tranche_effectif_salarie=53` renvoie
+HTTP 200 avec 0 résultat, ce n'est **pas** une preuve que le code est valide), `S1-04` (la contrainte
+ajoutée par `S1-05` empêche d'enregistrer la campagne invalide que le test demandait), `S1-08` (un
+critère que le type de colonne rend infalsifiable).
+
+**Conséquence / coût** : le backlog du sprint reste au-dessus de la cible tant que `S0-04` n'est pas
+levé ; la documentation d'exploitation arrivera **après** la première collecte réelle, pas avant.
+`S1-09` introduit une dépendance d'Architecte sur le chemin critique : elle doit être tranchée vite,
+sinon elle devient le nouveau goulot.
+
+**Ce qui me ferait changer d'avis** : si `S0-04` n'est pas levé au bout de **3 jours** (plus de la
+moitié du sprint), je réordonne pour terminer `S1-09` + `S1-08` + `S1-01` et je déplace `S1-03` et
+`S1-04` au Sprint 2 — je préfère trois tickets finis et vérifiés à cinq tickets à moitié faits.
+
+**Qui exécute** : Orchestrateur (ordre et WIP) · rôles Backend/Data, Automation, Architecte ·
+**humain** pour `S0-04`.
+
+---
+
+## D-007 — Le filtre d'effectif est conditionnel, et son absence est tracée · 2026-10-15 · en vigueur
+
+**Décision** : le filtre `tranche_effectif_salarie` n'est appliqué à une collecte **que si** son code
+est confirmé par une requête qui le prouve. Sinon la campagne est collectée **sans** ce filtre, et
+l'écart est tracé dans `runs.details` (le champ créé par `S1-08`).
+
+**Pourquoi** : RF-01 prévoit de cibler par tranche d'effectif, mais le vocabulaire de codes accepté par
+l'API n'était traité nulle part dans le sprint. Or on sait déjà, pour l'avoir vérifié, que cette API
+**ignore silencieusement** un paramètre inconnu : un filtre mal employé ne provoque pas d'erreur, il
+rend des résultats non filtrés — le pire des cas, parce qu'il ressemble à un succès.
+
+**Options écartées** :
+
+- *Bloquer `S1-02` jusqu'à confirmation* : un détail de filtre ne doit pas retenir le cœur métier
+  (appel d'API, pagination, règle de ciblage) qui, lui, est prêt.
+- *Ignorer `effectif_min` sans rien dire* : contraire à « vérifier, ne pas croire », et le jour où
+  quelqu'un croira filtrer par effectif, il ne filtrera rien sans le savoir.
+- *Retirer `effectif_min` du modèle* : RF-01 le demande explicitement ; on ne supprime pas une
+  exigence parce qu'un paramètre d'API est mal documenté.
+
+**Preuves utilisées** : contrat réel de l'API vérifié le 2026-10-15 (le filtre d'activité s'appelle
+`activite_principale` et non `code_naf` ; format NAF pointé obligatoire ; `per_page` ≤ 25 ;
+`departement` filtre sur les établissements). Aucune preuve en revanche que `tranche_effectif_salarie`
+accepte le code observé : la requête a renvoyé 0 résultat, ce qui ne distingue pas « code invalide »
+de « aucune entreprise correspondante ».
+
+**Conséquence / coût** : les campagnes existantes (`effectif_min = 1`) ne sont pas affectées. Une
+campagne exigeant un effectif réel peut donc collecter **plus large que demandé** — c'est assumé et
+visible, ce qui vaut mieux qu'un filtre supposé actif. À surveiller : le nombre de collectes où le
+filtre n'a pas pu être appliqué.
+
+**Ce qui me ferait changer d'avis** : dès qu'une requête prouve le vocabulaire (elle renvoie les
+codes attendus **et seulement eux**, sur deux codes distincts), je rends le filtre obligatoire pour
+les campagnes qui déclarent un `effectif_min`.
+
+**Qui exécute** : Architecte (consigner le vocabulaire retenu) · Automation (`S1-02`).
