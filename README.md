@@ -78,9 +78,24 @@ docker compose -f n8n/docker-compose.yml up -d
 npx supabase link --project-ref <ref>
 npx supabase db push
 
-# 4. Vérifier la sécurité (doit afficher "TOUS LES TESTS RLS PASSENT" et sortir en code 0)
+# 4. Vérifier : TOUTES les suites de supabase/tests/ (pas seulement rls.sql), chacune
+#    doit afficher son « PASSENT » et sortir en code 0.
 #    Rôle anon : aucun accès. service_role (n8n) : écriture. authenticated : pipeline.
-psql "$DATABASE_URL" -f supabase/tests/rls.sql
+for f in supabase/tests/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"; done
+```
+
+⚠️ **Connexion à un vrai projet : mesuré le 2026-10-15, ça se paie en minutes sinon.**
+
+- L'hôte **direct** (`db.<ref>.supabase.co`) n'est résolu qu'en **IPv6** : `supabase link` + `db push`
+  peuvent donc expirer selon le réseau. Solution éprouvée : viser **le pooler** —
+  `npx supabase db push --db-url "$DATABASE_URL"`.
+- Le pooler **session (port 5432)** était **injoignable** depuis le réseau de dev ; c'est le pooler
+  **transaction (port 6543)** qui répondait. Les scripts de `supabase/tests/` y fonctionnent : les
+  `BEGIN/ROLLBACK` sont épinglés le temps de la transaction.
+- `rls.sql` **n'est pas transactionnel** : il laisse quatre lignes derrière lui. À supprimer après
+  vérification (les autres suites se terminent en `rollback`).
+
+```bash
 
 # Sans projet Supabase, on peut tout rejouer sur un Postgres jetable (c'est ce que fait la CI) :
 docker run -d --name pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16-alpine

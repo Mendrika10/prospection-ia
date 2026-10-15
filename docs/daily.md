@@ -81,6 +81,38 @@ Format :
   par aucun contrôle et la CI restera verte **à tort**.
 - **Bloqué** : `S0-04` — inchangé.
 
+## 2026-10-15 (jeudi, nuit) — `S0-04` **levé** : les migrations sont vérifiées sur le **vrai** projet Supabase
+
+- **Fait** : accès base obtenu. Le chemin s'est trouvé par mesure : l'hôte direct
+  (`db.<ref>.supabase.co`) n'est résolu qu'en **IPv6**, et le pooler **session (5432)** est
+  **injoignable** depuis ce réseau ; c'est le pooler **transaction (6543)** qui répond.
+  `supabase db push --db-url` a appliqué les **3 migrations**, historique distant `…0001, …0003, …0004`.
+- **Fait — les 4 suites passent SUR LE VRAI PROJET**, `code 0` chacune, assertions lues dans la sortie :
+  `rls.sql` (`TOUS LES TESTS RLS PASSENT`), `runs_details.sql` (6 assertions), `campaigns_due.sql`
+  (10, dont le contrôle discriminant « `anon`, même avec le droit sur la vue, ne lit rien »),
+  `anon_privileges.sql` (7 objets inspectés, aucun privilège `anon`). État mesuré : 6 tables, la vue,
+  **RLS sur les 6**, 10 policies, `runs.details`, `security_invoker=true` lu dans `pg_class`.
+- **Fait — les vérifications à la main**, celles que la DoD demande explicitement : `anon` reçoit
+  **401 `permission denied`** sur les 6 tables **et** la vue, **alors que 4 lignes de données
+  existaient** (sinon le contrôle ne prouverait rien) ; `service_role` **écrit** (HTTP 201, ligne
+  ensuite supprimée) — le chemin n8n est prouvé, pas supposé. `.env` complet : la clé transmise comme
+  `service_role` était en réalité la clé **`anon`** ; la vraie a été récupérée par l'API et ses claims
+  vérifiés (`role=service_role`, bon projet), sans jamais l'afficher.
+- **Fait — l'empreinte du vrai projet comparée à notre référence** (`.github/sql/schema-baseline.txt`) :
+  **aucun objet manquant**. Trois lignes `privilege_defaut` diffèrent seulement par leur **texte**
+  (l'entrée propriétaire `postgres=` existe côté plateforme, absente côté CI) alors que l'**effet** est
+  identique — les `anon=arwdDxtm` y sont. C'est la limite connue de la référence, mesurée pour de vrai.
+- **Deux écarts consignés, et arbitrés par le propriétaire plutôt que tus** : la région est
+  **`eu-west-1`** (Irlande) et non `eu-west-3` — l'intention du critère est respectée, sa lettre non ;
+  et la relecture de `S1-08`/`S1-09` est une revue **adversariale non indépendante**, donc l'exigence
+  du dépôt « un agent ne valide jamais son propre travail » n'est **pas** satisfaite à la lettre. Les
+  deux tickets passent à `fait` avec l'écart **écrit dans le ticket**, pas abandonné en silence. Leurs
+  constats restent ouverts et sont, eux, mesurés.
+- **Nettoyage** : résidu de `rls.sql` (4 lignes) et ligne de vérification REST supprimés — toutes les
+  tables du projet sont revenues à **0**.
+- **Prévu** : `S1-01` et `S1-02` — le verrou est levé, leur DoD est désormais vérifiable directement.
+- **Bloqué** : rien. `S0-05` (board) et `S0-06` (bot Telegram) restent ouverts, sans impact sur le sprint.
+
 ## 2026-10-15 (jeudi, nuit) — la CI devient **fidèle à la plateforme** sur les privilèges par défaut
 
 - **Fait** : `.github/sql/roles.sql` reproduit enfin ce qu'un vrai projet Supabase porte déjà dans
