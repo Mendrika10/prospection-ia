@@ -13,6 +13,36 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, soir) — S1-01 : WF1 existe, journalise son passage, et c'est prouvé sur le vrai projet
+
+- **Demandé** : `S1-01` — squelette de WF1 (cadence fixe, campagnes dues, log `runs`), `S0-04` levé.
+  Écriture **autorisée** : `n8n/workflows/` uniquement.
+- **Fait** : `n8n/workflows/wf1-collecte.json` — 9 nœuds, 3 notes explicatives, déclencheur **horaire**
+  (propriété du nœud, seule cadence possible : ADR 0006), lecture de la vue `campaigns_due` avec
+  `returnAll: true`, création d'une ligne `runs` en `running` au démarrage puis clôture en `success`
+  (ou `error` + message) avec `finished_at`, et `items_processed = 0` — **D-002** : cette colonne compte
+  les lignes **écrites**, et le squelette n'écrit aucune donnée métier. Credential référencé **par nom**
+  (`Supabase service_role (WF1)`), aucun secret dans le fichier.
+- **Prouvé, pas supposé** : l'artéfact commité importé dans une instance n8n **jetable** (copie de la base,
+  volume dédié) rend des nœuds/connexions/réglages **identiques** à ce que la base stocke ; la trace
+  d'exécution montre `running` → `success` et ne renvoie **que** la campagne `active = true` (une campagne
+  inactive créée pour le test n'apparaît sur aucune sortie) ; et le vrai projet contient la ligne
+  `wf1-collecte | success | fini=true | items=0`. Les 2 campagnes de test et les 4 lignes des harnais ont
+  été supprimées après vérification : il ne reste que la ligne de l'artéfact.
+- **Comment exécuter sans toucher l'instance de l'équipe** : `n8n execute` ne sait démarrer que les
+  sous-workflows (il exige un *Execute Workflow Trigger*) ; la route réelle est
+  `POST /rest/workflows/:id/run` (celle de l'UI), avec `triggerToStartFrom`. Le harnais tourne dans un
+  conteneur jetable sur une copie de la base, avec un compte propriétaire de test — les données, elles,
+  partent bien vers le **vrai** projet Supabase (c'est là qu'est la preuve).
+- **Trois pièges n8n 2.x mesurés** (deux à porter en `AGENTS.md` §10) : `N8N_USER_FOLDER=/home/node/.n8n`
+  fait lire `.n8n/.n8n` — une base neuve et **vide**, donc un login « mauvais mot de passe » inexplicable ;
+  `import:workflow` **désactive toujours** le workflow importé ; et **activer = publier** (une bascule de
+  `active` en base ne planifie rien : `Processed 0 published workflows`).
+- **Limite assumée** : le message stocké dans `runs.error` est le repli de l'expression — la forme d'un item
+  de sortie d'erreur n'étant pas celle attendue en 2.43.5, à reprendre avec les vrais échecs de `S1-02`.
+- **Bloqué** : rien. `S1-02` peut enchaîner (il branche la collecte sur le nœud d'itération laissé en place).
+
+---
 ## 2026-10-15 (jeudi, nuit) — le contrôle d'idempotence regarde aussi le **schéma**, et une **référence** retient les objets perdus
 
 - **Demandé** : détecter aussi les objets de schéma perdus par une migration (colonnes, index,

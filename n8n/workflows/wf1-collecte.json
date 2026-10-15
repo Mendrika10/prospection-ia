@@ -1,0 +1,338 @@
+{
+  "updatedAt": "2026-10-15T11:36:16.502Z",
+  "createdAt": "2026-10-15T11:36:16.502Z",
+  "id": "4MEfhzNApVq1seJZ",
+  "name": "WF1 - Collecte",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111101",
+      "name": "Cadence fixe - toutes les heures",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "secretKey",
+        "resource": "row",
+        "operation": "create",
+        "tableId": "runs",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "workflow",
+              "fieldValue": "wf1-collecte"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "running"
+            }
+          ]
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111102",
+      "name": "Run démarré (running)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -380,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
+          "name": "Supabase service_role (WF1)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "secretKey",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "campaigns_due",
+        "returnAll": true,
+        "filters": {}
+      },
+      "id": "11111111-1111-4111-8111-111111111103",
+      "name": "Campagnes dues (campaigns_due)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        300
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
+          "name": "Supabase service_role (WF1)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "secretKey",
+        "resource": "row",
+        "operation": "update",
+        "tableId": "runs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Run démarré (running)').first().json.id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "success"
+            },
+            {
+              "fieldId": "finished_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "items_processed",
+              "fieldValue": "={{ 0 }}"
+            }
+          ]
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111104",
+      "name": "Run terminé (success)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        160,
+        180
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
+          "name": "Supabase service_role (WF1)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "secretKey",
+        "resource": "row",
+        "operation": "update",
+        "tableId": "runs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Run démarré (running)').first().json.id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "error"
+            },
+            {
+              "fieldId": "finished_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "items_processed",
+              "fieldValue": "={{ 0 }}"
+            },
+            {
+              "fieldId": "error",
+              "fieldValue": "={{ ($json.error && ($json.error.message || $json.error.description)) || 'echec WF1 : detail dans l execution n8n' }}"
+            }
+          ]
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111105",
+      "name": "Run en erreur (error)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        160,
+        420
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
+          "name": "Supabase service_role (WF1)"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "11111111-1111-4111-8111-111111111106",
+      "name": "Pour chaque campagne due (S1-02 branchera ici)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        160,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Cadence fixe — et rien de plus (ADR 0006)\n\nDéclencheur : **toutes les heures**, fuseau `Indian/Antananarivo` (réglé dans les options du workflow).\n\nIl ne décide de **rien** : n8n n'évalue les valeurs d'un déclencheur qu'à la **publication**, donc un « cron par campagne » lu à l'exécution est impossible — ce n'est pas une difficulté, c'est une impossibilité (ADR 0006).\n\nC'est `campaigns_due` qui répond, campagne par campagne : `active = true` **ET** (aucun run démarré pour elle, **ou** `now() >= dernier_started_at + interval_minutes`).\n\nPourquoi horaire : les fréquences sont des intervalles en minutes (défaut 1440 = 24 h) ; une campagne plus courte qu'une heure serait vue à l'heure suivante. Changer cette cadence est une **décision** (propriété du nœud), pas une valeur lue en base.",
+        "height": 460,
+        "width": 520,
+        "color": 4
+      },
+      "id": "11111111-1111-4111-8111-111111111107",
+      "name": "Note — cadence et règle d'échéance",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Squelette S1-01 — ce qui est écrit en base\n\n1. `runs` **créée au démarrage** : `workflow = wf1-collecte`, `status = running`.\n2. Lecture des campagnes **dues** (`campaigns_due`) avec **`returnAll = true`** : sans ce réglage le nœud s'arrête à **50 lignes**, en silence.\n3. `runs` **close** : `status = success` (ou `error` + message) avec `finished_at`, et `items_processed = 0` — **D-002** : cette colonne compte les lignes **ÉCRITES**, et le squelette n'écrit aucune donnée métier. Les compteurs de ciblage (`details`) appartiennent à S1-02.\n\nAucune campagne due : le nœud sort **1 item vide** (`alwaysOutputData`), donc le run est quand même clos en `success` avec `items_processed = 0`. Ce n'est pas un échec.",
+        "height": 460,
+        "width": 560,
+        "color": 5
+      },
+      "id": "11111111-1111-4111-8111-111111111108",
+      "name": "Note — ce que le squelette écrit",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Où S1-02 se branche\n\n« Pour chaque campagne due » : c'est ici que viendra la collecte (API Recherche d'entreprises), **une itération par campagne**, avec *Split in Batches* 10-25 et un nœud *Wait* entre requêtes. Le squelette s'arrête avant, exprès : il journalise son passage **sans écrire de donnée métier**.\n\n**Credential attendu** : `Supabase service_role (WF1)` — *Host* = URL du projet, *Secret Key* = clé `service_role`. Aucun secret dans ce fichier : le credential est référencé par nom.",
+        "height": 340,
+        "width": 520,
+        "color": 3
+      },
+      "id": "11111111-1111-4111-8111-111111111109",
+      "name": "Note — point d'insertion S1-02 et credential",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -260
+      ]
+    }
+  ],
+  "connections": {
+    "Cadence fixe - toutes les heures": {
+      "main": [
+        [
+          {
+            "node": "Run démarré (running)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run démarré (running)": {
+      "main": [
+        [
+          {
+            "node": "Campagnes dues (campaigns_due)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campagnes dues (campaigns_due)": {
+      "main": [
+        [
+          {
+            "node": "Run terminé (success)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Pour chaque campagne due (S1-02 branchera ici)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run en erreur (error)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Indian/Antananarivo"
+  },
+  "staticData": null,
+  "meta": {},
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "87816ead-6f7e-4e28-a44a-eaaddb5ce8cc",
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-10-15T11:36:16.507Z",
+      "createdAt": "2026-10-15T11:36:16.507Z",
+      "role": "workflow:owner",
+      "workflowId": "4MEfhzNApVq1seJZ",
+      "projectId": "gtxUdKnx6uJq972n",
+      "project": {
+        "updatedAt": "2026-10-14T13:18:11.882Z",
+        "createdAt": "2026-10-14T13:18:11.882Z",
+        "id": "gtxUdKnx6uJq972n",
+        "name": "Unnamed Project",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "8d79972d-eacf-4e09-b871-8d3cf245b1ca"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
