@@ -35,7 +35,8 @@ compte comme En cours — sinon on empile les PR ouvertes.
 7. `S1-04` → politesse de crawl et robustesse.
 
 `S1-05` est **déjà fait** (en review, PR #1). `S1-07` est **refusé du sprint** ce cycle.
-`S0-04` n'est pas un ticket : c'est un **verrou humain** qui conditionne la fin du sprint (voir la règle d'exécution).
+`S0-04` est bien un ticket, mais son exécution est **humaine** : c'est le verrou qui conditionne la fin
+du sprint (voir la règle d'exécution) — et le seul point sur lequel un agent ne peut pas se substituer à toi.
 
 ### Rituels du Sprint 1
 
@@ -58,7 +59,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-01 | Structure du dépôt, `AGENTS.md`, CI | DevOps + Architecte | M | — | ✅ |
 | S0-02 | Schéma initial + RLS + test SQL | Backend/Data | M | S0-01 | ✅ |
 | S0-03 | n8n édition communautaire en Docker local | DevOps | S | S0-01 | ✅ |
-| S0-04 | Projet Supabase « dev » + clés | **Humain** (identifiants) | S | — | 🟡 projet créé, `.env` et migrations à faire |
+| S0-04 | Projet Supabase « dev » + clés | **Humain** (identifiants) | S | — | 🟡 projet créé, `.env` et migrations à faire · ⛔ **verrou du sprint 1** |
 | S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps | S | — | 🟡 dépôt, CI et protection faits et testés ; board reporté (D-005) |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **Humain** (comptes) | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ⬜ |
@@ -70,7 +71,6 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
 | S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | ⬜ |
 | S1-09 | `campaigns`/`runs` — rendre la fréquence par campagne implémentable (créé au planning) | Backend/Data | S | — | ⬜ |
-| — | `S0-04` clés Supabase + migrations | **Humain** | S | — | ⛔ **verrou du sprint** |
 
 ---
 
@@ -119,6 +119,22 @@ Un ticket rendu « Prêt sous condition » est corrigé dans ce fichier, pas lai
    **lus séparément** (`items_processed` d'un côté, `details->>'ecartees'` de l'autre) et donner
    des valeurs différentes sur un même run.
 5. `S1-05` — note de dépendance périmée corrigée (le dépôt existe, seule la relecture manque).
+
+#### Tickets du Sprint 0 encore ouverts — traités par ce planning, pas oubliés
+
+La Definition of Ready ne s'applique qu'aux tickets **soumis à ce sprint**. Quatre lignes du Sprint 0
+restent ouvertes : elles sont ci-dessous avec leur sort, pour qu'aucune ne disparaisse du radar.
+
+| Ticket | Reste à faire | Pourquoi il n'est **pas** re-planifié |
+|---|---|---|
+| `S0-03` | 1 case : importer et exécuter un workflow témoin | Se coche **à la première exécution de WF1** (`S1-01`) : le témoin, c'est la collecte réelle. Pas de travail séparé. |
+| `S0-04` | `.env` + 2 migrations | **Verrou humain** (identifiants) : hors de portée d'un agent. Non bloquant pour `S1-08`/`S1-09` — voir la règle d'exécution. |
+| `S0-05` | Board Projects | Reporté par **D-005** (ne bloque aucune décision) ; le reste du ticket est fait **et testé**. |
+| `S0-06` | Bot Telegram + clé PageSpeed | **Retiré du chemin critique** par **D-003**. Dû avant S4 (WF4), pas avant. |
+
+Aucun de ces quatre points n'est un ticket de développement : trois sont des **verrous ou des reports
+assumés**, le quatrième se ferme tout seul au premier run réel. Les re-planifier ajouterait du bruit au
+sprint sans changer une ligne de code.
 
 #### Ce qui est refusé, et à quelle condition ça revient
 
