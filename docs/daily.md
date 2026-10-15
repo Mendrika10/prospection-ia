@@ -81,6 +81,36 @@ Format :
   par aucun contrôle et la CI restera verte **à tort**.
 - **Bloqué** : `S0-04` — inchangé.
 
+## 2026-10-15 (jeudi, nuit) — accès au **vrai** projet Supabase : lecture acquise, écriture bloquée ; revue de `S1-08`/`S1-09`
+
+- **Fait** : le projet réel `rexnoeixlkedvdhzeoqk` est enfin **interrogé pour de vrai** — pas
+  supposé. Constaté par API : projet **vierge** (0 table, 0 vue, 0 schéma `supabase*`), rôles
+  `anon`/`authenticated`/`service_role` présents, `pgcrypto`/`uuid-ossp`/`pg_stat_statements`
+  installés, PostgreSQL **17.11**, PostgREST répond (`404 PGRST205` sur `leads`, table inexistante).
+  `.env` écrit et **vérifié non suivi** (`git check-ignore` → `.gitignore:2:.env`, `git status` vide).
+- **Bloqué, et diagnostiqué plutôt que contourné** : le jeton Management API fourni est en
+  **lecture seule** — `current_user = supabase_read_only_user`, `transaction_read_only = on`,
+  **même avec `read_only:false`** (`create schema` → `ERROR 25006`). Les tests ne sont pas seulement
+  bloqués par le DDL : ils **insèrent** des lignes. Donc rien n'a été appliqué, rien n'a été coché :
+  `S0-04` reste ouvert et `S1-08`/`S1-09` restent `en review`. Il faut le **mot de passe de la base**
+  (chemin `supabase link` + `db push`) pour aller plus loin.
+- **Fait (2e condition de la DoD, elle ne dépend pas des identifiants)** : relecture **adversariale**
+  de `S1-08`/`S1-09` → [`reviews/2026-10-15-s1-08-s1-09.md`](reviews/2026-10-15-s1-08-s1-09.md).
+  Trois constats, chacun **mesuré** sur un Postgres jetable : (1) un run en **`error`** bloque sa
+  campagne aussi longtemps qu'un run en cours — 24 h par défaut, sans qu'aucun test ne l'exerce ni
+  que l'ADR 0006 l'arbitre ; (2) `runs.items_processed` est **nullable**, donc le « sens unique » de
+  D-002 n'est pas tenu par la base ; (3) `prochain_run` est `NULL` pour une campagne **due** jamais
+  exécutée. Contrôles conformes au passage : `security_invoker` lu dans le catalogue, `anon` sans
+  aucun privilège, et l'index partiel **réellement utilisé** (`Index Only Scan`, 3,7 ms sur 100 005 runs).
+- **Deux pièges nommés** : la clé `service_role` transmise est **identique à la clé `anon`** (même
+  empreinte, claims `role=anon`) — `.env` la laisse vide plutôt que d'écrire un faux secret ; et le
+  jeton d'accès a transité en clair dans la conversation, donc **à révoquer** (stocké hors dépôt,
+  jamais dans un fichier suivi).
+- **Prévu** : `supabase link` + `db push` + les trois suites sur le vrai projet dès que le mot de
+  passe est fourni ; puis `S0-04` coché et `S1-08`/`S1-09` passés à `fait` — **si et seulement si**
+  les sorties sont vertes.
+- **Bloqué** : `S0-04` — inchangé, et désormais c'est précisément l'**écriture** qui manque.
+
 ## 2026-10-15 (jeudi, nuit) — la CI réapplique les migrations sur une base **déjà peuplée**
 
 - **Fait** : le job `sql` applique désormais les migrations **deux fois** — la seconde **après le
