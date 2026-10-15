@@ -106,6 +106,18 @@ Format :
   empreinte, claims `role=anon`) — `.env` la laisse vide plutôt que d'écrire un faux secret ; et le
   jeton d'accès a transité en clair dans la conversation, donc **à révoquer** (stocké hors dépôt,
   jamais dans un fichier suivi).
+- **Fait (et c'est le premier constat qui ne pouvait venir que du vrai projet)** : le **pré-vol** de
+  l'environnement → [`reviews/2026-10-15-pre-vol-environnement-supabase.md`](reviews/2026-10-15-pre-vol-environnement-supabase.md).
+  Sur un projet Supabase, **tout objet neuf de `public` reçoit `ALL` pour `anon`** (relevé dans
+  `pg_default_acl`) ; la CI, partie d'un Postgres nu, **ne reproduit pas** ces privilèges par défaut.
+  Mesuré en A/B (mêmes migrations, deux bases) : une table neuve sans `revoke` ni RLS est **lisible et
+  inscriptible par `anon`** côté plateforme, **invisible** côté CI. Nos deux migrations sont **hors de
+  cause** (elles révoquent explicitement : `anon` = 0 privilège sur les 6 tables et sur la vue) — mais
+  un oubli futur serait **vert en CI et ouvert sur le vrai projet**. Correction proposée, à décider en
+  ticket : reproduire les privilèges par défaut dans `roles.sql` + un test de catalogue « aucun objet
+  de `public` n'est lisible par `anon` ». Au passage, deux pièges d'environnement sont **écartés** :
+  `service_role` a bien `bypassrls=t` et `postgres` peut endosser les trois rôles, donc les
+  `set local role` des tests tiendront sur le vrai projet.
 - **Prévu** : `supabase link` + `db push` + les trois suites sur le vrai projet dès que le mot de
   passe est fourni ; puis `S0-04` coché et `S1-08`/`S1-09` passés à `fait` — **si et seulement si**
   les sorties sont vertes.
