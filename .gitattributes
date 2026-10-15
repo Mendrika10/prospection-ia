@@ -7,3 +7,7 @@
 # Les fichiers SQL et de configuration restent normalisés par Git.
 *.sql text
 *.yml text
+
+# La référence de schéma est comparée ligne à ligne par `comm` en CI : un seul CR
+# en fin de ligne ferait apparaître CHAQUE ligne comme modifiée. LF obligatoire.
+*.txt text eol=lf

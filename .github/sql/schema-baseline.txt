@@ -1,0 +1,175 @@
+colonne|analyses|analyzed_at|timestamp with time zone default now()
+colonne|analyses|copyright_year|integer
+colonne|analyses|error|text
+colonne|analyses|has_viewport|boolean
+colonne|analyses|http_status|integer
+colonne|analyses|https|boolean
+colonne|analyses|id|uuid not null default gen_random_uuid()
+colonne|analyses|psi_mobile_score|integer
+colonne|analyses|siren|text not null
+colonne|analyses|tech_hints|text[]
+colonne|blocklist|created_at|timestamp with time zone default now()
+colonne|blocklist|email|text
+colonne|blocklist|id|uuid not null default gen_random_uuid()
+colonne|blocklist|reason|text
+colonne|blocklist|siren|text
+colonne|campaigns_due|active|boolean
+colonne|campaigns_due|created_at|timestamp with time zone
+colonne|campaigns_due|cron|text
+colonne|campaigns_due|departements|text[]
+colonne|campaigns_due|dernier_run|timestamp with time zone
+colonne|campaigns_due|effectif_min|integer
+colonne|campaigns_due|id|uuid
+colonne|campaigns_due|interval_minutes|integer
+colonne|campaigns_due|naf_codes|text[]
+colonne|campaigns_due|name|text
+colonne|campaigns_due|prochain_run|timestamp with time zone
+colonne|campaigns_due|score_threshold|integer
+colonne|campaigns_due|updated_at|timestamp with time zone
+colonne|campaigns_due|villes|text[]
+colonne|campaigns|active|boolean not null default true
+colonne|campaigns|created_at|timestamp with time zone default now()
+colonne|campaigns|cron|text default '0 6 * * *'::text
+colonne|campaigns|departements|text[] default '{}'::text[]
+colonne|campaigns|effectif_min|integer
+colonne|campaigns|id|uuid not null default gen_random_uuid()
+colonne|campaigns|interval_minutes|integer not null default 1440
+colonne|campaigns|naf_codes|text[] not null default '{}'::text[]
+colonne|campaigns|name|text not null
+colonne|campaigns|score_threshold|integer not null default 7
+colonne|campaigns|updated_at|timestamp with time zone default now()
+colonne|campaigns|villes|text[] default '{}'::text[]
+colonne|companies|address|text
+colonne|companies|campaign_id|uuid
+colonne|companies|city|text
+colonne|companies|created_at|timestamp with time zone default now()
+colonne|companies|effectif|text
+colonne|companies|email|text
+colonne|companies|naf|text
+colonne|companies|name|text not null
+colonne|companies|phone|text
+colonne|companies|postal_code|text
+colonne|companies|raw|jsonb
+colonne|companies|siren|text not null
+colonne|companies|updated_at|timestamp with time zone default now()
+colonne|companies|website_source|text
+colonne|companies|website|text
+colonne|leads|contacted_at|timestamp with time zone
+colonne|leads|notes|text
+colonne|leads|notified_at|timestamp with time zone
+colonne|leads|reasons|jsonb not null default '[]'::jsonb
+colonne|leads|score|integer not null
+colonne|leads|siren|text not null
+colonne|leads|status|lead_status not null default 'nouveau'::lead_status
+colonne|leads|updated_at|timestamp with time zone default now()
+colonne|runs|campaign_id|uuid
+colonne|runs|details|jsonb
+colonne|runs|error|text
+colonne|runs|finished_at|timestamp with time zone
+colonne|runs|id|uuid not null default gen_random_uuid()
+colonne|runs|items_processed|integer default 0
+colonne|runs|started_at|timestamp with time zone default now()
+colonne|runs|status|text
+colonne|runs|workflow|text not null
+contrainte|analyses|analyses_pkey|PRIMARY KEY (id)
+contrainte|analyses|analyses_psi_mobile_score_check|CHECK (((psi_mobile_score >= 0) AND (psi_mobile_score <= 100)))
+contrainte|analyses|analyses_siren_fkey|FOREIGN KEY (siren) REFERENCES companies(siren) ON DELETE CASCADE
+contrainte|blocklist|blocklist_pkey|PRIMARY KEY (id)
+contrainte|blocklist|blocklist_siren_or_email|CHECK (((siren IS NOT NULL) OR (email IS NOT NULL)))
+contrainte|campaigns|campaigns_interval_minutes_positif|CHECK ((interval_minutes > 0))
+contrainte|campaigns|campaigns_pkey|PRIMARY KEY (id)
+contrainte|campaigns|campaigns_score_threshold_check|CHECK (((score_threshold >= 0) AND (score_threshold <= 10)))
+contrainte|companies|companies_campaign_id_fkey|FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE SET NULL
+contrainte|companies|companies_pkey|PRIMARY KEY (siren)
+contrainte|companies|companies_website_source_check|CHECK ((website_source = ANY (ARRAY['places'::text, 'osm'::text, 'manual'::text, 'introuvable'::text])))
+contrainte|leads|leads_pkey|PRIMARY KEY (siren)
+contrainte|leads|leads_score_check|CHECK (((score >= 0) AND (score <= 10)))
+contrainte|leads|leads_siren_fkey|FOREIGN KEY (siren) REFERENCES companies(siren) ON DELETE CASCADE
+contrainte|runs|runs_campaign_id_fkey|FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE SET NULL
+contrainte|runs|runs_pkey|PRIMARY KEY (id)
+contrainte|runs|runs_status_check|CHECK ((status = ANY (ARRAY['running'::text, 'success'::text, 'partial'::text, 'error'::text])))
+declencheur|campaigns|campaigns_set_updated_at|CREATE TRIGGER campaigns_set_updated_at BEFORE UPDATE ON public.campaigns FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+declencheur|companies|companies_set_updated_at|CREATE TRIGGER companies_set_updated_at BEFORE UPDATE ON public.companies FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+declencheur|leads|leads_set_updated_at|CREATE TRIGGER leads_set_updated_at BEFORE UPDATE ON public.leads FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+extension|plpgsql|-|-
+fonction|set_updated_at||security invoker langue=plpgsql volatilite=v corps_md5=9b1889f56258bf9d6554213c05019c76
+index|analyses|analyses_pkey|CREATE UNIQUE INDEX analyses_pkey ON public.analyses USING btree (id)
+index|analyses|analyses_siren_date_idx|CREATE INDEX analyses_siren_date_idx ON public.analyses USING btree (siren, analyzed_at DESC)
+index|blocklist|blocklist_email_key|CREATE UNIQUE INDEX blocklist_email_key ON public.blocklist USING btree (lower(email)) WHERE (email IS NOT NULL)
+index|blocklist|blocklist_pkey|CREATE UNIQUE INDEX blocklist_pkey ON public.blocklist USING btree (id)
+index|blocklist|blocklist_siren_key|CREATE UNIQUE INDEX blocklist_siren_key ON public.blocklist USING btree (siren) WHERE (siren IS NOT NULL)
+index|campaigns|campaigns_pkey|CREATE UNIQUE INDEX campaigns_pkey ON public.campaigns USING btree (id)
+index|companies|companies_city_idx|CREATE INDEX companies_city_idx ON public.companies USING btree (city)
+index|companies|companies_naf_idx|CREATE INDEX companies_naf_idx ON public.companies USING btree (naf)
+index|companies|companies_no_website_idx|CREATE INDEX companies_no_website_idx ON public.companies USING btree (campaign_id) WHERE (website IS NULL)
+index|companies|companies_pkey|CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (siren)
+index|leads|leads_notified_idx|CREATE INDEX leads_notified_idx ON public.leads USING btree (notified_at) WHERE (notified_at IS NULL)
+index|leads|leads_pkey|CREATE UNIQUE INDEX leads_pkey ON public.leads USING btree (siren)
+index|leads|leads_score_status_idx|CREATE INDEX leads_score_status_idx ON public.leads USING btree (score DESC, status)
+index|runs|runs_campaign_started_idx|CREATE INDEX runs_campaign_started_idx ON public.runs USING btree (campaign_id, started_at DESC) WHERE (campaign_id IS NOT NULL)
+index|runs|runs_pkey|CREATE UNIQUE INDEX runs_pkey ON public.runs USING btree (id)
+index|runs|runs_workflow_started_idx|CREATE INDEX runs_workflow_started_idx ON public.runs USING btree (workflow, started_at DESC)
+policy|analyses|read_analyses|SELECT roles=authenticated using=true withcheck=-
+policy|blocklist|read_blocklist|SELECT roles=authenticated using=true withcheck=-
+policy|blocklist|write_blocklist|ALL roles=authenticated using=true withcheck=true
+policy|campaigns|read_campaigns|SELECT roles=authenticated using=true withcheck=-
+policy|campaigns|write_campaigns|ALL roles=authenticated using=true withcheck=true
+policy|companies|read_companies|SELECT roles=authenticated using=true withcheck=-
+policy|companies|update_companies|UPDATE roles=authenticated using=true withcheck=true
+policy|leads|read_leads|SELECT roles=authenticated using=true withcheck=-
+policy|leads|update_leads|UPDATE roles=authenticated using=true withcheck=true
+policy|runs|read_runs|SELECT roles=authenticated using=true withcheck=-
+privilege_defaut|public|postgres|r authenticated=r/postgres,service_role=arwdDxt/postgres
+privilege|analyses|authenticated|SELECT
+privilege|analyses|service_role|DELETE
+privilege|analyses|service_role|INSERT
+privilege|analyses|service_role|SELECT
+privilege|analyses|service_role|UPDATE
+privilege|blocklist|authenticated|DELETE
+privilege|blocklist|authenticated|INSERT
+privilege|blocklist|authenticated|SELECT
+privilege|blocklist|authenticated|UPDATE
+privilege|blocklist|service_role|DELETE
+privilege|blocklist|service_role|INSERT
+privilege|blocklist|service_role|SELECT
+privilege|blocklist|service_role|UPDATE
+privilege|campaigns_due|authenticated|SELECT
+privilege|campaigns_due|service_role|DELETE
+privilege|campaigns_due|service_role|INSERT
+privilege|campaigns_due|service_role|SELECT
+privilege|campaigns_due|service_role|UPDATE
+privilege|campaigns|authenticated|DELETE
+privilege|campaigns|authenticated|INSERT
+privilege|campaigns|authenticated|SELECT
+privilege|campaigns|authenticated|UPDATE
+privilege|campaigns|service_role|DELETE
+privilege|campaigns|service_role|INSERT
+privilege|campaigns|service_role|SELECT
+privilege|campaigns|service_role|UPDATE
+privilege|companies|authenticated|SELECT
+privilege|companies|authenticated|UPDATE
+privilege|companies|service_role|DELETE
+privilege|companies|service_role|INSERT
+privilege|companies|service_role|SELECT
+privilege|companies|service_role|UPDATE
+privilege|leads|authenticated|DELETE
+privilege|leads|authenticated|INSERT
+privilege|leads|authenticated|SELECT
+privilege|leads|authenticated|UPDATE
+privilege|leads|service_role|DELETE
+privilege|leads|service_role|INSERT
+privilege|leads|service_role|SELECT
+privilege|leads|service_role|UPDATE
+privilege|runs|authenticated|SELECT
+privilege|runs|service_role|DELETE
+privilege|runs|service_role|INSERT
+privilege|runs|service_role|SELECT
+privilege|runs|service_role|UPDATE
+rls|analyses|-|activee=true forcee=false
+rls|blocklist|-|activee=true forcee=false
+rls|campaigns|-|activee=true forcee=false
+rls|companies|-|activee=true forcee=false
+rls|leads|-|activee=true forcee=false
+rls|runs|-|activee=true forcee=false
+schema|public|-|present
+vue|campaigns_due|options|security_invoker=true

@@ -85,9 +85,16 @@ jobs:
       #   * la comparaison d'empreinte a besoin d'un maximum de données en place.
       #
       # On ne se contente pas de l'exit code : un `truncate` réussit (code 0) et détruit les
-      # données. La comparaison d'une empreinte AVANT/APRÈS — nombre de lignes ET contenu —
-      # est la seule preuve. Un `update` destructeur ne change pas le nombre de lignes, mais
-      # change l'empreinte.
+      # données. TROIS comparaisons font la preuve, et aucune ne suffit seule :
+      #   1. DONNÉES avant/après — nombre de lignes ET contenu. Un `update` destructeur ne
+      #      change pas le nombre de lignes mais change l'empreinte ;
+      #   2. SCHÉMA avant/après — colonnes, contraintes, index, déclencheurs, RLS, policies,
+      #      privilèges, vues, fonctions. Supprimer une policy ou un `grant` ne change AUCUNE
+      #      ligne : la comparaison de données resterait verte ;
+      #   3. SCHÉMA final contre `.github/sql/schema-baseline.txt` — aucun objet de la référence
+      #      ne doit avoir disparu. C'est la SEULE qui voit une migration destructrice rejouée
+      #      à l'identique : mesuré, `drop index … if exists` détruit dans les deux passes, donc
+      #      les comparaisons avant/après restent vertes.
       # -------------------------------------------------------------------------
       # Avant de comparer, il faut qu'il y ait quelque chose à perdre dans CHAQUE table :
       # après le seed seul, quatre des six tables sont vides (`companies`, `analyses`,
@@ -96,21 +103,44 @@ jobs:
       - name: Données témoins (une ligne par table, avant réapplication)
         run: psql -v ON_ERROR_STOP=1 -q -f .github/sql/witness-data.sql
 
-      - name: Réappliquer les migrations sur une base peuplée (idempotence)
+      - name: Réappliquer les migrations sur une base peuplée (idempotence et référence)
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql > /tmp/empreinte-avant.txt
-          # Affichée volontairement : elle prouve DANS LE LOG ce qui a été mesuré, et que chaque
-          # table était peuplée au moment de la mesure (une table vide ne prouve rien).
-          echo "Empreinte AVANT (table|nb lignes|md5 du contenu) :"
-          cat /tmp/empreinte-avant.txt
+          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql     > /tmp/donnees-avant.txt
+          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/schema-fingerprint.sql > /tmp/schema-avant.txt
+          # Affichées volontairement : elles prouvent DANS LE LOG ce qui a été mesuré, et que
+          # chaque table était peuplée au moment de la mesure (une table vide ne prouve rien).
+          echo "Empreinte DONNÉES AVANT (table|nb lignes|md5 du contenu) :"
+          cat /tmp/donnees-avant.txt
+          echo "Empreinte SCHÉMA AVANT : $(wc -l < /tmp/schema-avant.txt) objets mesurés"
+
           bash .github/sql/apply-migrations.sh
-          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql > /tmp/empreinte-apres.txt
-          if ! diff -u /tmp/empreinte-avant.txt /tmp/empreinte-apres.txt; then
+
+          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/db-fingerprint.sql     > /tmp/donnees-apres.txt
+          psql -v ON_ERROR_STOP=1 -q -tA -f .github/sql/schema-fingerprint.sql > /tmp/schema-apres.txt
+
+          # 1. Les DONNÉES n'ont pas bougé.
+          if ! diff -u /tmp/donnees-avant.txt /tmp/donnees-apres.txt; then
             echo "::error::Réapplication des migrations : des données ont changé (voir le diff ci-dessus). Une migration doit être réapplicable sans perte ni duplication — AGENTS.md §4."
             exit 1
           fi
-          echo "OK — migrations réappliquées sans modifier une seule ligne"
+
+          # 2. Le SCHÉMA n'a pas bougé non plus.
+          if ! diff -u /tmp/schema-avant.txt /tmp/schema-apres.txt; then
+            echo "::error::Réapplication des migrations : des objets de schéma ont changé (voir le diff ci-dessus : colonne, contrainte, index, policy, privilège…)."
+            exit 1
+          fi
+
+          # 3. Aucun objet de la référence n'a disparu (voir le commentaire de l'étape).
+          LC_ALL=C sort -o /tmp/schema-final.txt /tmp/schema-apres.txt
+          manquants=$(LC_ALL=C comm -23 .github/sql/schema-baseline.txt /tmp/schema-final.txt)
+          if [ -n "$manquants" ]; then
+            echo "$manquants"
+            echo "::error::Objets de schéma disparus par rapport à .github/sql/schema-baseline.txt (liste ci-dessus). Si la suppression est VOULUE, régénérer la référence dans la même PR — sur une base neuve : bash .github/sql/apply-migrations.sh puis psql -q -tA -f .github/sql/schema-fingerprint.sql | LC_ALL=C sort > .github/sql/schema-baseline.txt (AGENTS.md §4)."
+            exit 1
+          fi
+
+          echo "OK — migrations réappliquées sans modifier une seule ligne ni perdre un objet de schéma"
 
   # ---------------------------------------------------------------------------
   # Job « secrets » : applique le point « aucun secret dans le code » de la DoD.
