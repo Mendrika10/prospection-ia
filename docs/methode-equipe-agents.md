@@ -286,7 +286,7 @@ Le détail des tickets S0 et S1 est dans [`sprint-01.md`](sprint-01.md).
 |---|---|---|
 | 1. Dépôt + `AGENTS.md` + CI | ✅ | `AGENTS.md`, `.github/workflows/ci.yml` |
 | 2. Tableau Projects + limite WIP | 🟡 cadre posé, board à créer | `sprint-01.md` §2, ticket S0-05 |
-| 3. Premiers tickets S0-S1 | ✅ 14 tickets | `sprint-01.md` §3 |
-| 4. Architecte puis rôle concerné | ✅ Architecte (5 ADR) puis Product Owner (5 décisions) | `docs/adr/`, `docs/product-decisions.md` |
+| 3. Premiers tickets S0-S1 | ✅ 15 tickets | `sprint-01.md` §3 |
+| 4. Architecte puis rôle concerné | ✅ Architecte (5 ADR) puis Product Owner (8 décisions) | `docs/adr/`, `docs/product-decisions.md` |
 | Le Product Owner est un **agent** (révision du 2026-10-15) | ✅ | `prompts/product-owner.md` |
 | 5. Review / rétro du vendredi | ⬜ premier cycle vendredi 23/10 | `docs/daily.md` |

@@ -13,6 +13,24 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, nuit) — Sprint Planning tenu par l'agent Product Owner
+
+- **Fait** : planning du Sprint 1. **8 tickets soumis** → 6 retenus tels quels, **1 refusé** (`S1-07`),
+  **1 créé** (`S1-09`) : **7 à faire**, plus `S1-05` déjà fait. La validation
+  de la Definition of Ready a révélé **quatre défauts réels** — c'est là que le planning a servi :
+  `S1-01` demandait l'impossible (« un cron par campagne lu à l'exécution » : n8n ne sait pas le faire,
+  et rien n'enregistre le dernier passage d'une campagne) → nouveau prérequis **S1-09** ; `S1-02`
+  déguisait une tâche en critère d'acceptation ; `S1-04` demandait un test **devenu impossible depuis
+  `S1-05`** (la base refuse d'enregistrer la campagne invalide que le test utilisait) ; `S1-08` avait un
+  critère qui **ne pouvait pas échouer**. Deux décisions écrites (D-006, D-007).
+- **Refusé** : `S1-07` (documentation d'exploitation) sort du sprint — on documenterait une procédure
+  qui n'a **jamais tourné**, elle serait réécrite au premier incident. Retour conditionné à la première
+  collecte réelle.
+- **Prévu** : `S1-09` et `S1-08` (atteignables **sans Supabase**), puis `S1-01`/`S1-02` dès que
+  l'humain lève `S0-04`. La relecture de la PR #1 ne dépend que d'un agent.
+- **Bloqué** : `S0-04` reste **le** verrou du sprint, et c'est écrit plutôt que contourné. Reste aussi
+  la décision d'architecture qui conditionne `S1-09` (agent, ~20 min).
+
 ## 2026-10-15 (jeudi, nuit) — le Product Owner devient un agent, et il a déjà décidé
 
 - **Fait** : le rôle de Product Owner passe à un **agent** (décision D-000), avec un brief senior
@@ -95,6 +113,8 @@ Les décisions **produit** sont prises par l'agent Product Owner et vivent dans
 | Observabilité avant l'upsert, sans attendre Telegram | Agent PO | `product-decisions.md` **D-003** | ✅ en vigueur |
 | Dépôt public : aucune donnée d'entreprise n'y entre | Agent PO | `product-decisions.md` **D-004** | ✅ en vigueur — **révision fin S1** |
 | Le board Projects ne bloque aucune décision | Agent PO | `product-decisions.md` **D-005** | ✅ en vigueur |
+| Périmètre, ordre et règle d'exécution du Sprint 1 | Agent PO | `product-decisions.md` **D-006** | ✅ en vigueur — refus de `S1-07`, création de `S1-09` |
+| Filtre d'effectif **conditionnel**, écart tracé | Agent PO | `product-decisions.md` **D-007** → tracé par `S1-08` | ✅ en vigueur |
 | Scope `project` du jeton `gh` | **Humain** | ticket `S0-05` | ⬜ non bloquant |
 | `.env` Supabase + application des 2 migrations | **Humain** | ticket `S0-04` | ⛔ **bloquant** pour tout le sprint 1 |
 | Vercel Hobby (usage non commercial, risque R4) | ADR à écrire | PO | avant S7, mais à ne pas oublier | ⬜ |
