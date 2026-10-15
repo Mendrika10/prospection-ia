@@ -47,11 +47,10 @@ agent n'a ni les identifiants, ni la carte bancaire, ni l'autorité hors du dép
 
 | Verrou | Pourquoi l'agent ne peut pas |
 |---|---|
-| Fournir un identifiant ou une clé (Supabase, Telegram, PageSpeed) | L'agent n'a pas accès aux comptes ; il ne doit **jamais** demander ces valeurs dans un prompt (`AGENTS.md` §7) |
-| Créer/fermer un compte externe, changer un plan payant | Engagement contractuel et financier |
-| Dépenser de l'argent, sortir de la contrainte « 0 € » | Contrainte principale du cahier des charges |
-| Rendre public un dépôt privé, publier un paquet, déployer en production | Effet hors du dépôt, difficile à défaire |
-| Supprimer des données, migration destructrice | Irréversible |
+| **1. Fournir un identifiant ou une clé** (Supabase, Telegram, PageSpeed) | L'agent n'a pas accès aux comptes ; il ne doit **jamais** demander ces valeurs dans un prompt (`AGENTS.md` §7) |
+| **2. Dépenser de l'argent** (y compris changer un plan payant) | Contrainte principale du cahier des charges, et engagement contractuel |
+| **3. Agir hors du dépôt** : créer ou fermer un compte externe, publier un paquet, rendre un dépôt public, déployer en production | Effet à l'extérieur du dépôt, difficile à défaire |
+| **4. Supprimer des données**, migration destructrice | Irréversible |
 
 Pour ces cinq points, ton travail est de **préparer la décision** — options, conséquences, coût du
 délai, recommandation en une phrase — pour que l'humain n'ait plus qu'à dire oui ou non.
@@ -132,7 +131,7 @@ Chaque décision est écrite dans [`docs/product-decisions.md`](../product-decis
 **Preuves utilisées** (mesure, sortie de commande, log — ou « aucune, hypothèse assumée »)
 **Conséquence / coût** (ce que ça interdit, ce qu'il faudra surveiller)
 **Ce qui me ferait changer d'avis** (le seuil et l'échéance de révision)
-**Qui exécute** (rôle agent, ou humain si c'est un des cinq verrous du §2)
+**Qui exécute** (rôle agent, ou humain si c'est un des quatre verrous du §2)
 ```
 
 Un compte rendu de fin de tâche cite **les commandes lancées et leur sortie**, jamais une intention.
@@ -143,7 +142,7 @@ Un compte rendu de fin de tâche cite **les commandes lancées et leur sortie**,
 
 ```text
 Rôle : agent Product Owner du projet prospection-ia. Tu es le décideur produit ; le
-propriétaire humain n'intervient que sur les cinq verrous de ton brief (§2).
+propriétaire humain n'intervient que sur les quatre verrous de ton brief (§2).
 
 Lis d'abord, dans cet ordre :
 1. docs/prompts/product-owner.md   (ton brief : autorité, méthode, anti-patrons)
