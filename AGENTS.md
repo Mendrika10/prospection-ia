@@ -157,6 +157,14 @@ comme une preuve que le produit fonctionne.
 - **`$?` après un pipe ne vaut rien** : dans `commande | tail`, `$?` renvoie le code de `tail`.
   Un « EXIT=0 » obtenu ainsi ne prouve pas que la commande testée a réussi. Utiliser
   `${PIPESTATUS[0]}`, ou comparer un état observable (hash, compteur de lignes).
+- **`grep -c` renvoie 1 quand le compte est zéro** — et casse silencieusement une chaîne `&&`.
+  Rencontré le 2026-10-15 : `fails=$(gh pr checks 5 | grep -c ...) && gh pr merge ...` n'a jamais
+  exécuté le merge (0 correspondance → exit 1 → court-circuit), **sans le moindre message d'erreur**.
+  La PR est restée ouverte alors que le script semblait avoir tout enchaîné. Utiliser un `if`
+  explicite, ou `grep -c ... || true`.
+- **Pour gatier un merge, compter n'est pas la bonne méthode** : `gh pr checks <n> --watch` renvoie
+  **0 si tous les checks sont verts** et non zéro sinon. C'est le garde-fou à utiliser, vérifié le
+  2026-10-15 — un comptage de chaînes peut se tromper d'une ligne et laisser passer un merge rouge.
 - **API Recherche d'entreprises (`recherche-entreprises.api.gouv.fr`)** — contrat vérifié le 2026-10-15,
   ces quatre pièges coûtent une demi-journée chacun si on les découvre en production :
   1. Le filtre d'activité est **`activite_principale`**, pas `code_naf`. Un **nom de paramètre inconnu
