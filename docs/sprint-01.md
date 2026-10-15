@@ -50,8 +50,8 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-01 | Structure du dépôt, `AGENTS.md`, CI | DevOps + Architecte | M | — | ✅ |
 | S0-02 | Schéma initial + RLS + test SQL | Backend/Data | M | S0-01 | ✅ |
 | S0-03 | n8n édition communautaire en Docker local | DevOps | S | S0-01 | ✅ |
-| S0-04 | Projet Supabase « dev » + clés | **PO** | S | — | ⬜ |
-| S0-05 | Dépôt GitHub privé + board + `main` protégée | DevOps (**validation PO**) | S | — | ⬜ |
+| S0-04 | Projet Supabase « dev » + clés | **PO** | S | — | 🟡 projet créé, `.env` et migrations à faire |
+| S0-05 | Dépôt GitHub privé + board + `main` protégée | DevOps (**validation PO**) | S | — | 🟡 dépôt + CI faits ; board et protection bloqués (voir ticket) |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **PO** | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cron, campagnes actives, log `runs` | Automation | M | S0-04 | ⬜ |
 | S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ⬜ |
@@ -163,24 +163,39 @@ OK  authenticated ne peut pas écrire dans runs
 **Objectif** : que le travail passe par des PR et que la CI bloque un merge rouge.
 
 **Critères d'acceptation**
-- [ ] Dépôt **privé** `prospection-ia` créé et `main` poussée
-- [ ] Branche renommée `master` → **`main`**
+- [x] Dépôt **privé** `prospection-ia` créé et `main` poussée — <https://github.com/Mendrika10/prospection-ia>
+- [x] Branche renommée `master` → **`main`**
+- [x] La CI tourne sur GitHub : 3 jobs verts sur la PR #1 (`sql` 24 s, `secrets` 5 s, `node` 8 s),
+      et le job `sql` a bien exécuté les 12 assertions (vérifié dans le log, pas seulement au statut)
 - [ ] Board Projects avec les colonnes `Backlog → Prêt → En cours → Review → Fait`
 - [ ] Les tickets de ce fichier existent comme *issues* (modèle `.github/ISSUE_TEMPLATE/ticket.md`)
-- [ ] Merge dans `main` impossible avec une CI rouge
-- [ ] Workflow Git documenté : `feat/<ticket>-<slug>`, commits conventionnels
+- [x] Workflow Git en place : `feat/s1-05-garde-fou-naf` poussée, PR #1 ouverte depuis `main`
+- [ ] Merge dans `main` impossible avec une CI rouge — **✗ irréalisable en l'état, voir ci-dessous**
 
-**Commandes** (validation PO obligatoire — créent des ressources externes) :
-```bash
-gh repo create prospection-ia --private --source=. --remote=origin --push
-gh project create --owner @me --title "prospection-ia"
-```
-Les 5 colonnes et la limite WIP se règlent dans l'UI (2 min) : `gh` n'expose pas la
-suppression des options par défaut du champ `Status`.
+**Conclusion sur la protection de branche (vérifiée le 2026-10-15)**
 
-> ⚠️ **À vérifier au moment de l'exécution** : la protection de branche avec *required status checks*
-> sur un dépôt **privé** dépend du plan GitHub. Si elle n'est pas disponible, la règle reste une
-> convention d'équipe (documentée dans `AGENTS.md`) au lieu d'être technique. À trancher, pas à supposer.
+C'était l'incertitude signalée dans ce ticket. La réponse est tombée, et elle est négative :
+
+| Tentative | Réponse de l'API GitHub |
+|---|---|
+| `PUT /repos/.../branches/main/protection` | **403** « Upgrade to GitHub Pro or make this repository public to enable this feature » |
+| `POST /repos/.../rulesets` (alternative) | **403**, même message |
+
+Sur un dépôt **privé** en offre gratuite, aucun verrou technique n'est disponible. Trois issues :
+
+1. **Rester privé et assumer la convention** (recommandé : 0 €, et le code ne sort pas) — la CI
+   reste visible sur la PR, mais elle n'empêche rien techniquement.
+2. Rendre le dépôt **public** — la protection devient disponible, mais la logique commerciale,
+   les exports de workflows et ce cahier des charges deviennent publics.
+3. **GitHub Pro** — payant, contraire à la contrainte « 0 € ».
+
+Décision en attente du Product Owner (voir `docs/daily.md`).
+
+**Board Projects — bloqué** : le jeton `gh` n'a pas le scope `project`
+(`error: your authentication token is missing required scopes [project read:project]`).
+Déblocage : `gh auth refresh -s project,read:project` (ouvre le navigateur), **ou** création
+manuelle du board dans l'UI. Les 5 colonnes et la limite WIP se règlent ensuite dans l'UI :
+`gh` n'expose pas la suppression des options par défaut du champ `Status`.
 
 **Périmètre** : configuration GitHub · **Taille** : S · **Rôle** : DevOps (validation PO)
 

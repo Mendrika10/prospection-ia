@@ -110,7 +110,7 @@ RLS activée sur toutes les tables : `authenticated` lit tout et écrit le pipel
 
 | Sprint | Contenu | État |
 |---|---|---|
-| **S0** | Dépôt Git, structure, `.env.example`, n8n Docker | ✅ sauf comptes externes (S0-04/05/06) |
+| **S0** | Dépôt Git, structure, `.env.example`, n8n Docker | 🟡 dépôt + CI en place ; comptes externes en cours (S0-04/05/06) |
 | **S1** | Migrations SQL + RLS, WF1 Collecte | 🟡 SQL testé, WF1 à construire (7 tickets) |
 | **S2** | WF2 Enrichissement (site + email) | ⬜ |
 | **S3** | WF3 Analyse + scoring | ⬜ |
@@ -121,12 +121,15 @@ RLS activée sur toutes les tables : `authenticated` lit tout et écrit le pipel
 
 ## État des lieux externes — actions du Product Owner
 
-Ces trois tickets **bloquent** le démarrage de WF1 (détail dans `docs/sprint-01.md`) :
+Ces tickets **bloquent** le démarrage de WF1 (détail dans `docs/sprint-01.md`) :
 
-- [ ] `S0-04` Créer le projet Supabase (région `eu-west-3`) et appliquer la migration
-- [ ] `S0-05` Créer le dépôt GitHub privé + le board Projects + protéger `main`
-- [ ] `S0-06` Créer le bot Telegram + la clé PageSpeed Insights (gratuits, sans carte bancaire)
+- [x] `S0-05` Dépôt GitHub privé créé : <https://github.com/Mendrika10/prospection-ia> — la CI y tourne
+- [ ] `S0-05` Board Projects + protection de `main` — **protégé impossible en privé/gratuit** (403 GitHub),
+      décision du PO attendue ; le board attend le scope `project` du jeton `gh`
+- [ ] `S0-04` Projet Supabase `rexnoeixlkedvdhzeoqk` : remplir `.env` et appliquer les 2 migrations
+- [ ] `S0-06` Bot Telegram + clé PageSpeed Insights (gratuits, sans carte bancaire)
 
-⚠️ Une décision est attendue avant d'écrire WF1 : **ADR 0005 — ciblage local**
-(le filtre `departement` de l'API porte sur les établissements, pas sur le siège :
-seuls 12 résultats sur 25 avaient réellement leur siège dans le département visé).
+✅ `ADR 0005 — ciblage local` est tranché (filtrage sur le siège) ; la CI `sql` et la PR #1 sont vertes.
+
+> Les clés Supabase (`anon`, `service_role`) se saisissent **dans `.env`, jamais dans un prompt**
+> ni dans un ticket : c'est la règle `AGENTS.md` §7. `.env` est ignoré par Git (vérifié).
