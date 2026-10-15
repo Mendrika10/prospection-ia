@@ -18,7 +18,8 @@ Format :
 - **Fait** : le rôle de Product Owner passe à un **agent** (décision D-000), avec un brief senior
   15+ ans : [`product-owner.md`](prompts/product-owner.md) — autorité, quatre verrous humains,
   méthode d'arbitrage, métriques et anti-métriques, 7 anti-patrons, format de décision obligatoire.
-  Puis le PO agent a **exercé** le rôle au lieu de rester une étiquette : 5 décisions écrites dans
+  Puis le PO agent a **exercé** le rôle au lieu de rester une étiquette : 5 décisions produit
+  (**D-001 à D-005**, auxquelles s'ajoute D-000 pour la gouvernance) écrites dans
   [`product-decisions.md`](product-decisions.md), dont trois qui changent le sprint :
   protocole de calibrage **chiffré** (D-001), sens unique donné à `runs.items_processed` (D-002 →
   nouveau ticket **S1-08**), et observabilité **remontée avant l'upsert** avec une portée réduite
