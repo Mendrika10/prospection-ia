@@ -59,7 +59,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-01 | Structure du dépôt, `AGENTS.md`, CI | DevOps + Architecte | M | — | ✅ |
 | S0-02 | Schéma initial + RLS + test SQL | Backend/Data | M | S0-01 | ✅ |
 | S0-03 | n8n édition communautaire en Docker local | DevOps | S | S0-01 | ✅ |
-| S0-04 | Projet Supabase « dev » + clés | **Humain** (identifiants) | S | — | 🟡 projet créé, `.env` et migrations à faire · ⛔ **verrou du sprint 1** |
+| S0-04 | Projet Supabase « dev » + clés | **Humain** (identifiants) | S | — | ✅ vérifié sur le vrai projet (région `eu-west-1`, écart consigné) |
 | S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps | S | — | 🟡 dépôt, CI et protection faits et testés ; board reporté (D-005) |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **Humain** (comptes) | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ⬜ |
@@ -69,8 +69,8 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | 🟦 en review |
 | S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ⬜ |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
-| S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | 🟦 en review |
-| S1-09 | `campaigns`/`runs` — rendre la fréquence par campagne implémentable (créé au planning) | Backend/Data | S | — | 🟦 en review |
+| S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
+| S1-09 | `campaigns`/`runs` — rendre la fréquence par campagne implémentable (créé au planning) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
 
 ---
 
@@ -155,6 +155,10 @@ exécution de WF1 sur au moins une campagne, avec des lignes dans `companies`). 
 documentation décrit du vécu. Le point de révision est inscrit au §7.
 
 #### Règle d'exécution du sprint (pour avancer sans le verrou humain)
+
+> **`S0-04` est levé depuis le 2026-10-15** (voir §4) : ce qui suit a joué jusqu'à cette date et reste
+> écrit tel qu'il a été appliqué. La DoD n'a pas bougé, seule la contrainte de départ a disparu — les
+> tickets suivants se vérifient désormais directement sur le vrai projet.
 
 Tant que `S0-04` n'est pas levé :
 
@@ -243,7 +247,27 @@ OK  authenticated ne peut pas écrire dans runs
 
 ---
 
-### S0-04 — Projet Supabase « dev » + clés ⬜
+### S0-04 — Projet Supabase « dev » + clés ✅ fait
+
+**Avancement (2026-10-15, soir)** : **vérifié sur le projet réel `rexnoeixlkedvdhzeoqk`** — les 3
+migrations appliquées par `supabase db push`, les **4 suites de tests sortent en code 0 sur le vrai
+projet** (`rls.sql` compris : c'est le critère explicite ci-dessous), `anon` reçoit **401 `permission
+denied`** sur les 7 objets via PostgREST **avec 4 lignes de données en face** (sinon le contrôle ne
+prouverait rien), `service_role` **écrit** (HTTP 201, ligne ensuite supprimée — le chemin n8n), et
+l'empreinte de schéma du vrai projet **ne manque aucun objet** de notre référence
+(`.github/sql/schema-baseline.txt`) : seules 3 lignes `privilege_defaut` diffèrent par leur **texte**
+(l'entrée propriétaire `postgres=` existe côté plateforme, absente côté CI) alors que l'effet est le
+même — les `anon=arwdDxtm` y sont.
+**Un écart mesuré, consigné et arbitré** : le projet est en **`eu-west-1`** (Irlande), pas `eu-west-3`.
+L'intention du critère (« région UE, proche des cibles françaises ») est respectée, sa lettre non ;
+le propriétaire a tranché de garder le projet tel quel.
+**Deux faits d'environnement à retenir, parce qu'ils se paient en minutes** : l'hôte direct
+(`db.<ref>.supabase.co`) n'est résolu qu'en **IPv6**, et le pooler **session (port 5432)** est
+**injoignable depuis ce réseau** ; c'est le **pooler transaction (port 6543)** qui sert — migrations
+comprises (`db push --db-url`) et tests compris (les `BEGIN/ROLLBACK` des scripts y sont épinglés pour
+la durée de la transaction). `DATABASE_URL` d`.env` l'encode.
+**Résidu des tests supprimé** : `rls.sql` n'est pas transactionnel par conception ; ses quatre lignes
+ont été supprimées après vérification, toutes les tables sont revenues à 0.
 
 **Objectif** : disposer d'une base réelle pour appliquer les migrations et brancher n8n.
 
@@ -252,12 +276,17 @@ OK  authenticated ne peut pas écrire dans runs
 les migrations — un agent n'a ni les clés ni l'accès DDL. Aucun agent ne peut se substituer à toi ici.
 
 **Critères d'acceptation**
-- [ ] Projet Supabase `prospection-dev` créé, région **`eu-west-3`** (proche des cibles françaises)
-- [ ] Les 6 tables existent (migration S0-02 appliquée via l'éditeur SQL ou `supabase db push`)
-- [ ] `supabase/tests/rls.sql` passe **sur le vrai projet** (pas seulement sur Postgres local)
-- [ ] `.env` renseigné : `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] Un accès avec la clé `anon` ne lit **rien** (vérification à la main, pas seulement par le test)
-- [ ] Aucune de ces clés n'apparaît dans `git status`
+- [x] Projet Supabase `prospection-dev` créé — région **`eu-west-1`** au lieu d'`eu-west-3` : écart
+      mesuré, consigné ci-dessus et arbitré (le critère visait une région UE proche des cibles)
+- [x] Les 6 tables existent (migration S0-02 appliquée via `supabase db push`, historique enregistré
+      dans `supabase_migrations.schema_migrations`)
+- [x] `supabase/tests/rls.sql` passe **sur le vrai projet** — et les trois autres suites aussi
+- [x] `.env` renseigné : `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_URL`,
+      `SUPABASE_SERVICE_ROLE_KEY` (la clé d'abord transmise était en réalité la clé `anon` — même
+      empreinte, claims `role=anon` ; la vraie a été récupérée par l'API et ses claims vérifiés)
+- [x] Un accès avec la clé `anon` ne lit **rien** — vérification à la main : 401 sur les 6 tables et
+      sur la vue, alors que les tables contenaient des lignes
+- [x] Aucune de ces clés n'apparaît dans `git status` (`git check-ignore` → `.gitignore:2:.env`)
 
 **Périmètre** : `.env` (ignoré par Git) — **interdit** : commiter `.env`
 **Dépendances** : aucune · **Bloque** : S1-01, S1-02, S1-03, S1-04
@@ -548,13 +577,22 @@ Telegram est un **plus non bloquant**. Le ticket ne dépend donc plus de `S0-06`
 
 ---
 
-### S1-08 — `runs.details` : distinguer récupérées / écartées / écrites (**D-002**) 🟦 en review
+### S1-08 — `runs.details` : distinguer récupérées / écartées / écrites (**D-002**) ✅ fait
 
 **Avancement (2026-10-15)** : implémenté, **CI verte** — PR #12 fusionnée.
 `supabase/migrations/20261015000003_runs_details.sql` + `supabase/tests/runs_details.sql` (6 assertions,
 rouge avant la migration puis vert, et le test mord au retrait du `comment on column`).
-**Il reste dû** : vérification sur Supabase (verrou `S0-04`) et relecture par un Reviewer en contexte
-neuf → `en review`, pas `fait`.
+**Avancement (2026-10-15, soir) — dernière condition levée** : **vérifié sur le projet réel** après
+`supabase db push` — `runs_details.sql` sort en **code 0** sur le vrai projet, ses 6 assertions lues
+dans la sortie ; `runs.details` et les `comment on column` des deux colonnes existent dans le catalogue
+du projet réel ; l'empreinte de schéma du projet ne manque **aucun** objet de la référence.
+**Écart de relecture, assumé et écrit** : la relecture est une revue **adversariale non indépendante**
+([`reviews/2026-10-15-s1-08-s1-09.md`](reviews/2026-10-15-s1-08-s1-09.md), qui le déclare en tête) —
+l'exigence du dépôt « un agent ne valide jamais son propre travail » n'est donc **pas satisfaite à la
+lettre**. Le propriétaire a tranché de passer le ticket à `fait` en consignant l'écart, plutôt que
+d'abandonner l'exigence en silence. **Ses trois constats restent ouverts** et sont, eux, mesurés :
+`items_processed` nullable, `prochain_run` NULL sur une campagne due, et — pour `S1-09` — un run en
+`error` qui bloque sa campagne un intervalle entier.
 
 **Objectif** : rendre le ciblage calibrable en séparant trois compteurs aujourd'hui confondus.
 
@@ -584,14 +622,23 @@ prévoit un arrêt de la collecte à 100 analyses si les faux positifs dépassen
 
 ---
 
-### S1-09 — Rendre la fréquence par campagne implémentable (créé au planning) 🟦 en review
+### S1-09 — Rendre la fréquence par campagne implémentable (créé au planning) ✅ fait
 
 **Avancement (2026-10-15)** : **condition de démarrage levée** par
 [`ADR 0006`](adr/0006-cadence-des-campagnes.md), puis implémenté et **vérifié en CI** — PR #13 fusionnée.
 `20261015000004_campaigns_due.sql` + `campaigns_due.sql` (10 assertions : la règle d'échéance, le
 blocage par un run en cours, les droits de `service_role`/`authenticated`, et le refus de `anon`
 **même quand la vue lui est ouverte**). Deux mutations vérifient que le test mord.
-**Il reste dû** : vérification sur Supabase (verrou `S0-04`) et relecture par un Reviewer → `en review`.
+**Avancement (2026-10-15, soir) — dernière condition levée** : **vérifié sur le projet réel** après
+`supabase db push` — `campaigns_due.sql` sort en **code 0** sur le vrai projet, ses 10 assertions lues
+dans la sortie, **y compris le contrôle discriminant** « `anon`, même avec le droit sur la vue, ne lit
+rien » et les contrôles positifs de `service_role`/`authenticated`. `security_invoker=true` est mesuré
+dans `pg_class` du projet réel, la vue `campaigns_due` y existe, et l'accès `anon` à la base rend
+**401 `permission denied for view campaigns_due`**.
+**Écart de relecture, assumé et écrit** : même situation que `S1-08` — revue adversariale **non
+indépendante**, consignée, l'exigence « Reviewer en contexte neuf » n'étant pas satisfaite à la lettre.
+Le constat qui reste ouvert est le premier : **un run en `error` bloque sa campagne aussi longtemps
+qu'un run en cours** (24 h par défaut), sans que l'ADR 0006 l'ait arbitré ni qu'un test l'exerce.
 
 **Objectif** : pouvoir décider, campagne par campagne, si elle est due — sans quoi RF-03 reste une
 case cochée sur le papier.
@@ -638,7 +685,7 @@ verrous du §2 du brief Product Owner (identifiants, argent, hors dépôt, suppr
 
 | Blocage | Impact | Levée | Qui peut lever |
 |---|---|---|---|
-| `S0-04` — clés Supabase absentes, migrations non appliquées | Aucun ticket S1 ne peut être **vérifié** : la DoD exige une exécution réelle | Coller les 2 migrations dans l'éditeur SQL + remplir `.env` (~10 min) | **Humain** (identifiants) |
+| ~~`S0-04` — clés Supabase absentes, migrations non appliquées~~ **levé le 2026-10-15** : 3 migrations appliquées par `db push`, les **4 suites passent sur le vrai projet**, `anon` refusé à la main, `service_role` écrit | Les tickets S1 peuvent désormais être **vérifiés sur l'environnement cible** | — | — |
 | `S0-05` — board Projects absent | **Aucun impact sur le sprint** : D-005 a tranché, le tableau versionné est la source de vérité | `gh auth refresh -s project,read:project` | **Humain** (scope du jeton) |
 | `S0-06` — bot Telegram | Ne bloque plus rien (D-003) ; requis seulement pour WF4 (S4) et la notification de WF5 | Créer le bot | **Humain** (compte externe) |
 | PR #1 non relue | `S1-05` reste `en review`, pas `fait` : la DoD exige une relecture en contexte neuf | Lancer une session `Reviewer` | **Agent** (`prompts/roles.md` §7) |
