@@ -69,8 +69,8 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | 🟦 en review |
 | S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ⬜ |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
-| S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | ⬜ |
-| S1-09 | `campaigns`/`runs` — rendre la fréquence par campagne implémentable (créé au planning) | Backend/Data | S | — | ⬜ |
+| S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | 🟦 en review |
+| S1-09 | `campaigns`/`runs` — rendre la fréquence par campagne implémentable (créé au planning) | Backend/Data | S | — | 🟦 en review |
 
 ---
 
@@ -548,7 +548,13 @@ Telegram est un **plus non bloquant**. Le ticket ne dépend donc plus de `S0-06`
 
 ---
 
-### S1-08 — `runs.details` : distinguer récupérées / écartées / écrites (**D-002**) ⬜
+### S1-08 — `runs.details` : distinguer récupérées / écartées / écrites (**D-002**) 🟦 en review
+
+**Avancement (2026-10-15)** : implémenté, **CI verte** — PR #12 fusionnée.
+`supabase/migrations/20261015000003_runs_details.sql` + `supabase/tests/runs_details.sql` (6 assertions,
+rouge avant la migration puis vert, et le test mord au retrait du `comment on column`).
+**Il reste dû** : vérification sur Supabase (verrou `S0-04`) et relecture par un Reviewer en contexte
+neuf → `en review`, pas `fait`.
 
 **Objectif** : rendre le ciblage calibrable en séparant trois compteurs aujourd'hui confondus.
 
@@ -578,7 +584,14 @@ prévoit un arrêt de la collecte à 100 analyses si les faux positifs dépassen
 
 ---
 
-### S1-09 — Rendre la fréquence par campagne implémentable (créé au planning) ⬜
+### S1-09 — Rendre la fréquence par campagne implémentable (créé au planning) 🟦 en review
+
+**Avancement (2026-10-15)** : **condition de démarrage levée** par
+[`ADR 0006`](adr/0006-cadence-des-campagnes.md), puis implémenté et **vérifié en CI** — PR #13 fusionnée.
+`20261015000004_campaigns_due.sql` + `campaigns_due.sql` (10 assertions : la règle d'échéance, le
+blocage par un run en cours, les droits de `service_role`/`authenticated`, et le refus de `anon`
+**même quand la vue lui est ouverte**). Deux mutations vérifient que le test mord.
+**Il reste dû** : vérification sur Supabase (verrou `S0-04`) et relecture par un Reviewer → `en review`.
 
 **Objectif** : pouvoir décider, campagne par campagne, si elle est due — sans quoi RF-03 reste une
 case cochée sur le papier.
@@ -629,10 +642,11 @@ verrous du §2 du brief Product Owner (identifiants, argent, hors dépôt, suppr
 | `S0-05` — board Projects absent | **Aucun impact sur le sprint** : D-005 a tranché, le tableau versionné est la source de vérité | `gh auth refresh -s project,read:project` | **Humain** (scope du jeton) |
 | `S0-06` — bot Telegram | Ne bloque plus rien (D-003) ; requis seulement pour WF4 (S4) et la notification de WF5 | Créer le bot | **Humain** (compte externe) |
 | PR #1 non relue | `S1-05` reste `en review`, pas `fait` : la DoD exige une relecture en contexte neuf | Lancer une session `Reviewer` | **Agent** (`prompts/roles.md` §7) |
-| Décision d'architecture pour `S1-09` | Le ticket ne démarre pas sans elle (condition du planning) | Trancher entre durée explicite / dernier passage lisible / les deux | **Agent** (Architecte, ~20 min) |
+| ~~Décision d'architecture pour `S1-09`~~ | **Levée le 2026-10-15** — [`ADR 0006`](adr/0006-cadence-des-campagnes.md) : cadence fixe du déclencheur, intervalle explicite par campagne, dernier passage lisible, vue `campaigns_due` | — | **Fait** (Architecte) |
 
 *Blocages levés : `ADR 0005` (décision du 2026-10-15) · `S0-05` dépôt, CI et protection — faits
-et **testés** (push direct et merge anticipé refusés par GitHub).*
+et **testés** (push direct et merge anticipé refusés par GitHub) · **`ADR 0006`** (cadence des
+campagnes, 2026-10-15) — condition de démarrage de `S1-09`, levée et implémentée dans la foulée.*
 
 ## 5. Métriques à relever en review (vendredi 23/10)
 

@@ -13,6 +13,30 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, nuit) — `S1-08` et `S1-09` implémentés en SQL, et vérifiés localement
+
+- **Fait** : les deux tickets atteignables **sans Supabase** sont implémentés, chacun dans sa branche,
+  sa PR et sa CI — `S1-08` **#12**, `S1-09` **#13**, toutes deux fusionnées. Méthode respectée :
+  **test écrit d'abord** (rouge réel local : `column "details" … does not exist`, puis
+  `column "interval_minutes" … does not exist`), migration ensuite, vert local sur un **Postgres 16.15**
+  isolé, puis CI. **23 assertions** lues dans le log du job `sql`, pas au statut.
+- **S1-08** : `runs.details` sépare *récupérées / écartées / écrites* (`D-002`) ; `items_processed`
+  reçoit un sens unique, documenté par `comment on column` — document dont le test **vérifie l'existence**.
+- **S1-09** : `RF-03` était **impossible** à implémenter, pas seulement difficile (le déclencheur n8n
+  n'évalue ses valeurs qu'à la publication ; rien n'enregistrait le dernier passage).
+  **`ADR 0006`** tranche — cadence fixe, intervalle explicite par campagne, runs rattachés à leur
+  campagne, vue `campaigns_due` qui écrit la règle une seule fois.
+- **Un défaut trouvé dans mon propre test, par un test de mutation** : ma première vérification
+  « `anon` ne lit rien sur la vue » **passait pour la mauvaise raison** — `anon` n'a aucun privilège
+  sur la vue, donc le refus arrivait même en retirant `security_invoker`. Démonstration : la mutation
+  rendait `EXIT=0` alors que la protection avait disparu. Le test **ouvre donc la vue à `anon`** avant
+  de vérifier qu'il n'en obtient rien — seul scénario discriminant, qui échoue bien (`EXIT=3`) quand la
+  protection saute. Un contrôle **positif** a été ajouté : `service_role` (WF1) et `authenticated`
+  doivent pouvoir lire la vue, sinon les `grant` n'étaient couverts par rien.
+- **Prévu** : `S1-01`/`S1-02` dès que `S0-04` est levé ; relecture de la PR #1.
+- **Bloqué** : `S0-04` — inchangé, et c'est lui qui empêche `S1-08` et `S1-09` d'être **`fait`** :
+  la DoD exige une vérification sur l'environnement cible. Ils sont donc `en review`.
+
 ## 2026-10-15 (jeudi, nuit) — le planning relu par un agent Reviewer, et ses conséquences
 
 - **Fait** : revue du planning et de **D-006/D-007** →
