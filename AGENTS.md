@@ -100,7 +100,29 @@ dans le `package.json` racine dès qu'il existe (requis par `pnpm/action-setup` 
   ```
   Les **ajouts** (colonne, index, table, policy) ne demandent aucune régénération : la comparaison
   ne signale **que les disparitions**, pour ne pas transformer chaque migration additive en péage.
+  Deux exceptions, apprises en les rencontrant : une ligne dont le **texte change** (un
+  `privilege_defaut` modifié par `roles.sql` — voir plus haut) et les lignes d'**environnement**
+  (extensions, rôles) se régénèrent elles aussi dans la même PR.
 - **RLS activée sur toute table créée**, et **aucune policy pour `anon`** (exigence du cahier des charges §4).
+- **Un objet neuf de `public` naît lisible par `anon`** : sur un projet Supabase, `pg_default_acl`
+  accorde `ALL` à `anon`, `authenticated` et `service_role` sur les tables, fonctions et séquences de
+  `public`. Tout objet créé par une migration est donc lisible **et inscriptible** par `anon` *avant*
+  le moindre `revoke`. `.github/sql/roles.sql` reproduit ces privilèges par défaut — sans quoi la CI ne
+  voit pas le problème : mesuré, une table et une vue neuves, sans `revoke` ni RLS, étaient lisibles par
+  `anon` sur une base « comme Supabase » et **invisibles** sur une base « comme la CI »
+  ([`docs/reviews/2026-10-15-pre-vol-environnement-supabase.md`](docs/reviews/2026-10-15-pre-vol-environnement-supabase.md)).
+  Règle qui en découle : **toute migration qui crée une table, une vue ou une séquence dans `public`
+  doit révoquer `anon` explicitement** (`revoke all on public.<objet> from anon;`) — la RLS reste la
+  première barrière, pas la seule. `supabase/tests/anon_privileges.sql` vérifie la propriété sur
+  **tout le catalogue** et non sur six noms connus, donc un oubli est rouge, y compris sur une table
+  ajoutée par un sprint suivant. Corollaire mesuré : ces privilèges par défaut élargissent aussi ceux
+  d'`authenticated` (`insert`/`update`/`delete` sur les objets qu'une migration n'a pas restreints) —
+  ce qui est filtré par la RLS, mais doit être su avant d'ajouter une policy d'écriture.
+- **Un changement de `roles.sql` se répercute dans la référence de schéma.** Les `alter default
+  privileges` de `roles.sql` et ceux de la migration 1 sont des lignes du **même** enregistrement
+  `pg_default_acl` : mesurer après ce changement modifie une ligne de
+  `.github/sql/schema-baseline.txt` au lieu d'en ajouter une — et une ligne dont le texte change
+  compte comme une **disparition** pour `comm`. La régénérer dans la même PR, sur une base neuve.
 - La clé `service_role` est réservée à n8n : elle ne sort **jamais** des credentials n8n,
   jamais dans le dashboard, jamais dans Git, jamais dans un prompt.
 - Tout changement de schéma vient avec un test rejouable dans `supabase/tests/`

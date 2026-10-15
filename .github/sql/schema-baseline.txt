@@ -119,8 +119,13 @@ policy|companies|update_companies|UPDATE roles=authenticated using=true withchec
 policy|leads|read_leads|SELECT roles=authenticated using=true withcheck=-
 policy|leads|update_leads|UPDATE roles=authenticated using=true withcheck=true
 policy|runs|read_runs|SELECT roles=authenticated using=true withcheck=-
-privilege_defaut|public|postgres|r authenticated=r/postgres,service_role=arwdDxt/postgres
+privilege_defaut|public|postgres|S anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres
+privilege_defaut|public|postgres|f anon=X/postgres,authenticated=X/postgres,service_role=X/postgres
+privilege_defaut|public|postgres|r anon=arwdDxt/postgres,authenticated=arwdDxt/postgres,service_role=arwdDxt/postgres
+privilege|analyses|authenticated|DELETE
+privilege|analyses|authenticated|INSERT
 privilege|analyses|authenticated|SELECT
+privilege|analyses|authenticated|UPDATE
 privilege|analyses|service_role|DELETE
 privilege|analyses|service_role|INSERT
 privilege|analyses|service_role|SELECT
@@ -133,7 +138,10 @@ privilege|blocklist|service_role|DELETE
 privilege|blocklist|service_role|INSERT
 privilege|blocklist|service_role|SELECT
 privilege|blocklist|service_role|UPDATE
+privilege|campaigns_due|authenticated|DELETE
+privilege|campaigns_due|authenticated|INSERT
 privilege|campaigns_due|authenticated|SELECT
+privilege|campaigns_due|authenticated|UPDATE
 privilege|campaigns_due|service_role|DELETE
 privilege|campaigns_due|service_role|INSERT
 privilege|campaigns_due|service_role|SELECT
@@ -146,6 +154,8 @@ privilege|campaigns|service_role|DELETE
 privilege|campaigns|service_role|INSERT
 privilege|campaigns|service_role|SELECT
 privilege|campaigns|service_role|UPDATE
+privilege|companies|authenticated|DELETE
+privilege|companies|authenticated|INSERT
 privilege|companies|authenticated|SELECT
 privilege|companies|authenticated|UPDATE
 privilege|companies|service_role|DELETE
@@ -160,7 +170,10 @@ privilege|leads|service_role|DELETE
 privilege|leads|service_role|INSERT
 privilege|leads|service_role|SELECT
 privilege|leads|service_role|UPDATE
+privilege|runs|authenticated|DELETE
+privilege|runs|authenticated|INSERT
 privilege|runs|authenticated|SELECT
+privilege|runs|authenticated|UPDATE
 privilege|runs|service_role|DELETE
 privilege|runs|service_role|INSERT
 privilege|runs|service_role|SELECT

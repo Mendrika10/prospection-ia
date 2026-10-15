@@ -81,6 +81,35 @@ Format :
   par aucun contrôle et la CI restera verte **à tort**.
 - **Bloqué** : `S0-04` — inchangé.
 
+## 2026-10-15 (jeudi, nuit) — la CI devient **fidèle à la plateforme** sur les privilèges par défaut
+
+- **Fait** : `.github/sql/roles.sql` reproduit enfin ce qu'un vrai projet Supabase porte déjà dans
+  `pg_default_acl` — `ALL` pour `anon`, `authenticated` et `service_role` sur les tables, fonctions et
+  séquences de `public`. Conséquence reproduite : **tout objet neuf de `public` naît lisible et
+  inscriptible par `anon`**, vue comprise.
+- **Fait** : `supabase/tests/anon_privileges.sql` — le contrôle « `anon` ne détient aucun privilège sur
+  les objets de `public` », écrit sur le **catalogue** et non sur six noms connus, donc il couvre
+  l'objet que le prochain sprint ajoutera. Quatre contrôles, dont deux **positifs** : l'inventaire doit
+  voir des objets (sinon le test refuse de conclure au lieu de passer à vide), et `authenticated` /
+  `service_role` doivent lire les 7 objets attendus (sinon le contrôle principal serait tautologique).
+- **Trois mutations prouvent qu'il mord** : une table neuve sans `revoke` → **exit 3** avec les sept
+  privilèges nommés ; la même plus une vue neuve → **exit 3** sur les deux objets ; `revoke` explicite →
+  **exit 0** (l'échec n'était donc pas fortuit) ; et sur une base **vide**, le test **refuse de
+  conclure** (`inventaire suspect : 0 objet`) au lieu de passer sans rien prouver.
+- **La référence a dû être régénérée, et c'est instructif** : le delta n'est pas d'une ligne mais de
+  **14** — 1 ligne `privilege_defaut` dont le **texte change** (migration 1 et `roles.sql` écrivent dans
+  le **même** enregistrement `pg_default_acl`) et **13 ajouts**. Ces 13 disent quelque chose de réel :
+  les privilèges par défaut de la plateforme élargissent aussi ceux d'`authenticated` —
+  `insert`/`update`/`delete` sur `analyses`, `runs`, `companies` et la vue `campaigns_due`, qu'aucun
+  `revoke` ne restreint. C'est filtré par la RLS (le contrôle 4 de `rls.sql` passe désormais **par elle**,
+  comme sur le vrai projet, et non plus par un refus de privilège) — mais c'est désormais **visible**.
+- **Vérifié** : les quatre suites sortent en **code 0** sur une base neuve (ordre alphabétique :
+  `anon_privileges` · `campaigns_due` · `rls` · `runs_details`), empreintes **données** et **schéma**
+  avant/après réapplication **identiques**, et la comparaison à la nouvelle référence ne signale
+  **aucun** objet disparu. Règle ajoutée dans `AGENTS.md` §4.
+- **Prévu** : l'application des migrations sur le projet réel (toujours en attente du mot de passe base).
+- **Bloqué** : `S0-04` — inchangé.
+
 ## 2026-10-15 (jeudi, nuit) — accès au **vrai** projet Supabase : lecture acquise, écriture bloquée ; revue de `S1-08`/`S1-09`
 
 - **Fait** : le projet réel `rexnoeixlkedvdhzeoqk` est enfin **interrogé pour de vrai** — pas
