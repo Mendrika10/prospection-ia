@@ -1,0 +1,132 @@
+# Prospection IA automatisée
+
+Agent commercial automatisé : détecte les entreprises dont le site web est faible ou obsolète,
+les note de 0 à 10, et livre les meilleurs leads dans un dashboard de suivi.
+
+**Contrainte principale : 0 € de coût récurrent.** Stack : n8n (Docker) · Supabase ·
+Next.js sur Vercel · GitHub.
+
+📄 Cahier des charges complet : [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md)
+
+---
+
+## Comment on travaille
+
+Le projet est mené comme une **équipe Scrum** : le Product Owner (toi) arbitre, des **agents**
+avec un rôle et un périmètre précis exécutent, testent et relisent. Un ticket = une branche =
+un agent, et rien n'est fusionné sans CI verte ni validation humaine.
+
+| À lire | Pour quoi |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | **Conventions + règles de travail + pièges connus** — contexte partagé de tout agent |
+| [`docs/methode-equipe-agents.md`](docs/methode-equipe-agents.md) | La méthode : rôles, rituels, Definition of Ready / Done, CI |
+| [`docs/sprint-01.md`](docs/sprint-01.md) | Le sprint en cours : cadre, rituels, tableau et **tickets** |
+| [`docs/prompts/roles.md`](docs/prompts/roles.md) | Les 9 prompts de rôle prêts à copier |
+| [`docs/adr/`](docs/adr/README.md) | Les décisions d'architecture (et celles en attente de ta décision) |
+| [`docs/daily.md`](docs/daily.md) | Le daily asynchrone : fait / prévu / bloqué |
+
+---
+
+## Structure du dépôt
+
+```
+.
+├── AGENTS.md                # conventions partagées (humains + agents)
+├── apps/dashboard/          # Next.js (S5)
+├── supabase/
+│   ├── migrations/          # SQL versionné (schéma, RLS, index)
+│   ├── tests/               # tests SQL rejouables, sortent en code ≠ 0 si échec
+│   │   └── rls.sql          #   dont « anon ne lit rien » (critère d'acceptation v1)
+│   └── seed.sql             # données de dev
+├── n8n/
+│   ├── docker-compose.yml   # n8n édition communautaire (local)
+│   └── workflows/           # exports JSON wf1..wf5
+├── docs/
+│   ├── cahier-des-charges.md
+│   ├── methode-equipe-agents.md
+│   ├── sprint-01.md         # sprint en cours + tickets
+│   ├── daily.md             # daily asynchrone
+│   ├── adr/                 # décisions d'architecture
+│   └── prompts/roles.md     # prompts de rôle
+├── .github/
+│   ├── workflows/ci.yml     # jobs sql · secrets · node
+│   ├── sql/roles.sql        # rôles Supabase pour un Postgres nu (CI / dev local)
+│   ├── ISSUE_TEMPLATE/ticket.md
+│   └── PULL_REQUEST_TEMPLATE.md
+├── .env.example             # jamais de vrais secrets
+└── README.md
+```
+
+## Démarrage
+
+```bash
+# 1. Variables d'environnement
+cp .env.example .env
+openssl rand -hex 32        # -> N8N_ENCRYPTION_KEY
+
+# 2. n8n en local (UI : http://localhost:5678)
+#    Au premier démarrage, créer le compte propriétaire dans l'UI
+#    (les anciennes variables N8N_BASIC_AUTH_* n'existent plus depuis n8n 1.0).
+docker compose -f n8n/docker-compose.yml up -d
+
+# 3. Base de données : appliquer la migration sur le projet Supabase
+#    (soit via l'éditeur SQL du dashboard Supabase : copier supabase/migrations/*.sql)
+#    soit via le CLI :
+npx supabase link --project-ref <ref>
+npx supabase db push
+
+# 4. Vérifier la sécurité (doit afficher "TOUS LES TESTS RLS PASSENT" et sortir en code 0)
+#    Rôle anon : aucun accès. service_role (n8n) : écriture. authenticated : pipeline.
+psql "$DATABASE_URL" -f supabase/tests/rls.sql
+
+# Sans projet Supabase, on peut tout rejouer sur un Postgres jetable (c'est ce que fait la CI) :
+docker run -d --name pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16-alpine
+psql -h localhost -U postgres -f .github/sql/roles.sql
+for f in supabase/migrations/*.sql supabase/seed.sql supabase/tests/*.sql; do psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"; done
+```
+
+## Modèle de données
+
+| Table | Rôle | Écrite par |
+|---|---|---|
+| `campaigns` | ciblage NAF / département / seuil de score | dashboard |
+| `companies` | entreprises du registre public (clé : SIREN) | n8n (WF1, WF2) |
+| `analyses` | analyses techniques historisées | n8n (WF3) |
+| `leads` | suivi commercial (score, raisons, statut) | n8n (WF3) + dashboard |
+| `runs` | observabilité des exécutions | n8n |
+| `blocklist` | liste d'opposition RGPD | dashboard / n8n |
+
+RLS activée sur toutes les tables : `authenticated` lit tout et écrit le pipeline,
+`anon` n'a **aucun** accès, n8n passe par la clé `service_role`.
+
+## Conventions
+
+- Commits conventionnels (`feat:`, `fix:`, `docs:`, `chore:`), branches `feat/*`, `main` protégée.
+- Migrations SQL immuables une fois appliquées : toute évolution = nouveau fichier daté.
+- Workflows n8n exportés en JSON à chaque modification significative (voir `n8n/workflows/README.md`).
+- Aucun secret dans Git : `.env` est ignoré, `.env.example` documente les clés.
+
+## Avancement
+
+| Sprint | Contenu | État |
+|---|---|---|
+| **S0** | Dépôt Git, structure, `.env.example`, n8n Docker | ✅ sauf comptes externes (S0-04/05/06) |
+| **S1** | Migrations SQL + RLS, WF1 Collecte | 🟡 SQL testé, WF1 à construire (7 tickets) |
+| **S2** | WF2 Enrichissement (site + email) | ⬜ |
+| **S3** | WF3 Analyse + scoring | ⬜ |
+| **S4** | WF4 Digest + WF5 Erreurs | ⬜ |
+| **S5** | Dashboard : login, liste, fiche, statuts | ⬜ |
+| **S6** | Campagnes, runs, export CSV, réglage du scoring | ⬜ |
+| **S7** | Déploiement prod (VPS + Vercel), monitoring | ⬜ |
+
+## État des lieux externes — actions du Product Owner
+
+Ces trois tickets **bloquent** le démarrage de WF1 (détail dans `docs/sprint-01.md`) :
+
+- [ ] `S0-04` Créer le projet Supabase (région `eu-west-3`) et appliquer la migration
+- [ ] `S0-05` Créer le dépôt GitHub privé + le board Projects + protéger `main`
+- [ ] `S0-06` Créer le bot Telegram + la clé PageSpeed Insights (gratuits, sans carte bancaire)
+
+⚠️ Une décision est attendue avant d'écrire WF1 : **ADR 0005 — ciblage local**
+(le filtre `departement` de l'API porte sur les établissements, pas sur le siège :
+seuls 12 résultats sur 25 avaient réellement leur siège dans le département visé).

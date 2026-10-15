@@ -1,0 +1,154 @@
+name: ci
+
+# Déclenché sur chaque PR et sur main (protection de branche : merge impossible si rouge).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job « sql » : le schéma et la sécurité sont la source de vérité.
+  # Il tourne dès maintenant — c'est la seule preuve de fonctionnement réelle
+  # du dépôt tant que le front n'existe pas (sprint S5).
+  # ---------------------------------------------------------------------------
+  sql:
+    # Nom volontairement court et sans caractère spécial : il sert de « context »
+    # dans la protection de branche (required status checks).
+    name: sql
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: prospection
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: prospection
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Postgres nu n'a pas les rôles de Supabase : on les crée d'abord.
+      - name: Rôles Supabase (anon / authenticated / service_role)
+        run: psql -v ON_ERROR_STOP=1 -q -f .github/sql/roles.sql
+
+      - name: Appliquer les migrations (ordre alphabétique = ordre chronologique)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::Aucune migration trouvée dans supabase/migrations/"
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            echo "→ $f"
+            psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      - name: Seed de développement
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/seed.sql
+
+      # Tous les tests SQL de supabase/tests/*.sql, dans l'ordre alphabétique.
+      # Sort en code ≠ 0 si un test échoue : c'est le garde-fou principal.
+      - name: Tests SQL
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(supabase/tests/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::Aucun test trouvé dans supabase/tests/"
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            echo "→ $f"
+            psql -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+  # ---------------------------------------------------------------------------
+  # Job « secrets » : applique le point « aucun secret dans le code » de la DoD.
+  # ---------------------------------------------------------------------------
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan des secrets évidents
+        run: |
+          set -euo pipefail
+          # Cible : JWT (clés Supabase, tokens) et clés privées PEM.
+          # .env.example est exclu : il ne contient que des valeurs factices.
+          pattern='eyJ[A-Za-z0-9_-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+          if matches=$(grep -rnE "$pattern" . --exclude-dir=.git --exclude=.env.example); then
+            echo "::error::Secret détecté dans le dépôt :"
+            echo "$matches"
+            exit 1
+          fi
+          echo "OK — aucun secret détecté"
+
+  # ---------------------------------------------------------------------------
+  # Job « node » : lint, types, tests du dashboard Next.js (sprint S5).
+  # Aucun code Node n'existe avant S5 : le job le signale explicitement au lieu
+  # de prétendre vérifier quelque chose. Le garde-fou disparaît avec le ticket S5-01.
+  # ---------------------------------------------------------------------------
+  node:
+    name: node
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Projet Node présent ?
+        id: probe
+        run: |
+          if [ -f package.json ] && [ -f pnpm-lock.yaml ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Job node ignoré::Pas de package.json/pnpm-lock.yaml — lint/typecheck/test arrivent avec apps/dashboard (sprint S5, ticket S5-01)."
+          fi
+
+      # pnpm/action-setup@v4 lit « packageManager » dans package.json.
+      - uses: pnpm/action-setup@v4
+        if: steps.probe.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.probe.outputs.ready == 'true'
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Installer
+        if: steps.probe.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        if: steps.probe.outputs.ready == 'true'
+        run: pnpm lint
+
+      - name: Types
+        if: steps.probe.outputs.ready == 'true'
+        run: pnpm typecheck
+
+      - name: Tests
+        if: steps.probe.outputs.ready == 'true'
+        run: pnpm test

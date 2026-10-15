@@ -1,0 +1,34 @@
+# --- Secrets (jamais versionnés) ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- n8n local ---
+n8n/data/
+n8n/.n8n/
+*.sqlite
+*.sqlite-journal
+
+# --- Supabase CLI ---
+supabase/.temp/
+supabase/.branches/
+
+# --- Divers ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

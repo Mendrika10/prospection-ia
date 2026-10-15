@@ -1,0 +1,21 @@
+# Le dépôt est développé sous Windows et la CI tourne sous Linux : on normalise.
+# Sans ça, Git réécrit les fichiers en CRLF au checkout, ce qui casse les scripts
+# shell et fait du bruit dans chaque diff.
+* text=auto eol=lf
+
+# Scripts destinés à Windows uniquement
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binaires : jamais de conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.gif binary
+*.pdf binary
+*.zip binary
+
+# Verrou de paquets : diff illisible, on ne le normalise pas à la légère
+pnpm-lock.yaml -diff linguist-generated

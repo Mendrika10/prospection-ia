@@ -1,0 +1,36 @@
+# n8n Édition Communautaire - environnement de dev local (Sprint S0)
+# Démarrage :  docker compose -f n8n/docker-compose.yml up -d
+# UI        :  http://localhost:5678
+#
+# Les secrets Supabase (service_role) se saisissent dans l'UI n8n
+# (Credentials), JAMAIS dans ce fichier.
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: prospection-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:?definir N8N_ENCRYPTION_KEY dans .env}
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=${N8N_PORT:-5678}
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
+      # Cookie non sécurisé : uniquement acceptable en local (http).
+      # À retirer en production (VPS derrière HTTPS).
+      - N8N_SECURE_COOKIE=false
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-Indian/Antananarivo}
+      - TZ=${GENERIC_TIMEZONE:-Indian/Antananarivo}
+      # Purge des exécutions pour ne pas saturer le disque
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+      # Dossier des workflows exportés (versionnés dans Git)
+      - ./workflows:/workflows
+
+volumes:
+  n8n_data:
