@@ -14,7 +14,7 @@ décision · pourquoi · options écartées · preuves · conséquence · **ce q
 
 **Décision** : les décisions produit (priorités, périmètre, seuils, risques, validation des ADR,
 ordre des tickets) sont prises par un **agent Product Owner**, et non par le propriétaire du projet.
-Seuls les cinq verrous du §2 du brief remontent à l'humain, parce qu'un agent n'en a
+Seuls les quatre verrous du §2 du brief remontent à l'humain, parce qu'un agent n'en a
 techniquement pas les moyens (identifiants, argent, action hors du dépôt).
 
 **Pourquoi** : le propriétaire veut déléguer l'arbitrage produit, pas seulement l'exécution. Journal
