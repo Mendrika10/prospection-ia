@@ -93,19 +93,22 @@ verrouillé · dépendances identifiées · taille ≤ ½ journée.
 
 | Ticket | Verdict | Constat du planning |
 |---|---|---|
-| `S1-01` | 🟡 **Prêt sous condition** | **Le critère « cron défini par campagne » n'est pas implémentable** : n8n ne peut pas lire un cron par ligne à l'exécution, et rien n'enregistre le dernier passage d'une campagne. Un ticket qui demande l'impossible n'est pas Prêt. → créé `S1-09` |
-| `S1-02` | 🟡 **Prêt sous condition** | Deux manques réels : (1) le critère « le vocabulaire d'effectif est confirmé contre la documentation » est une **tâche, pas un critère vérifiable** ; (2) `campaigns.effectif_min` (entier) face au filtre codé de l'API n'était traité nulle part. → critères reformulés + `D-007` |
+| `S1-01` | ✅ **Prêt (corrigé)** | **Le critère « cron défini par campagne » n'est pas implémentable** : n8n ne peut pas lire un cron par ligne à l'exécution (doc officielle : les valeurs du déclencheur ne sont évaluées **qu'à la publication**), et rien n'enregistre le dernier passage d'une campagne. → créé `S1-09` ; dépendance `S1-09` **déclarée**, blocage enregistré au §4 |
+| `S1-02` | ✅ **Prêt (corrigé)** | Deux manques réels : (1) le critère « le vocabulaire d'effectif est confirmé contre la documentation » est une **tâche, pas un critère vérifiable** ; (2) `campaigns.effectif_min` (entier) face au filtre codé de l'API n'était traité nulle part. → critères reformulés, `D-007` puis **`D-008`**, vocabulaire **prouvé par l'API** et écrit dans le ticket. **Revue** : dépendance `S1-08` ajoutée (le ticket écrit dans `runs.details`, colonne créée par `S1-08`) |
 | `S1-03` | ✅ **Prêt** | Rien à signaler. Tous les critères sont observables en base. |
-| `S1-04` | 🟡 **Prêt sous condition** | Le test « NAF invalide » est **devenu impossible** : depuis `S1-05`, la base refuse d'enregistrer une campagne au mauvais format. Le ticket demandait de tester par une porte qu'on a fermée exprès. → méthode de test remplacée |
-| `S1-05` | ✅ Déjà fait | En review. **Note du planning** : il annonçait que la revue dépendait de `S0-05` — c'est périmé, le dépôt existe et la PR #1 est ouverte. Seule la relecture manque. |
+| `S1-04` | ✅ **Prêt (corrigé)** | Le test « NAF invalide » **deviendra impossible dès que la PR #1 sera fusionnée** : `S1-05` est en review, sa contrainte n'est **pas encore sur `main`**. Le ticket demandait de tester par une porte qu'on ferme exprès. → méthode de test remplacée, valable dans les deux cas |
+| `S1-05` | ✅ **Déjà implémenté** | En review, donc **pas `fait`** au sens de la DoD (qui exige une relecture en contexte neuf). **Note du planning** : il annonçait que la revue dépendait de `S0-05` — c'est périmé, le dépôt existe et la PR #1 est ouverte. Seule la relecture manque. |
 | `S1-06` | ✅ **Prêt** | Portée réduite par D-003, plus aucune dépendance externe. Testable en provoquant une erreur. |
 | `S1-07` | ❌ **Refusé** | Voir « Ce qui est refusé » ci-dessous. |
-| `S1-08` | 🟡 **Prêt sous condition** | Un critère **ne peut pas échouer** (« `details` est du JSONB exploitable ») : le type de colonne le garantit, donc le test ne prouve rien. → critère remplacé par une lecture réelle des compteurs |
-| `S1-09` | 🟡 **Prêt sous condition** | Créé par ce planning. Condition : **une décision d'architecture** doit être consignée avant l'implémentation (comment calculer l'échéance d'une campagne sans écrire un analyseur de cron). Décision d'Architecte, ~20 min, **ne dépend pas de l'humain**. |
+| `S1-08` | ✅ **Prêt (corrigé)** | Critère d'origine trop faible, mais **pas infalsifiable** : « `details` est du JSONB exploitable » échoue si la migration déclare `text` ; en revanche il ne prouve rien sur l'exploitabilité. → remplacé par la lecture réelle de trois compteurs distincts |
+| `S1-09` | ✅ **Prêt (créé)** | Créé par ce planning. Démarrage conditionné par **une décision d'architecture** déclarée (comment calculer l'échéance sans écrire un analyseur de cron) : dépendance d'un agent, ~20 min, inscrite au §4 — **ne dépend pas de l'humain** |
 
 #### Corrections apportées aux tickets par le PO
 
-Un ticket rendu « Prêt sous condition » est corrigé dans ce fichier, pas laissé en l'état :
+Un ticket corrigé par le planning l'est **dans le ticket lui-même**, pas laissé en l'état. L'état
+intermédiaire « Prêt sous condition » a été **supprimé après la revue** : la Definition of Ready de la
+méthode est binaire, et une dépendance *déclarée* n'empêche pas de démarrer (critère 4). Détail et
+constats : [`reviews/2026-10-15-planning-sprint-1.md`](reviews/2026-10-15-planning-sprint-1.md).
 
 1. `S1-01` — « cron défini par campagne, pas en dur » remplacé par « cadence fixe du déclencheur +
    décision par campagne d'être due ou non », dépendance `S1-09` ajoutée.
@@ -385,17 +388,26 @@ manuelle du board dans l'UI. Les 5 colonnes et la limite WIP se règlent ensuite
 - [ ] **Règle ADR 0005** : seules les unités légales dont `siege.departement` est dans
       `campaigns.departements` sont conservées ; les autres sont **comptées comme écartées**
 - [ ] L'adresse stockée est celle du **siège** (`siege.adresse`, `siege.code_postal`, `siege.libelle_commune`)
-- [ ] `tranche_effectif_salarie` : le vocabulaire de codes retenu est **écrit dans cette section**
-      avec la requête qui l'a prouvé (correction du planning : « confirmer contre la doc » est une
-      tâche, pas un critère — et un code observé dans une réponse n'est pas forcément un code accepté
-      en filtre)
-- [ ] **Filtre d'effectif conditionnel (`D-007`)** : le filtre n'est appliqué que si le code est
-      confirmé ; sinon la campagne est collectée **sans** ce filtre et l'écart est tracé dans
-      `runs.details`. Un filtre non vérifié ne doit pas bloquer une collecte
+- [ ] `tranche_effectif_salarie` : le filtre utilise **ce vocabulaire, figé** —
+      `00 01 02 03 11 12 21 22 31 32 41 42 51 52 53` (tranches d'effectif salarié de l'unité légale,
+      INSEE). Vérifié **par l'API** le 2026-10-15 : ces 15 codes sont acceptés, et
+      `13 23 33 43 50 54 55 99` sont refusés en **HTTP 400** — la validation porte donc sur le
+      vocabulaire, pas sur la syntaxe. Requête qui le prouve :
+      `curl -s "https://recherche-entreprises.api.gouv.fr/search?tranche_effectif_salarie=53&per_page=1" | grep -o '"total_results":[0-9]*"'`
+      → `91`. Un `0` sur un croisement NAF × effectif ne prouve **rien** sur la validité du code.
+      **Le nom du paramètre doit être exact** : un nom mal orthographié est ignoré **en silence**
+      (vérifié : HTTP 200 avec des résultats non filtrés).
+- [ ] **Filtre d'effectif obligatoire (`D-008`)** : dès qu'une campagne déclare un `effectif_min`, le
+      filtre est appliqué — en **union de bandes**, dans **une seule** requête
+      (`tranche_effectif_salarie=21,22,31,…`) : la bande contenant `effectif_min`, **puis toutes les
+      bandes supérieures**. Une bande seule exclurait les entreprises plus grandes (faux négatif
+      silencieux). Les bandes appliquées sont écrites dans `runs.details` (colonne créée par `S1-08`).
+      `effectif_min` nul = aucun filtre.
 - [ ] Aucun appel si une campagne n'a ni `naf_codes` ni `departements` (validation d'entrée)
 - [ ] Le JSON brut de chaque entreprise est conservé dans `companies.raw`
 
-**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : S0-04, **ADR 0005 validé**
+**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : `S1-08` (colonne `runs.details`
+— revue du 2026-10-15), S0-04, **ADR 0005 validé**
 **Taille** : M · **Rôle** : Automation
 
 ---
@@ -436,8 +448,9 @@ manuelle du board dans l'UI. Les 5 colonnes et la limite WIP se règlent ensuite
       avec un message exploitable, et **pas** un plantage silencieux
 - [ ] **Test de réponse vide** : un département inexistant ne doit **pas** produire d'erreur
       (réponse vide = cas nominal, à ne pas confondre avec une panne)
-- [ ] ~~Test par campagne au NAF invalide~~ : **impossible depuis `S1-05`**, la base refuse
-      d'enregistrer une telle campagne. Remplacé par les deux tests ci-dessus
+- [ ] ~~Test par campagne au NAF invalide~~ : **impossible dès que la PR #1 sera fusionnée** —
+      `S1-05` est en review, la contrainte de format **n'est pas encore sur `main`** (revue du
+      2026-10-15). Remplacé par les deux tests ci-dessus, valables avant comme après la fusion
 
 **Preuve attendue** : exécution réelle sur un lot réduit (≤ 25), avec la ligne `runs` à l'appui.
 
@@ -551,8 +564,9 @@ conséquence d'`ADR 0005` (règle de ciblage sur le siège) · cahier des charge
       (cas d'usage réel : le taux de rejet par campagne)
 - [ ] Les trois compteurs se lisent **séparément** sur un même run : `items_processed` d'un côté,
       `details->>'recuperees'` et `details->>'ecartees'` de l'autre, avec des valeurs **différentes**
-      (correction du planning : « c'est bien du JSONB » ne peut pas échouer, le type de colonne le
-      garantit — donc ce critère ne prouvait rien)
+      (correction du planning, précisée par la revue : « c'est bien du JSONB » n'échouerait que si
+      la migration déclarait `text` — ce critère ne prouvait donc rien sur **l'exploitabilité** ; le
+      test ci-dessus, lui, lit trois compteurs distincts)
 - [ ] Le fichier de test ne laisse aucune ligne derrière lui (`begin; … rollback;`) et la CI passe
 
 **Pourquoi maintenant** : le taux de rejet est la seule métrique qui dit si une campagne est trop
@@ -573,7 +587,10 @@ case cochée sur le papier.
 validant la DoR de `S1-01` : `campaigns.cron` existe, mais **rien n'enregistre le dernier passage**.
 Un workflow ne peut donc pas savoir si une campagne est due. Le ticket `S1-01` demandait
 « un cron défini par campagne, pas en dur » : ce n'est pas implémentable dans n8n, où le cron est une
-propriété du nœud de déclenchement, pas une valeur lue en base à l'exécution.
+propriété du nœud de déclenchement, pas une valeur lue en base à l'exécution — la documentation
+officielle le confirme (*Schedule Trigger → Common issues → Variables* : les valeurs du déclencheur ne
+sont évaluées **qu'à la publication** du workflow, les modifier ensuite ne change pas la fréquence).
+Ce n'est donc pas seulement difficile, c'est **impossible**.
 
 **Condition de démarrage** : une **décision d'Architecte** doit être consignée avant l'implémentation
 (ADR ou section d'ADR) sur la façon de calculer l'échéance. C'est une décision technique, elle ne

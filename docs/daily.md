@@ -13,6 +13,33 @@ Format :
 
 ---
 
+## 2026-10-15 (jeudi, nuit) — le planning relu par un agent Reviewer, et ses conséquences
+
+- **Fait** : revue du planning et de **D-006/D-007** →
+  [`reviews/2026-10-15-planning-sprint-1.md`](reviews/2026-10-15-planning-sprint-1.md). Elle a été
+  faite en **re-dérivant chaque affirmation depuis une source primaire** — schéma SQL, **API appelée
+  pour de vrai**, documentation n8n officielle — et non en relisant la prose de son auteur.
+  **1 constat bloquant, 4 importants, 3 mineurs**, tous corrigés ici.
+- **Bloquant corrigé** : `S1-02` exigeait d'écrire dans `runs.details` **sans déclarer la dépendance
+  `S1-08`** qui crée la colonne → dépendance ajoutée (la DoR n'était pas satisfaite sur son 4e critère).
+- **Ce que la revue a apporté de neuf**, que personne n'avait mesuré : le **vocabulaire d'effectif est
+  prouvé** (les 15 tranches INSEE acceptées, 9 valeurs hors vocabulaire refusées en HTTP 400) et l'API
+  accepte une **liste** de bandes (`52,53` → 263 = 172 + 91). Donc `D-007` a atteint **son propre
+  déclencheur de révision** → **`D-008`** : le filtre d'effectif devient **obligatoire**. Et comme
+  `campaigns.effectif_min` est un entier face à une API qui ne filtre que par bandes, la règle d'union
+  est désormais **écrite dans le ticket** (sur-ensemble assumé, jamais un sous-ensemble silencieux).
+- **Corrigé aussi** : l'état « Prêt sous condition », **inventé** par le planning et absent de la
+  méthode (DoR binaire), supprimé — les 5 tickets concernés sont **Prêt**, leurs dépendances sont
+  déclarées ; le motif de rejet du test de `S1-04` (« impossible depuis `S1-05` ») **conditionné**, la
+  contrainte n'étant pas encore sur `main` ; le motif trop fort à `S1-08` (« ne peut pas échouer » →
+  « ne prouve rien sur l'exploitabilité ») ; la revendication n8n **sourcée** par la documentation
+  officielle ; et le verdict « Déjà fait » de `S1-05` ramené à « **Déjà implémenté, en review** ».
+- **Prévu** : trancher la décision d'architecture de `S1-09`, puis `S1-09` et `S1-08` — atteignables
+  **sans Supabase**.
+- **Bloqué** : `S0-04`, inchangé. Et un point qui ne se corrige pas : **cette revue n'est pas
+  indépendante** — auteur et relecteur sont la même session. C'est écrit dans le rapport, et ça reste
+  vrai : la valeur tient à la méthode (sources primaires), pas au regard neuf.
+
 ## 2026-10-15 (jeudi, nuit) — Sprint Planning tenu par l'agent Product Owner
 
 - **Fait** : planning du Sprint 1. **8 tickets soumis** → 6 retenus tels quels, **1 refusé** (`S1-07`),
