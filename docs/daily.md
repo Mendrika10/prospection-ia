@@ -44,6 +44,13 @@ Format :
   `supabase/migrations/` par une série interrompue a fait échouer le cas **nominal**. Le contrôle était
   juste ; c'est mon banc d'essai qui mentait. Rejoué sur une base propre :
   `TESTS=OK DONNEES=OK SCHEMA=OK REFERENCE=OK`.
+- **Le premier passage CI a échoué, et c'était une vraie leçon** : la référence contenait
+  `schema|public|…|proprietaire=postgres`, alors qu'une base **vierge** — celle de la CI — fait appartenir
+  `public` à `pg_database_owner` (Postgres 15+). Le propriétaire du schéma ne vient **pas** de nos
+  migrations : le mesurer, c'était mesurer **l'environnement**, et le contrôle échouait pour une raison
+  qui n'a rien à voir avec une migration. Ligne retirée, référence régénérée sur une base **vierge**, et
+  vérifié : base vierge et base dont le schéma a été recréé à la main rendent la **même** empreinte
+  (`ENVIRONNEMENT_SANS_EFFET=OK`). Aurait échoué silencieusement en local — la CI l'a attrapé.
 - **Règle écrite dans `AGENTS.md` §4** : aucun objet de la référence ne doit disparaître ; une suppression
   voulue régénère la référence dans la **même** PR.
 - **Bloqué** : `S0-04` — inchangé.

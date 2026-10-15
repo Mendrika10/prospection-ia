@@ -171,5 +171,5 @@ rls|campaigns|-|activee=true forcee=false
 rls|companies|-|activee=true forcee=false
 rls|leads|-|activee=true forcee=false
 rls|runs|-|activee=true forcee=false
-schema|public|-|proprietaire=postgres
+schema|public|-|present
 vue|campaigns_due|options|security_invoker=true

@@ -109,7 +109,13 @@ select 'fonction', p.proname, pg_get_function_identity_arguments(p.oid),
   join pg_namespace n on n.oid = p.pronamespace
  where n.nspname = 'public'
 union all
-select 'schema', n.nspname, '-', 'proprietaire=' || pg_get_userbyid(n.nspowner)
+-- Le PROPRIÉTAIRE du schéma n'est PAS mesuré, et c'est un choix mesuré : dans une base
+-- vierge, `public` appartient à `pg_database_owner` (depuis Postgres 15) ; dans une base
+-- où le schéma a été recréé à la main, il appartient à l'utilisateur de connexion. Il ne
+-- vient donc PAS de nos migrations, et le mesurer faisait échouer la CI sur l'empreinte
+-- d'une reprise locale — une comparaison qui parle de l'environnement, pas du schéma.
+-- Ce qui compte est mesuré : le schéma existe, et ses objets sont inventoriés ci-dessus.
+select 'schema', n.nspname, '-', 'present'
   from pg_namespace n
  where n.nspname = 'public'
 union all
