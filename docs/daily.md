@@ -22,7 +22,9 @@ Format :
   et rien n'enregistre le dernier passage d'une campagne) → nouveau prérequis **S1-09** ; `S1-02`
   déguisait une tâche en critère d'acceptation ; `S1-04` demandait un test **devenu impossible depuis
   `S1-05`** (la base refuse d'enregistrer la campagne invalide que le test utilisait) ; `S1-08` avait un
-  critère qui **ne pouvait pas échouer**. Deux décisions écrites (D-006, D-007).
+  critère qui **ne pouvait pas échouer**. Les **4 lignes du Sprint 0** restées ouvertes ont leur sort
+  écrit dans le planning (3 verrous ou reports assumés, 1 case qui se ferme au premier run réel) :
+  « pas dans ce sprint » n'est pas « oublié ». Deux décisions écrites (D-006, D-007).
 - **Refusé** : `S1-07` (documentation d'exploitation) sort du sprint — on documenterait une procédure
   qui n'a **jamais tourné**, elle serait réécrite au premier incident. Retour conditionné à la première
   collecte réelle.
