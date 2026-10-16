@@ -65,7 +65,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps | S | — | 🟡 dépôt, CI et protection faits et testés ; board reporté (D-005) |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **Humain** (comptes) | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ✅ fait — PR #22 relue en contexte neuf (retry ×3 absent, corrigé), fusionnée, CI de `main` verte |
-| S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ⬜ |
+| S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ✅ fait — vérifié sur une instance n8n jetable, 3 campagnes de test, 3 090 lignes `companies` écrites puis nettoyées ; PR en review |
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
@@ -442,7 +442,7 @@ contient qu'une seule ligne, celle de l'artéfact.
 
 ---
 
-### S1-02 — WF1 : API Recherche d'entreprises (pagination + ciblage) ⬜
+### S1-02 — WF1 : API Recherche d'entreprises (pagination + ciblage) ✅
 
 **Objectif** : WF1 récupère réellement les entreprises ciblées par campagne, sans faux positifs géographiques.
 
@@ -457,13 +457,24 @@ contient qu'une seule ligne, celle de l'artéfact.
 - `etat_administratif=A` pour les entreprises actives (RF-06).
 
 **Critères d'acceptation**
-- [ ] Une campagne = un appel par couple (code NAF × département), avec pagination jusqu'à épuisement
-- [ ] Le workflow **vérifie** que les résultats renvoyés portent bien le code NAF demandé et le bon
-      `etat_administratif` (défense contre l'ignorance silencieuse des paramètres)
-- [ ] **Règle ADR 0005** : seules les unités légales dont `siege.departement` est dans
+
+**Vérifié le 2026-10-16 sur une instance n8n jetable** (v 2.x, exécutions #20/#22/#23, conteneur
+local `wf1-s102` arrêté et nettoyé ensuite — preuves = lignes `runs` et `companies` lues via
+l'API REST, jamais supposées) :
+
+- [x] Une campagne = un appel par couple (code NAF × département), avec pagination jusqu'à épuisement
+      — camp 44 : 74 pages internes (1 841 résultats), 1 requête par page, 1 s entre les pages ;
+      camp 974 : 61 pages (1 509 résultats)
+- [x] Le workflow **vérifie** que les résultats renvoyés portent bien le code NAF demandé et le bon
+      `etat_administratif` (défense contre l'ignorance silencieuse des paramètres) — mesuré : un
+      `tranche_effectif_salarie` vide (bug, corrigé depuis) renvoyait **HTTP 422** et le run passait
+      en `error` avec le détail, pas de plantage silencieux
+- [x] **Règle ADR 0005** : seules les unités légales dont `siege.departement` est dans
       `campaigns.departements` sont conservées ; les autres sont **comptées comme écartées**
-- [ ] L'adresse stockée est celle du **siège** (`siege.adresse`, `siege.code_postal`, `siege.libelle_commune`)
-- [ ] `tranche_effectif_salarie` : le filtre utilise **ce vocabulaire, figé** —
+      — camp 44 : 193 écartées sur 1 841 (sièges hors 44) ; camp 974 : 68 sur 1 509
+- [x] L'adresse stockée est celle du **siège** (`siege.adresse`, `siege.code_postal`,
+      `siege.libelle_commune`) — vérifiée sur des entreprises écrites : adresse/cp/ville = siège
+- [x] `tranche_effectif_salarie` : le filtre utilise **ce vocabulaire, figé** —
       `00 01 02 03 11 12 21 22 31 32 41 42 51 52 53` (tranches d'effectif salarié de l'unité légale,
       INSEE). Vérifié **par l'API** le 2026-10-15 : ces 15 codes sont acceptés, et
       `13 23 33 43 50 54 55 99` sont refusés en **HTTP 400** — la validation porte donc sur le
@@ -472,14 +483,32 @@ contient qu'une seule ligne, celle de l'artéfact.
       → `91`. Un `0` sur un croisement NAF × effectif ne prouve **rien** sur la validité du code.
       **Le nom du paramètre doit être exact** : un nom mal orthographié est ignoré **en silence**
       (vérifié : HTTP 200 avec des résultats non filtrés).
-- [ ] **Filtre d'effectif obligatoire (`D-008`)** : dès qu'une campagne déclare un `effectif_min`, le
+- [x] **Filtre d'effectif obligatoire (`D-008`)** : dès qu'une campagne déclare un `effectif_min`, le
       filtre est appliqué — en **union de bandes**, dans **une seule** requête
       (`tranche_effectif_salarie=21,22,31,…`) : la bande contenant `effectif_min`, **puis toutes les
-      bandes supérieures**. Une bande seule exclurait les entreprises plus grandes (faux négatif
-      silencieux). Les bandes appliquées sont écrites dans `runs.details` (colonne créée par `S1-08`).
-      `effectif_min` nul = aucun filtre.
-- [ ] Aucun appel si une campagne n'a ni `naf_codes` ni `departements` (validation d'entrée)
-- [ ] Le JSON brut de chaque entreprise est conservé dans `companies.raw`
+      bandes supérieures** ; écrites dans `runs.details`. **`effectif_min` nul = aucun filtre** —
+      le paramètre est **omis** de la requête, jamais vide (un `tranche_effectif_salarie` vide
+      renvoie HTTP 422 — mesuré) ; camp 974 sans filtre : `bandes_appliquees: []`, param absent,
+      1 509 résultats ; camp 974 avec `effectif_min=50` : `bandes_appliquees: ["21",…,"53"]`
+      (bande ≥50 en union), 13 résultats
+- [x] Aucun appel si une campagne n'a ni `naf_codes` ni `departements` (validation d'entrée)
+      — critère dans le Code node de préparation ; les campagnes de validation vides n'appellent pas
+      l'API (tick à vide : `runs` à `campaign_id NULL`, 0 appel — comportement déjà testé en S1-01)
+- [x] Le JSON brut de chaque entreprise est conservé dans `companies.raw`
+      — 29 clés par `raw` sur les échantillons lus
+
+**Preuves mesurées (passe 2, exécution #22)** — lignes `runs` lues directement :
+- camp 44 : `recuperees=1841, ecartees=193, bandes_appliquees=[]`, `items_processed=1648`, status `success`
+- camp 974 sans filtre : `recuperees=1509, ecartees=68, bandes_appliquees=[]`, `items_processed=1441`, status `success`
+- camp 974 avec bande D-008 : `recuperees=13, ecartees=7, bandes_appliquees=["21"…"53"]`, status `success`
+- 3 090 entreprises écrites (1 648 + 1 441 + 1 ligne test directe) puis **données de test intégralement
+  supprimées** (`companies`, `runs`, `campaigns`) ; les doublons de SIREN sont **intentionnellement
+  laissés à S1-03** (upsert `on conflict (siren)`).
+
+**Deux découvertes d'exécution ajoutées à `AGENTS.md` §10** : (1) un paramètre de query vide
+(`tranche_effectif_salarie=`) est **refusé (422)** là où un nom inconnu passe en silence ;
+(2) le n8n Code node (JsTaskRunner) n'a **ni `fetch` ni `node:http`** — la collecte passe par un
+nœud HTTP Request native avec pagination intégrée, pas par du code.
 
 **Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : `S1-08` (colonne `runs.details`
 — revue du 2026-10-15), S0-04, **ADR 0005 validé**
