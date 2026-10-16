@@ -235,3 +235,24 @@ comme une preuve que le produit fonctionne.
 - **Fichiers de test SQL** : ils sont joués par la CI dans l'ordre alphabétique et partagent la même
   base. Un test ne doit pas laisser de lignes derrière lui (sinon il fausse les comptes des autres) :
   utiliser `begin; … rollback;` ou ne tester que des cas qui échouent.
+- **Copier une base SQLite vivante y compris son `-wal` peut figer la copie** (rencontré les
+  15-16/10/2026 en montant l'instance jetable de WF1) : les assemblages « `db` + `wal` (+ `shm`) »
+  faisaient attendre indéfiniment la lecture de `campaigns_due` côté n8n, alors que la même vue
+  répondait en 1,3 s en `curl`. Pour un snapshot consistant d'une base qui tourne, c'est SQLite qui
+  livre l'instantané : `VACUUM INTO 'copie.sqlite'` depuis le serveur ; retirer le `-shm` à la main
+  ne suffit pas (mesuré).
+- **Tuer le serveur n8n pendant une lecture fige la ligne `runs` en `running` pour toujours**
+  (rencontré les 15-16/10/2026) : la clôture en `success`/`error` n'aura plus personne pour
+  l'écrire — des lignes de harnais sont restées `running` après un kill de conteneur en pleine
+  lecture, à clôturer à la main. Avant d'« arrêter vite » un conteneur qui exécute, attendre la
+  fin de l'exécution.
+- **Migration non réapplicable : CI verte sur sa branche, cassée sur `main`** (rencontré le
+  16/10/2026, S1-05) : un `alter table … add constraint` nu passe le `ci.yml` **de sa branche**
+  (antérieur à l'étape « Réappliquer ») et casse `main` au merge (`42710 constraint already
+  exists`, reproduit en arène Postgres 16, corrigé par un garde `do $$ if not exists $$`). Toute
+  migration est à éprouver sur le `ci.yml` de la **cible de fusion**, pas de sa propre branche.
+- **Un `` `$'` `` dans une chaîne de substitution JavaScript injecte « le texte suivant le match »**
+  (rencontré le 16/10/2026, pendant la relecture S1-05) : deux essais de mutation ainsi bâtis ont
+  lu leur preuve sur un fichier différent de celui qu'on croyait muter. Pour un `$` littéral dans
+  la chaîne de remplacement, écrire `$$` — et vérifier l'effet mesuré du remplacement avant de
+  conclure.
