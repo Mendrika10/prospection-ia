@@ -34,7 +34,9 @@ compte comme En cours — sinon on empile les PR ouvertes.
 6. `S1-03` → upsert (dédoublonnage) : c'est ici que l'écriture en volume commence.
 7. `S1-04` → politesse de crawl et robustesse.
 
-`S1-05` est **déjà fait** (en review, PR #1). `S1-07` est **refusé du sprint** ce cycle.
+`S1-01` et `S1-05` sont **faits** : relus en contexte neuf, fusionnés (#22 le 16/10, #1 le 16/10), CI
+de `main` verte sur les deux squash-merges. **Prochain ticket : `S1-02`** (le cœur métier).
+`S1-07` est **refusé du sprint** ce cycle.
 `S0-04` est bien un ticket, mais son exécution est **humaine** : c'est le verrou qui conditionne la fin
 du sprint (voir la règle d'exécution) — et le seul point sur lequel un agent ne peut pas se substituer à toi.
 
@@ -62,11 +64,11 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-04 | Projet Supabase « dev » + clés | **Humain** (identifiants) | S | — | ✅ vérifié sur le vrai projet (région `eu-west-1`, écart consigné) |
 | S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps | S | — | 🟡 dépôt, CI et protection faits et testés ; board reporté (D-005) |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **Humain** (comptes) | S | — | ⬜ |
-| S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | 🟦 en review |
+| S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ✅ fait — PR #22 relue en contexte neuf (retry ×3 absent, corrigé), fusionnée, CI de `main` verte |
 | S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ⬜ |
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
-| S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | 🟦 en review |
+| S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
 | S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ⬜ |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
 | S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
@@ -732,7 +734,7 @@ verrous du §2 du brief Product Owner (identifiants, argent, hors dépôt, suppr
 | ~~`S0-04` — clés Supabase absentes, migrations non appliquées~~ **levé le 2026-10-15** : 3 migrations appliquées par `db push`, les **4 suites passent sur le vrai projet**, `anon` refusé à la main, `service_role` écrit | Les tickets S1 peuvent désormais être **vérifiés sur l'environnement cible** | — | — |
 | `S0-05` — board Projects absent | **Aucun impact sur le sprint** : D-005 a tranché, le tableau versionné est la source de vérité | `gh auth refresh -s project,read:project` | **Humain** (scope du jeton) |
 | `S0-06` — bot Telegram | Ne bloque plus rien (D-003) ; requis seulement pour WF4 (S4) et la notification de WF5 | Créer le bot | **Humain** (compte externe) |
-| PR #1 non relue | `S1-05` reste `en review`, pas `fait` : la DoD exige une relecture en contexte neuf | Lancer une session `Reviewer` | **Agent** (`prompts/roles.md` §7) |
+| ~~PR #1 non relue~~ **levée le 2026-10-16** : relecture en contexte neuf faite (un bloquant — migration non réapplicable — trouvé et corrigé), rebasée puis fusionnée ; CI de `main` verte sur le squash | — | — |
 | ~~Décision d'architecture pour `S1-09`~~ | **Levée le 2026-10-15** — [`ADR 0006`](adr/0006-cadence-des-campagnes.md) : cadence fixe du déclencheur, intervalle explicite par campagne, dernier passage lisible, vue `campaigns_due` | — | **Fait** (Architecte) |
 
 *Blocages levés : `ADR 0005` (décision du 2026-10-15) · `S0-05` dépôt, CI et protection — faits
