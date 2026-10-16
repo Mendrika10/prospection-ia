@@ -232,6 +232,14 @@ comme une preuve que le produit fonctionne.
      siège : sur une page de 25 résultats pour le 974, seuls **12 avaient leur siège dans le 974**
      (les autres sont des groupes nationaux avec une agence locale, ex. EIFFAGE basé à Mulhouse).
      Voir ADR 0005 — à trancher avant d'écrire WF1.
+  5. Un paramètre de query **vide** est refusé : `tranche_effectif_salarie=` (sans valeur) renvoie
+     **HTTP 422** « Au moins un paramètre … est non valide » alors qu'un nom inconnu passe en
+     silence. « Nul = aucun filtre » (D-008) signifie donc **omis** le paramètre, jamais envoyé vide
+     (mesuré le 2026-10-16 : 422 reproduit puis fixé).
+- **Le Code node de n8n (JsTaskRunner) n'a ni `fetch` ni `node:http`** (mesuré le 2026-10-16, v 2.x) :
+  toute collecte réseau passe par le **nœud HTTP Request** avec sa pagination native
+  (`$pageCount + 1`), pas par du code. Un `ReferenceError: fetch is not defined` sur un tick
+  WF1 = une collecte qui a tenté le réseau depuis un Code node.
 - **Fichiers de test SQL** : ils sont joués par la CI dans l'ordre alphabétique et partagent la même
   base. Un test ne doit pas laisser de lignes derrière lui (sinon il fausse les comptes des autres) :
   utiliser `begin; … rollback;` ou ne tester que des cas qui échouent.

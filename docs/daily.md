@@ -13,6 +13,26 @@ Format :
 
 ---
 
+## 2026-10-16 (vendredi) — S1-02 : WF1 collecte réellement, 3 090 entreprises écrites puis nettoyées
+
+- **Fait** : `S1-02` vérifié en conditions réelles sur une instance n8n **jetable** (conteneur local
+  `wf1-s102`, arrêté et nettoyé après capture des preuves) : 3 campagnes de test (NAF 43.21A ×
+  départements 44 et 974, dont une avec `effectif_min=50`). Résultats dans la base : 1 648 + 1 441 + 1
+  entreprises écrites, `runs.details` exacts (D-002), pagination native 74/61 pages selon la campagne,
+  règle du siège appliquée (ADR 0005), `companies.raw` à 29 clés. Un tick horaire à vide aussi capturé
+  (run `campaign_id NULL`, 0 items).
+- **Corrigé au passage (mesuré, pas supposé)** : (1) `tranche_effectif_salarie` **vide** = HTTP 422,
+  le paramètre est désormais **omis** quand `effectif_min` est nul (« nul = aucun filtre ») ;
+  (2) le Code node n8n (JsTaskRunner) refuse `fetch`/`node:http` — la collecte passe par un nœud
+  HTTP Request natif avec pagination intégrée ; (3) le Code node **exige** un `name` par entreprise
+  (`companies.name` est NOT NULL : sinon l'insertion échouait pour tout le lot).
+- **Nettoyage** : toutes les données de test (`companies`, `runs`, `campaigns`) supprimées, conteneur
+  jetable arrêté, scripts `.tmp-*` supprimés. Les doublons de SIREN (campagnes qui se recouvrent)
+  sont le travail explicite de `S1-03` (upsert `on conflict (siren)`).
+- **Prévu** : revue de la PR puis `S1-03`.
+- **Bloqué** : rien.
+
+
 ## 2026-10-16 (vendredi) — S1-05 : relecture PR #1 en contexte neuf — un bloquant trouvé, corrigé, rebasé
 
 - **Demandé** : relire la PR #1 (`S1-05` — garde-fou du format des codes NAF) en contexte neuf
