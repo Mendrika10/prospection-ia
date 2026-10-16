@@ -13,6 +13,36 @@ Format :
 
 ---
 
+## 2026-10-16 (vendredi) — S1-05 : relecture PR #1 en contexte neuf — un bloquant trouvé, corrigé, rebasé
+
+- **Demandé** : relire la PR #1 (`S1-05` — garde-fou du format des codes NAF) en contexte neuf
+  (rôle Reviewer §7), pendant que la CI de la PR #22 tournait.
+- **Prouvé en arène** (Postgres 16, séquence exacte du job CI `sql`) : rouge sans la migration
+  (exit 3, bon message), les 5 fichiers de test verts sur la même base, mutabilité du test prouvée
+  (regex affaibli → le test échoue avec le bon message). Deux essais de mutation intermédiaires ont
+  produit des résultats neutres — défauts de mon harnais, jamais de la PR ; aucun verdict ne repose
+  dessus. Consigné car « passer pour la mauvaise raison » s'applique aussi à un relecteur.
+- **Trouvé, bloquant** : la migration `20261015000002` fait un `alter table … add constraint` **nu**,
+  donc non réapplicable — or le `ci.yml` devenu effectif au merge rejoue **toutes** les migrations sur
+  une base peuplée (règle du dépôt §4) : seconde passe = `constraint "campaigns_naf_codes_format"
+  already exists` (42710), reproduit en arène. Le vert actuel de la PR ne couvre pas ce pipeline :
+  le `ci.yml` de **sa branche** est antérieur à l'étape « Réappliquer ».
+- **Corrigé, prouvé, poussé** (`fix(sql):`, +18/−3, commit `1db1c74`) : l'alter enveloppé dans
+  `do $ if not exists # Daily asynchrone
+
+Trois lignes par jour, en haut du fichier (le plus récent d'abord). Alimenté par l'agent
+**Orchestrateur** ; le PO en prend connaissance. Rien d'oral qui ne finisse ici ou dans un ticket.
+
+Format :
+```
+## AAAA-MM-JJ (jour) — Sprint N
+- Fait : …
+- Prévu : …
+- Bloqué : …   ← un blocage sans ticket de levée n'est pas un blocage, c'est un vœu
+```
+---
+
+
 ## 2026-10-16 (vendredi) — S1-01 : relecture PR #22 par un Reviewer neuf, finding corrigé et prouvé
 
 - **Demandé** : relire la PR #22 en contexte neuf (rôle Reviewer §7) et corriger ce qu'elle trouve.
