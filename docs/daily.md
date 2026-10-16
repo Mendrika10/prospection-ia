@@ -13,6 +13,29 @@ Format :
 
 ---
 
+## 2026-10-16 (vendredi) — S1-01 : relecture PR #22 par un Reviewer neuf, finding corrigé et prouvé
+
+- **Demandé** : relire la PR #22 en contexte neuf (rôle Reviewer §7) et corriger ce qu'elle trouve.
+- **Trouvé** : un finding **important** reconnu comme valide après vérification — §4 « Reprise
+  automatique (retry ×3) sur erreur réseau » était absent : aucun des trois nœuds Supabase de WF1 ne portait `Retry on Fail ×3`.
+  Deux faux positifs de mon validateur, rejetés après vérification des sources n8n
+  installées : `version` est un **tableau** chez `scheduleTrigger`, et le walker ne descendait pas dans
+  `options[].values` des fixedCollection.
+- **Corrigé** (`n8n/workflows/wf1-collecte.json`, +13/−4) : `retryOnFail ×3` + `waitBetweenTries 5 s`
+  (plafond n8n ; délai **fixe**) sur la **lecture** et les **deux clôtures** `runs`. L'**insert** reste
+  sans retry **par choix** : reprendre un insert qui a peut-être déjà écrit créerait deux lignes `runs`
+  pour une exécution (interdit). Note mise à jour dans l'artéfact.
+- **Prouvé, pas supposé** : validateur (contre les descriptions de nœuds **installées**) vert ; les deux
+  chemins exécutés sur les harnais → nominal : `success` en 3 s (insert 1,6 s / lecture 0,45 s / clôture
+  0,86 s) ; erreur = ligne passée en `error` + `finished_at` + message. Lignes **réelles** confirmées
+  dans Supabase (`runs` : `3a4b7d19…` success, `625a6fd1…` error). Une ligne harnais orpheline
+  `running` (`623ff168…` du 15/10 12:44, tuée pendant la vérification) reste à nettoyer :
+  elle ne vient ni de l'artéfact ni du chemin corrigé.
+- **Deux pièges supplémentaires, à porter en AGENTS.md §10** : copier une base SQLite **vive** y compris
+  son WAL peut figer la copie (SQLite attend indéfiniment à l'ouverture ; il faut `VACUUM INTO` pour une copie
+  consistante) ; et tuer le serveur pendant la lecture fige la ligne `runs` en
+  `running` pour toujours — plus rien ne la fermera.
+
 ## 2026-10-15 (jeudi, soir) — S1-01 : WF1 existe, journalise son passage, et c'est prouvé sur le vrai projet
 
 - **Demandé** : `S1-01` — squelette de WF1 (cadence fixe, campagnes dues, log `runs`), `S0-04` levé.
