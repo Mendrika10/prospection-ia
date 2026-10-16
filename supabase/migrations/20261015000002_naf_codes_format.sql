@@ -38,10 +38,25 @@ comment on function public.naf_codes_valides(text[]) is
 -- Contrainte. Elle valide aussi les lignes déjà présentes : si une base
 -- contient encore un code au format compact, cette migration échoue — c'est
 -- voulu, il faut corriger la donnée plutôt que masquer le problème.
+--
+-- RÉAPPLICABLE (règle du dépôt, AGENTS.md §4) : le job CI rejoue TOUTES les
+-- migrations sur une base peuplée, et l'empreinte de schéma avant/après doit
+-- rester identique. Sans garde, la seconde passe échoue — mesuré en arène
+-- Postgres 16 : « constraint campaigns_naf_codes_format already exists » (42710).
 -- -----------------------------------------------------------------------------
-alter table public.campaigns
-  add constraint campaigns_naf_codes_format
-  check (public.naf_codes_valides(naf_codes));
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'campaigns_naf_codes_format'
+      and conrelid = 'public.campaigns'::regclass
+  ) then
+    alter table public.campaigns
+      add constraint campaigns_naf_codes_format
+      check (public.naf_codes_valides(naf_codes));
+  end if;
+end
+$$;
 
 comment on column public.campaigns.naf_codes is
   'Codes APE au format pointé (ex. 43.21A, 43.99C). Le format compact (4321A) est rejeté en HTTP 400 par l''API Recherche d''entreprises.';
