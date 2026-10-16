@@ -86,7 +86,10 @@
           "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
           "name": "Supabase service_role (WF1)"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -135,7 +138,10 @@
           "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
           "name": "Supabase service_role (WF1)"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -188,7 +194,10 @@
           "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
           "name": "Supabase service_role (WF1)"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {},
@@ -219,7 +228,7 @@
     },
     {
       "parameters": {
-        "content": "## Squelette S1-01 — ce qui est écrit en base\n\n1. `runs` **créée au démarrage** : `workflow = wf1-collecte`, `status = running`.\n2. Lecture des campagnes **dues** (`campaigns_due`) avec **`returnAll = true`** : sans ce réglage le nœud s'arrête à **50 lignes**, en silence.\n3. `runs` **close** : `status = success` (ou `error` + message) avec `finished_at`, et `items_processed = 0` — **D-002** : cette colonne compte les lignes **ÉCRITES**, et le squelette n'écrit aucune donnée métier. Les compteurs de ciblage (`details`) appartiennent à S1-02.\n\nAucune campagne due : le nœud sort **1 item vide** (`alwaysOutputData`), donc le run est quand même clos en `success` avec `items_processed = 0`. Ce n'est pas un échec.",
+        "content": "## Squelette S1-01 — ce qui est écrit en base\n\n1. `runs` **créée au démarrage** : `workflow = wf1-collecte`, `status = running`.\n2. Lecture des campagnes **dues** (`campaigns_due`) avec **`returnAll = true`** : sans ce réglage le nœud s'arrête à **50 lignes**, en silence.\n3. `runs` **close** : `status = success` (ou `error` + message) avec `finished_at`, et `items_processed = 0` — **D-002** : cette colonne compte les lignes **ÉCRITES**, et le squelette n'écrit aucune donnée métier. Les compteurs de ciblage (`details`) appartiennent à S1-02.\n\nAucune campagne due : le nœud sort **1 item vide** (`alwaysOutputData`), donc le run est quand même clos en `success` avec `items_processed = 0`. Ce n'est pas un échec.\n\n**Reprises (§4 « retry ×3 »)** : les trois nœuds Supabase idempotents — lecture et deux clôtures — portent `Retry on Fail ×3` avec `waitBetweenTries = 5 s` (le plafond de n8n ; le délai est **fixe**, l'exécuteur n'offre pas de délai croissant par nœud).\n\nLe nœud d'**insert** reste volontairement **sans retry** : une reprise après un timeout où le serveur avait déjà écrit la ligne produirait **deux lignes `runs` pour une seule exécution**, ce que la règle « une ligne `runs` par exécution » (AGENTS.md §5) interdit. Un échec de l'insert reste lisible dans la trace d'exécution n8n, et le retrait échoue à découvert plutôt qu'en silence.",
         "height": 460,
         "width": 560,
         "color": 5
