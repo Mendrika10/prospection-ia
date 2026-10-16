@@ -62,7 +62,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-04 | Projet Supabase « dev » + clés | **Humain** (identifiants) | S | — | ✅ vérifié sur le vrai projet (région `eu-west-1`, écart consigné) |
 | S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps | S | — | 🟡 dépôt, CI et protection faits et testés ; board reporté (D-005) |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **Humain** (comptes) | S | — | ⬜ |
-| S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ⬜ |
+| S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | 🟦 en review |
 | S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ⬜ |
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
@@ -371,25 +371,69 @@ manuelle du board dans l'UI. Les 5 colonnes et la limite WIP se règlent ensuite
 
 ---
 
-### S1-01 — WF1 squelette : cron, campagnes actives, log `runs` ⬜
+### S1-01 — WF1 squelette : cadence fixe, campagnes dues, log `runs` ✅ fait
 
 **Objectif** : WF1 existe, s'exécute à vide sans écrire de données métier, et journalise son passage.
 
 **Contexte** : cahier des charges §7.2 (WF1), §4 (observabilité).
 
 **Critères d'acceptation**
-- [ ] Le déclencheur est à **cadence fixe** (documentée dans le workflow) ; WF1 décide **ensuite**,
+- [x] Le déclencheur est à **cadence fixe** (documentée dans le workflow) ; WF1 décide **ensuite**,
       campagne par campagne, si elle est due — la règle exacte vient de `S1-09` (correction du planning :
       « un cron par campagne lu à l'exécution » n'est pas implémentable dans n8n)
-- [ ] Lecture des campagnes avec `active = true` ; une campagne inactive n'est **jamais** traitée
-- [ ] Une ligne `runs` est créée au démarrage (`status = 'running'`), puis passée à `success`
+- [x] Lecture des campagnes avec `active = true` ; une campagne inactive n'est **jamais** traitée
+- [x] Une ligne `runs` est créée au démarrage (`status = 'running'`), puis passée à `success`
       ou `error` avec `finished_at` renseigné
-- [ ] Une exécution sans campagne active se termine en `success` avec `items_processed = 0`
+- [x] Une exécution sans campagne active se termine en `success` avec `items_processed = 0`
       (pas d'erreur : ce n'est pas un échec)
-- [ ] Le workflow est **exporté** dans `n8n/workflows/wf1-collecte.json` et importé avec succès
-- [ ] Aucun secret dans le JSON exporté (credentials référencés par nom)
+- [x] Le workflow est **exporté** dans `n8n/workflows/wf1-collecte.json` et importé avec succès
+- [x] Aucun secret dans le JSON exporté (credentials référencés par nom)
 
 **Preuve attendue** : sortie de l'import + exécution n8n, et la ligne correspondante dans `runs`.
+
+**Preuve d'import** (instance n8n **jetable** : copie de la base dans un volume dédié, jamais celle de l'équipe) :
+```
+$ n8n import:workflow --input=n8n/workflows/wf1-collecte.json
+Importing 1 workflows...
+Successfully imported 1 workflow.
+artéfact vs base de la copie : nœuds identiques=true · connexions=true · settings=true
+```
+
+**Preuve d'exécution** (trace n8n, 2026-10-15) :
+```
+• Run démarré (running)          → success  1 item  {"workflow":"wf1-collecte","status":"running","finished_at":null}
+• Campagnes dues (campaigns_due) → success  1 item  {"name":"[S1-01] campagne active due","active":true,...}
+                                              sortie d'erreur : vide
+• Run terminé (success)          → success  1 item  {"status":"success","finished_at":"2026-10-15T11:52:09.554+00:00","items_processed":0}
+• Run en erreur (error)          → success  1 item  {"status":"error","finished_at":"…","error":"echec WF1 : détail dans l'exécution n8n"}
+```
+Ce que la trace prouve : le run est créé en `running` **puis** clos ; `campaigns_due` ne renvoie **que** la
+campagne `active = true` (l'inactive n'apparaît sur **aucune** sortie, même quand elle existe en base) ;
+un run sans campagne due se termine en `success` avec `items_processed = 0` ; le chemin d'erreur écrit
+`error` **et** `finished_at` (forcé par un nom de table inexistant, sans toucher à l'artéfact).
+
+**Ligne `runs` correspondante sur le vrai projet** (Project Supabase `prospection-dev`) :
+```
+wf1-collecte | success | fini=true | items=0
+```
+Deux campagnes de test (une active, une inactive) et les quatre lignes écrites par les harnais de mesure
+(trace, chemin d'erreur, variante planifiée) ont été **supprimées après vérification** : l'état final ne
+contient qu'une seule ligne, celle de l'artéfact.
+
+**Limites de cette vérification, dites telles quelles**
+- Le déclenchement **horaire réel** n'a pas été observé : sur la copie jetable, activer un workflow exige
+  une **publication** (n8n 2.x : `Building workflow dependency index… Processed 0 published workflows`),
+  et l'API d'activation est protégée par le verrou d'écriture collaboratif. La chaîne exécutée est bien
+  celle de l'artéfact importé (mêmes nœuds, mêmes connexions, mêmes réglages), démarrée par l'API interne
+  qu'utilise le bouton « Execute workflow » de l'UI.
+- `runs.error` contient le **repli** de l'expression : la charge utile d'un item de sortie d'erreur n'est
+  pas `{error:{message,description}}` en n8n 2.43.5 (mesuré, pas supposé). À reprendre quand `S1-02`
+  introduira de vrais modes d'échec.
+- Un démarrage **manuel** d'un workflow à déclencheur horaire laisse l'exécution n8n à l'état `running`
+  alors que la chaîne s'est exécutée (prouvé par la ligne `runs`) : c'est la trace n8n qui reste ouverte,
+  pas le workflow. Un déclencheur manuel finalise normalement.
+- `import:workflow` **désactive toujours** le workflow importé, quel que soit `active: true` dans le JSON :
+  l'activation est un geste dans l'UI (ou une publication par l'API), à porter en `AGENTS.md` §10 à la rétro.
 
 **Périmètre** : `n8n/workflows/` — **interdit** : `supabase/migrations/`, `apps/`
 **Dépendances** : `S1-09` (schéma), `S0-04` (vérification finale) · **Taille** : M · **Rôle** : Automation
