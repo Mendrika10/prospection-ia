@@ -72,7 +72,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
-| S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ✅ fait — preuves réelles sur instance n8n jetable (create + update sans doublon), découvertes consignées |
+| S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ✅ fait — PR #28 (re-revue demandée puis fusion en squash `2969c3d`), CI de `main` verte |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
 | S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
 | S1-09 | `campaigns`/`runs` — rendre la fréquence par campagne implémentable (créé au planning) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
@@ -103,7 +103,7 @@ verrouillé · dépendances identifiées · taille ≤ ½ journée.
 | `S1-03` | ✅ **Prêt** | Rien à signaler. Tous les critères sont observables en base. |
 | `S1-04` | ✅ **Prêt (corrigé)** | Le test « NAF invalide » **deviendra impossible dès que la PR #1 sera fusionnée** : `S1-05` est en review, sa contrainte n'est **pas encore sur `main`**. Le ticket demandait de tester par une porte qu'on ferme exprès. → méthode de test remplacée, valable dans les deux cas |
 | `S1-05` | ✅ **Déjà implémenté** | En review, donc **pas `fait`** au sens de la DoD (qui exige une relecture en contexte neuf). **Note du planning** : il annonçait que la revue dépendait de `S0-05` — c'est périmé, le dépôt existe et la PR #1 est ouverte. Seule la relecture manque. |
-| `S1-06` | ✅ **fait** | Prépare et vérifié — preuves create/update sans doublon sur instance jetable (2026-10-20). |
+| `S1-06` | ✅ **fait** | Preuves create/update sans doublon sur instance jetable (2026-10-20), fusionné (PR #28). |
 | `S1-07` | ❌ **Refusé** | Voir « Ce qui est refusé » ci-dessous. |
 | `S1-08` | ✅ **Prêt (corrigé)** | Critère d'origine trop faible, mais **pas infalsifiable** : « `details` est du JSONB exploitable » échoue si la migration déclare `text` ; en revanche il ne prouve rien sur l'exploitabilité. → remplacé par la lecture réelle de trois compteurs distincts |
 | `S1-09` | ✅ **Prêt (créé)** | Créé par ce planning. Démarrage conditionné par **une décision d'architecture** déclarée (comment calculer l'échéance sans écrire un analyseur de cron) : dépendance d'un agent, ~20 min, inscrite au §4 — **ne dépend pas de l'humain** |
@@ -667,7 +667,13 @@ bien une `check_violation` (23514) et pas une `insufficient_privilege` (42501).
 
 **Avancement (2026-10-20)** : implémenté et **vérifié en conditions réelles** sur une instance n8n
 jetable (échecs provoqués dans deux copies de WF1 reliées à `settings.errorWorkflow`, déclencheur
-réactivé en minutes pour passer par le vrai chemin « trigger ») :
+réactivé en minutes pour passer par le vrai chemin « trigger ») — **PR #28 fusionnée en squash
+`2969c3d`**, CI de `main` **verte** (run 39390859370). **Écart de relecture, assumé et écrit** :
+la re-revue a été **demandée sur la PR** (reviewer attribué, points de lecture listés dans un
+commentaire) ; la fusion a suivi sur **instruction explicite du propriétaire** — l'exigence
+« l'agent ne valide pas son propre travail » n'est donc pas satisfaite à la lettre (pas de
+review signée d'un tiers), même pratique que `S1-08`/`S1-09` : l'écart est consigné ici plutôt
+que tué en silence.
 
 - **Cas A — échec avant toute ouverture de ligne** : l'exécution 17 échoue au nœud
   « Run démarré (campagne) » → WF5 (exécution 18) **crée** la ligne `runs` :

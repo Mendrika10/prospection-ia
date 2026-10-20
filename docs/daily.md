@@ -21,7 +21,10 @@ Format :
   Cas A (échec avant ouverture) → WF5 **crée** la ligne `runs` en `error` ; cas B (échec après
   ouverture, collecte sabote au nœud clôture) → WF5 **clôt la ligne `running`** en `error`
   (exactement la ligne ouverte, `finished_at` posé). Pas de boucle : 1 exécution WF5 par échec,
-  0 ligne figée. Nettoyage complet (comptes avant/après identiques).
+  0 ligne figée. Nettoyage complet (comptes avant/après identiques). **PR #28 : re-revue demandée
+  (reviewer attribué, points listés en commentaire), fusion en squash `2969c3d` sur instruction
+  explicite, CI de `main` verte (run 39390859370) ; l'écart « l'agent ne valide pas son propre
+  travail » est consigné dans `sprint-01.md` (pas de review signée d'un tiers).**
 - **Découvertes consignées dans `sprint-01.md`** : le filtre WF5 doit matcher la **clé du contrat
   `runs`** (`wf1-collecte`, constante posée par WF1) et non le nom n8n de l'exécution — le run
   orphelin restait sinon figé ; le mode « manual » ne déclenche jamais l'error workflow ; WF5 doit
