@@ -13,8 +13,8 @@ Format :
 
 ---
 
-## 2026-10-20 (mardi) — S1-03 fait : upsert `companies` par SIREN, preuve complète, PR à
-venir
+## 2026-10-20 (mardi) — S1-03 fait : upsert `companies` par SIREN, preuve complète, PR #30
+fusionnée
 
 - **Fait** : `S1-03` exécuté sur instruction du propriétaire (ordre D-006 levé avec `S1-06`) :
   la chaîne d'écriture d'ADR 0007 est en place dans `n8n/workflows/wf1-collecte.json` (Code « Lot
@@ -31,7 +31,12 @@ venir
   `sprint-01.md` : 401 sans les **deux** en-têtes (`supabaseApi` seul credential qui les porte),
   `in.("…","…")` PGRST100, `sendHeaders` en paramètres de **racine** du nœud HTTP v3
   (implication : User-Agent à re-vérifier en `S1-04`).
-- **Prévu** : branche + PR pour `S1-03` (revue), puis `S1-04` (politesse de crawl).
+- **Fusion** : PR #30 fusionnée en squash `e6e2c14` sur instruction explicite du propriétaire
+  (CI de la PR verte, run 39433897410) ; re-revue demandée sur la PR (reviewer attribué, points
+  listés en commentaire) — même écart de relecture assumé que `S1-06`, consigné dans
+  `sprint-01.md`.
+- **Prévu** : `S1-04` (politesse de crawl — y compris le User-Agent, cf. découverte
+  `sendHeaders` en paramètres de racine), puis `S1-05` re-review et validation PO.
 - **Bloqué** : rien (crash intermittent de Node sous Windows à la sortie du harnais — jamais
   sur les preuves elles-mêmes, verdict toujours imprimé).
 

@@ -519,7 +519,7 @@ nœud HTTP Request native avec pagination intégrée, pas par du code.
 
 ---
 
-### S1-03 — WF1 : upsert `companies` par SIREN (dédoublonnage) ✅ fait (PR à venir)
+### S1-03 — WF1 : upsert `companies` par SIREN (dédoublonnage) ✅ fait
 
 **Objectif** : relancer WF1 deux fois ne duplique rien, n'écrase pas les données enrichies, et un
 lot d'entreprises **mixtes** (nouv. + déjà en base) ne fait pas échouer tout le lot.
@@ -606,6 +606,13 @@ l'écriture).
    (harnais : comptage sur la seule campagne de test, puis exigence « ≥ 2 runs » incompatible
    avec la purge des runs entre passages) ont été corrigés **dans le harnais**, pas dans le
    workflow : les critères ont été écrits puis lus pour ce qu'ils disent, jamais assouplis.
+
+**Fusion (2026-10-20)** : **PR #30 fusionnée en squash `e6e2c14`** sur instruction explicite du propriétaire,
+CI de la PR **verte** (run 39433897410 : secrets, sql, node) ; re-revue **demandée sur la PR** (reviewer attribué,
+4 points de lecture listés en commentaire). **Écart de relecture, assumé et écrit** : la fusion a suivi sur
+instruction explicite du propriétaire avant toute review signée d'un tiers — même pratique que
+`S1-06`/`S1-08`/`S1-09` : l'exigence « l'agent ne valide pas son propre travail » n'est pas satisfaite à la
+lettre, l'écart est consigné ici plutôt que tué en silence.
 
 **Nettoyage** : base verte — `companies` / `runs` / `campaigns` comptés avant/après la preuve,
 identiques ; les campagnes de test (`S1-03-verif`, `S1-03-propriété-test`) et leurs lignes ont
