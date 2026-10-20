@@ -354,3 +354,80 @@ campagne déclarera ses **bandes** explicitement, au lieu d'un entier.
 **Qui exécute** : Automation (`S1-02`) · Backend/Data (`S1-08`, pour la trace des bandes appliquées).
 **Origine** : revue [`reviews/2026-10-15-planning-sprint-1.md`](reviews/2026-10-15-planning-sprint-1.md),
 constat n° 4.
+
+---
+
+## D-009 — Au re-passage d'une campagne, `campaign_id` n'est **pas** re-piqué · 2026-10-20 · en vigueur
+
+**Décision** : le payload d'upsert de `S1-03` ne porte **jamais** la colonne `campaign_id`. La ligne
+`companies` garde la campagne qui l'a créée pour la première fois ; un re-passage de collecte
+(éventuellement déclenché par une autre campagne) met à jour les données métier sans réattribuer
+la propriété.
+
+**Pourquoi** : ce que WF2/WF3 auront trouvé et rattaché ne doit jamais être déplacé par une
+re-collecte. Repiquer `campaign_id` n'ajoute par ailleurs rien au dédoublonnage : une ligne est
+unique par SIREN, et sa « campagne » ne sert qu'à savoir qui l'a découverte. Le re-passage a un
+seul objectif : rafraîchir les données réelles du registre public.
+
+**Options écartées** :
+
+- *Inclure `campaign_id` dans le payload* (la ligne « suit sa dernière collecte ») : la campagne
+  qui a découvert l'entreprise perd la trace de cette découverte dès qu'une re-collecte passe, et
+  les compteurs par campagne (runs, D-002) ne se réconcilient plus avec le contenu de `companies`.
+- *Envoyer un `null` explicite* : écraser une valeur réelle avec un `null` est du silence destructeur.
+
+**Preuves utilisées** : la preuve `S1-03` — au premier passage, les lignes nouvelles reçoivent leur
+`campaign_id` par une **passe de propriété distincte** (PATCH PostgREST restreint aux SIREN du lot
+*et* à `campaign_id IS NULL` — cf. ADR 0007, la passe n'attribue que les lignes fraîches) ; au
+re-passage d'une campagne de test, le `campaign_id` des lignes existantes reste inchangé ; les
+colonnes enrichies (`website`, `email`, `phone`, `website_source`) sont, elles, **jamais envoyées**
+(plus fort que « pas écrasées ») — contrat vérifié dans le contenu du payload émis (AGENTS.md §10 :
+un lot = un seul POST atomique).
+
+**Conséquence / coût** : la ligne `companies` reste propriété de sa campagne de découverte ; au
+re-passage, son `campaign_id` ne bouge pas, même si la re-collecte vient d'une autre campagne.
+
+**Ce qui me ferait changer d'avis** : si l'exploitation a un jour besoin de savoir quand une ligne
+a été vue en collecte pour la dernière fois (par quelle campagne), cela demande une colonne dédiée
+(ex. `last_collected_at`) — pas un déplacement du `campaign_id`.
+
+**Qui exécute** : Automation (`S1-03`, le payload d'upsert) · le propriétaire (l'arbitrage écrit ici).
+
+---
+
+## D-010 — Dans un lot de collecte, un SIREN en double a son **premier** item qui gagne · 2026-10-20 · en vigueur
+
+**Décision** : le lot construit par le Code node de `S1-03` garde, pour un même SIREN deux fois
+(couple multi-départements), les données de son **première** occurrence (ordre du flux), et
+rejette les occurrences suivantes, comptées avant l'écriture.
+
+**Pourquoi** : le payload d'un lot est **unique par SIREN** sans dépendre de l'ordre du POST (garde
+PostgREST : « ON CONFLICT DO UPDATE command cannot affect row a second time »). Le « premier
+gagne » est vérifiable sans supposer l'ordre interne d'un POST atomique : une collecte produit les
+entreprises dans l'ordre de lecture du registre, la première occurrence est identifiable sans
+ambiguïté au moment du Code node.
+
+**Options écartées** :
+
+- *Le dernier gagne* : il fait dépendre la valeur retenue de l'ordre d'arrivée des données de
+  collecte, et suppose de relire la base pour comprendre « pourquoi celui-là a gagné », là où le
+  premier gagne est posé une fois pour toutes dans le Code node.
+- *Fusionner les données des deux occurrences (par colonne, coalesce)* : il crée un comportement
+  inexpliqué pour l'exploitation (un mélange non demandé des deux collectes), sur un cas de
+  volume marginal.
+
+**Preuves utilisées** : la preuve de `S1-03` — un lot contenant deux fois le même SIREN (avec des
+données différentes) est écrit une fois, avec les données du **premier** item ; les doublons sont
+rejetés **avant** l'écriture et comptés (détails, jamais perdus) ; la garde PostgREST
+(« cannot affect row a second time ») n'est jamais touchée.
+
+**Conséquence / coût** : le lot est unique par SIREN — un lot mélangé (un SIREN nouveau + un SIREN
+existant) écrit les nouveaux et met à jour les existants en un seul POST, et un re-passage de
+campagne ne change le nombre de lignes de ni le contenu envoyé ni la campagne propriétaire.
+
+**Ce qui me ferait changer d'avis** : si la collecte peut qualifier la fraîcheur relative des deux
+occurrences du même SIREN dans un même lot (ex. une date de mise à jour du registre par ligne),
+« le dernier gagne » pourra reprendre l'arbitrage — sur preuve, et par une révision de D-010.
+
+**Qui exécute** : Automation (`S1-03`, le Code node de dédoublonnage) · le propriétaire (l'arbitrage écrit ici).
+

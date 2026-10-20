@@ -13,6 +13,28 @@ Format :
 
 ---
 
+## 2026-10-20 (mardi) — S1-03 fait : upsert `companies` par SIREN, preuve complète, PR à
+venir
+
+- **Fait** : `S1-03` exécuté sur instruction du propriétaire (ordre D-006 levé avec `S1-06`) :
+  la chaîne d'écriture d'ADR 0007 est en place dans `n8n/workflows/wf1-collecte.json` (Code « Lot
+  des entreprises » → HTTP « Upsert des entreprises » `POST ?on_conflict=siren` + Prefer
+  `merge-duplicates` → passe de propriété PATCH `campaign_id=is.null` → 2 conciliations) et
+  **vérifiée en conditions réelles** sur l'instance n8n jetable avec le projet réel : requête
+  émise **observée** par une copie d'écho du nœud (URL, Prefer, 2 en-têtes d'auth via
+  `supabaseApi`, payload 6 lignes sans `campaign_id` ni colonnes enrichies) ; deux passages de la
+  même campagne : 0 duplication, SIREN existant mis à jour, marque manuelle re-attribuée sur une
+  ligne recréée, `campaign_id` et colonnes enrichies jamais déplacés (D-009) ; dédoublonnage
+  intra-lot testé sur le Code node réel (lot de 3 dont 1 doublon → 2, premier gagne, D-010).
+  Base verte après nettoyage (comptes avant/après identiques). **Arbitrages PO écrits** : D-009
+  (payload sans `campaign_id`) et D-010 (premier gagne). Découvertes consignées dans
+  `sprint-01.md` : 401 sans les **deux** en-têtes (`supabaseApi` seul credential qui les porte),
+  `in.("…","…")` PGRST100, `sendHeaders` en paramètres de **racine** du nœud HTTP v3
+  (implication : User-Agent à re-vérifier en `S1-04`).
+- **Prévu** : branche + PR pour `S1-03` (revue), puis `S1-04` (politesse de crawl).
+- **Bloqué** : rien (crash intermittent de Node sous Windows à la sortie du harnais — jamais
+  sur les preuves elles-mêmes, verdict toujours imprimé).
+
 ## 2026-10-20 (mardi) — S1-06 fait : WF5 en place, preuves create/update sans doublon, ordre D-006 levé
 
 - **Fait** : WF5 (`n8n/workflows/wf5-erreurs.json`) écrit puis **vérifié en conditions réelles** sur

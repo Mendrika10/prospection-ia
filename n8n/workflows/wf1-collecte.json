@@ -418,70 +418,6 @@
       "parameters": {
         "authentication": "secretKey",
         "resource": "row",
-        "operation": "create",
-        "tableId": "companies",
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "siren",
-              "fieldValue": "={{ $json.siren }}"
-            },
-            {
-              "fieldId": "name",
-              "fieldValue": "={{ $json.name }}"
-            },
-            {
-              "fieldId": "naf",
-              "fieldValue": "={{ $json.naf }}"
-            },
-            {
-              "fieldId": "address",
-              "fieldValue": "={{ $json.address }}"
-            },
-            {
-              "fieldId": "city",
-              "fieldValue": "={{ $json.city }}"
-            },
-            {
-              "fieldId": "postal_code",
-              "fieldValue": "={{ $json.postal_code }}"
-            },
-            {
-              "fieldId": "effectif",
-              "fieldValue": "={{ $json.effectif }}"
-            },
-            {
-              "fieldId": "campaign_id",
-              "fieldValue": "={{ $json.campaign_id }}"
-            },
-            {
-              "fieldId": "raw",
-              "fieldValue": "={{ $json.raw }}"
-            }
-          ]
-        }
-      },
-      "id": "11111111-1111-4111-8111-111111111141",
-      "name": "Écriture des entreprises (S1-03: upsert)",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        1480,
-        60
-      ],
-      "onError": "continueErrorOutput",
-      "credentials": {
-        "supabaseApi": {
-          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
-          "name": "Supabase service_role (WF1)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "authentication": "secretKey",
-        "resource": "row",
         "operation": "update",
         "tableId": "runs",
         "filters": {
@@ -654,6 +590,130 @@
         1700,
         300
       ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S1-03 — construction du LOT d'entreprises à upsert (aucun réseau ici — AGENTS.md §10).\n   Contrats :\n   - ADR 0007 : l'écriture est un SEUL POST PostgREST atomique ?on_conflict=siren\n     + Prefer: resolution=merge-duplicates ; le lot est dédoublonné ICI, avant le POST,\n     pour ne jamais toucher la garde PostgREST (« cannot affect row a second time »).\n   - D-010 : doublon de SIREN intra-lot (couple multi-départements) → le PREMIER item\n     gagne ; les suivants sont rejetés et comptés (jamais perdus).\n   - D-009 : campaign_id n'est PAS dans le payload d'upsert (la passe de propriété,\n     distincte, attribue les lignes fraîches après le POST — cf. ADR 0007, point 3).\n   - Critère S1-03 : les colonnes enrichies (website, email, phone, website_source)\n     ne sont jamais envoyées — absentes du payload, pas « écrasées à null ».\n   Sortie : UNE item = UN lot (payload `lot` + contexte de conciliation). */\nconst items = $input.all();\nconst source = $('Filtrage et compteurs (S1-02)').first();\nconst base = source && source.json ? source.json : {};\nconst COLONNES_PAYLOAD = ['siren', 'name', 'naf', 'address', 'city', 'postal_code', 'effectif', 'raw'];\nconst lot = [];\nconst vus = new Set();\nlet entrees = 0;\nlet doublons_rejetes = 0;\nfor (const it of items) {\n  const j = (it && it.json) || {};\n  if (typeof j.siren !== 'string' || j.siren.trim() === '') continue;\n  entrees++;\n  if (vus.has(j.siren)) { doublons_rejetes++; continue; }\n  vus.add(j.siren);\n  const ligne = {};\n  for (const c of COLONNES_PAYLOAD) ligne[c] = j[c] ?? null;\n  lot.push(ligne);\n}\nconst details = base.details ?? { recuperees: 0, ecartees: 0, bandes_appliquees: [] };\nreturn [{ json: { ...base, details, entrees, doublons_rejetes, log: 'lot sirens=' + vus.size + ' entrees=' + entrees + ' doublons=' + doublons_rejetes, lot } }];"
+      },
+      "id": "11111111-1111-4111-8111-111111111161",
+      "name": "Lot des entreprises (S1-03)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rexnoeixlkedvdhzeoqk.supabase.co/rest/v1/companies?on_conflict=siren",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.lot }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=representation,resolution=merge-duplicates"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111162",
+      "name": "Upsert des entreprises (S1-03)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1720,
+        60
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
+          "name": "Supabase service_role (WF1)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S1-03 — passe de propriété (ADR 0007 point 3, D-009) : attribue la campagne aux\n   lignes NOUVELLES seulement. Les SIREN viennent du LOT lui-même (pas de la réponse\n   du POST : forme d'items n8n non garantie) — le filtre `campaign_id=is.null` du PATCH\n   suffit à ne toucher que les lignes fraîches : une ligne déjà attribuée (au re-passage\n   ou par une autre campagne) n'est JAMAIS re-attribuée, et aucune autre colonne n'est\n   touchée. Aucun réseau ici. Sortie : UNE item { urlAttribution, corps, ...base }. */\nconst lotItem = $('Lot des entreprises (S1-03)').first();\nconst base = lotItem && lotItem.json ? lotItem.json : {};\nconst lot = Array.isArray(base.lot) ? base.lot : [];\nconst sirens = [];\nconst vus = new Set();\nfor (const ligne of lot) {\n  const s = ligne && typeof ligne.siren === 'string' ? ligne.siren : null;\n  if (s && !vus.has(s)) { vus.add(s); sirens.push(s); }\n}\nconst campagneId = base.campaign_id;\nif (!campagneId) { throw new Error(\"garde attribution : campaign_id absent du lot — passe de propriété annulée\"); }\nconst urlProjet = base.url ? base.url : 'https://rexnoeixlkedvdhzeoqk.supabase.co';\nconst liste = sirens.map((s) => '\"' + s + '\"').join(',');\nconst urlAttribution = urlProjet + '/rest/v1/companies?campaign_id=is.null&siren=in.(' + liste + ')';\nconst corps = { campaign_id: campagneId };\nreturn [{ json: { ...base, attribution: { sirens: sirens.length }, urlAttribution, corps } }];"
+      },
+      "id": "11111111-1111-4111-8111-111111111163",
+      "name": "Attribution des nouvelles lignes (S1-03)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.urlAttribution }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.corps) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111164",
+      "name": "Attribution campagne (S1-03)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
+          "name": "Supabase service_role (WF1)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S1-03 — conciliation de la chaîne d'écriture (Atomicité du POST, ADR 0007).\n   Entrée : la sortie du nœud PATCH (alwaysOutputData : un item même si rien n'a\n   été attribué) ; un item porte `error` si la chaîne d'attribution a échoué —\n   le run en parle, jamais il ne tait l'échec.\n   D-002 : `items_processed` = lignes RÉELLEMENT écrites. Le POST étant atomique,\n   la taille du lot (`lot.lot.length`) vaud N écritures si le POST passe, 0 sinon\n   (l'échec du POST ressort comme UN item d'erreur — AGENTS.md §10). */\nconst items = $input.all();\nconst lotItem = $('Lot des entreprises (S1-03)').first();\nconst base = lotItem && lotItem.json ? lotItem.json : {};\nconst lot = Array.isArray(base.lot) ? base.lot : [];\nconst echecs = items.filter((it) => it.json && it.json.error != null);\nreturn [{\n  json: {\n    run_id: base.run_id ?? null,\n    campaign_id: base.campaign_id ?? null,\n    details: base.details ?? { recuperees: 0, ecartees: 0, bandes_appliquees: [] },\n    statut: echecs.length > 0 ? 'partial' : 'success',\n    ecrites: lot.length,\n    echecs: echecs.length,\n  },\n}];"
+      },
+      "id": "11111111-1111-4111-8111-111111111165",
+      "name": "Conciliation du lot (S1-03)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S1-03 — conciliation du chemin d'échec : le POST du lot a échoué (UN item\n   d'erreur — AGENTS.md §10). Rien n'a été écrit (POST atomique : 0 lignes).\n   D-002 : `items_processed` = 0 ; statut = partial ; l'erreur est conservée. */\nconst items = $input.all();\nconst lotItem = $('Lot des entreprises (S1-03)').first();\nconst base = lotItem && lotItem.json ? lotItem.json : {};\nconst echec = items.find((it) => it.json && it.json.error != null);\nconst message = echec && echec.json.error ? (typeof echec.json.error === 'string' ? echec.json.error : String(JSON.stringify(echec.json.error)).slice(0, 300)) : 'échec du POST du lot (subception)';\nreturn [{\n  json: { ...base, statut: 'partial', ecrites: 0, echecs: 1, error: message },\n}];"
+      },
+      "id": "11111111-1111-4111-8111-111111111166",
+      "name": "Conciliation échec de lot (S1-03)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        300
+      ]
     }
   ],
   "connections": {
@@ -782,7 +842,7 @@
       "main": [
         [
           {
-            "node": "Écriture des entreprises (S1-03: upsert)",
+            "node": "Lot des entreprises (S1-03)",
             "type": "main",
             "index": 0
           }
@@ -790,24 +850,6 @@
         [
           {
             "node": "Clôture sans ciblage (S1-02)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Écriture des entreprises (S1-03: upsert)": {
-      "main": [
-        [
-          {
-            "node": "Conciliation des écritures (S1-02)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Conciliation des écritures (S1-02)",
             "type": "main",
             "index": 0
           }
@@ -848,6 +890,79 @@
       ]
     },
     "Conciliation des écritures (S1-02)": {
+      "main": [
+        [
+          {
+            "node": "Clôture de campagne (S1-02)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lot des entreprises (S1-03)": {
+      "main": [
+        [
+          {
+            "node": "Upsert des entreprises (S1-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert des entreprises (S1-03)": {
+      "main": [
+        [
+          {
+            "node": "Attribution des nouvelles lignes (S1-03)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Conciliation échec de lot (S1-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attribution des nouvelles lignes (S1-03)": {
+      "main": [
+        [
+          {
+            "node": "Attribution campagne (S1-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attribution campagne (S1-03)": {
+      "main": [
+        [
+          {
+            "node": "Conciliation du lot (S1-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conciliation du lot (S1-03)": {
+      "main": [
+        [
+          {
+            "node": "Clôture de campagne (S1-02)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conciliation échec de lot (S1-03)": {
       "main": [
         [
           {
