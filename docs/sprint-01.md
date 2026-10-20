@@ -36,8 +36,9 @@ compte comme En cours — sinon on empile les PR ouvertes.
 
 `S1-01`, `S1-02` et `S1-05` sont **faits** : relus en contexte neuf, fusionnés (#22 et #1 le
 16/10, **#25 le 20/10** — ce qui y a été corrigé est consigné ci-dessus), CI de `main` verte sur les squash-merges.
-**Prochain ticket : `S1-06`** (l'observabilité avant l'écriture en volume, ordre ci-dessus) ;
-`S1-03` est **préparé** mais ne démarre qu'après lui.
+**Prochain ticket : `S1-03`** (l'upsert préparé le 2026-10-20 — l'ordre D-006 est levé depuis la mise en
+service de WF5) ;
+`S1-04` (politesse de crawl) reste dans l'ordre ci-dessus.
 `S1-07` est **refusé du sprint** ce cycle.
 `S0-04` est bien un ticket, mais son exécution est **humaine** : c'est le verrou qui conditionne la fin
 du sprint (voir la règle d'exécution) — et le seul point sur lequel un agent ne peut pas se substituer à toi.
@@ -71,7 +72,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
-| S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ⬜ |
+| S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ✅ fait — preuves réelles sur instance n8n jetable (create + update sans doublon), découvertes consignées |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
 | S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
 | S1-09 | `campaigns`/`runs` — rendre la fréquence par campagne implémentable (créé au planning) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
@@ -102,7 +103,7 @@ verrouillé · dépendances identifiées · taille ≤ ½ journée.
 | `S1-03` | ✅ **Prêt** | Rien à signaler. Tous les critères sont observables en base. |
 | `S1-04` | ✅ **Prêt (corrigé)** | Le test « NAF invalide » **deviendra impossible dès que la PR #1 sera fusionnée** : `S1-05` est en review, sa contrainte n'est **pas encore sur `main`**. Le ticket demandait de tester par une porte qu'on ferme exprès. → méthode de test remplacée, valable dans les deux cas |
 | `S1-05` | ✅ **Déjà implémenté** | En review, donc **pas `fait`** au sens de la DoD (qui exige une relecture en contexte neuf). **Note du planning** : il annonçait que la revue dépendait de `S0-05` — c'est périmé, le dépôt existe et la PR #1 est ouverte. Seule la relecture manque. |
-| `S1-06` | ✅ **Prêt** | Portée réduite par D-003, plus aucune dépendance externe. Testable en provoquant une erreur. |
+| `S1-06` | ✅ **fait** | Prépare et vérifié — preuves create/update sans doublon sur instance jetable (2026-10-20). |
 | `S1-07` | ❌ **Refusé** | Voir « Ce qui est refusé » ci-dessous. |
 | `S1-08` | ✅ **Prêt (corrigé)** | Critère d'origine trop faible, mais **pas infalsifiable** : « `details` est du JSONB exploitable » échoue si la migration déclare `text` ; en revanche il ne prouve rien sur l'exploitabilité. → remplacé par la lecture réelle de trois compteurs distincts |
 | `S1-09` | ✅ **Prêt (créé)** | Créé par ce planning. Démarrage conditionné par **une décision d'architecture** déclarée (comment calculer l'échéance sans écrire un analyseur de cron) : dépendance d'un agent, ~20 min, inscrite au §4 — **ne dépend pas de l'humain** |
@@ -518,7 +519,7 @@ nœud HTTP Request native avec pagination intégrée, pas par du code.
 
 ---
 
-### S1-03 — WF1 : upsert `companies` par SIREN (dédoublonnage) ⬜ *(préparé le 2026-10-20 — à exécuter après S1-06, ordre D-006)*
+### S1-03 — WF1 : upsert `companies` par SIREN (dédoublonnage) ⬜ *(préparé le 2026-10-20 — S1-06 fait : l'ordre D-006 est levé, exécutable)*
 
 **Objectif** : relancer WF1 deux fois ne duplique rien, n'écrase pas les données enrichies, et un
 lot d'entreprises **mixtes** (nouv. + déjà en base) ne fait pas échouer tout le lot.
@@ -579,8 +580,7 @@ démarrage, modèle `S1-09` ; inscrite au §4) — la voie candidate, à valider
    multi-départements), le **premier gagne** ou le **dernier gagne** — à choisir pour être prévisible,
    jamais pour dépendre de l'ordre du POST.
 
-**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : S1-01 (réalisé), et **le ticket
-ne démarre pas avant S1-06** (ordre D-006 : l'observabilité avant l'écriture en volume)
+**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : S1-01 (réalisé), et **S1-06 fait** (ordre D-006 levé : l'observabilité est en place)
 **Taille** : M · **Rôle** : Automation (+ Architecte pour la décision, + PO pour les 2 arbitrages)
 
 ---
@@ -663,7 +663,45 @@ bien une `check_violation` (23514) et pas une `insufficient_privilege` (42501).
 
 ---
 
-### S1-06 — WF5 : workflow d'erreurs + notification d'échec ⬜
+### S1-06 — WF5 : workflow d'erreurs + notification d'échec ✅ fait
+
+**Avancement (2026-10-20)** : implémenté et **vérifié en conditions réelles** sur une instance n8n
+jetable (échecs provoqués dans deux copies de WF1 reliées à `settings.errorWorkflow`, déclencheur
+réactivé en minutes pour passer par le vrai chemin « trigger ») :
+
+- **Cas A — échec avant toute ouverture de ligne** : l'exécution 17 échoue au nœud
+  « Run démarré (campagne) » → WF5 (exécution 18) **crée** la ligne `runs` :
+  `status error`, sans campagne, `finished_at` posé, `error` = message n8n complet
+  (`echec workflow n8n — « WF1 … » — exécution N — dernier nœud : … — détail`).
+- **Cas B — échec après ouverture** : la collecte ouvre une ligne `running` (campagne de test),
+  puis la clôture sabote (`tableId runs_typo` → 404 PostgREST) → l'exécution 19 échoue →
+  WF5 (exécution 20) **clôt la ligne `running` en `error`** (exactement la ligne ouverte :
+  `campaign_id` de la campagne de test, `finished_at` posé, message n8n dans `runs.error`).
+- **Pas de boucle** : exactement 1 exécution WF5 par échec de WF1, aucune exécution WF5
+  déclenchée par une exécution WF5, **0 ligne figée** en `running` après les deux scénarios.
+- Le nettoyage rend la base à l'état avant (`companies`/`runs`/`campaigns` comptés avant/après).
+
+**Découvertes consignées (2026-10-20)**
+1. **Le mode « manual » ne déclenche jamais l'error workflow** — prouvé dans le code n8n en place
+   (`execution-lifecycle-hooks.js`, l. 516-520 : `!isManualMode` requis). Toute vérification S1-06
+   doit passer par le mode **trigger** (activation réelle du workflow), pas par « Executer
+   le workflow » de l'UI. De même, WF5 doit être **activé** pour servir d'error workflow.
+2. **Bug corrigé pendant la preuve** : le filtre « Ligne(s) runs encore running » comparait le
+   champ `runs.workflow` au **nom n8n** de l'exécution, or le contrat pose une **clé constante**
+   (`wf1-collecte`, l. 70/131 de `wf1-collecte.json`). Le run orphelin restait donc figé et WF5
+   créait une ligne doublon. Le nœud « Présentation » porte désormais la correspondance explicite
+   nom n8n → clé du contrat (`ALIAS_RUNS`, avec traitement des copies de test « Nom (suffixe) »).
+3. **Verrou de versions n8n** : la mise à jour par REST (`PATCH`) persiste bien le JSON
+   (vérifié par relecture GET), mais les exécutions continuaient de charger l'ancienne version du
+   workflow. Contournement : **archiver + supprimer + réimporter à neuf** le workflow.
+
+**Critères d'acceptation**
+- [x] WF5 déclenché par un *Error Trigger* n8n
+- [x] `runs.status = 'error'` écrit avec le message dans `runs.error` — **c'est le cœur du ticket**
+- [x] Testé en provoquant volontairement une erreur dans WF1 (preuve collée dans la PR)
+- [x] Une notification en échec **ne relance pas** WF5 en boucle
+- [ ] *(facultatif, seulement si `S0-06` est fait)* notification Telegram contenant le nom du
+      workflow, l'heure et le message d'erreur
 
 **Objectif** : un workflow qui échoue le dit, au lieu de rester silencieux toute la nuit.
 
@@ -672,15 +710,8 @@ bien une `check_violation` (23514) et pas une `insufficient_privilege` (42501).
 **Portée réduite par D-003 (2026-10-15)** : la trace en base est **obligatoire**, la notification
 Telegram est un **plus non bloquant**. Le ticket ne dépend donc plus de `S0-06`.
 
-**Critères d'acceptation**
-- [ ] WF5 déclenché par un *Error Trigger* n8n
-- [ ] `runs.status = 'error'` écrit avec le message dans `runs.error` — **c'est le cœur du ticket**
-- [ ] Testé en provoquant volontairement une erreur dans WF1 (preuve collée dans la PR)
-- [ ] Une notification en échec **ne relance pas** WF5 en boucle
-- [ ] *(facultatif, seulement si `S0-06` est fait)* notification Telegram contenant le nom du
-      workflow, l'heure et le message d'erreur
-
-**Périmètre** : `n8n/workflows/wf5-erreurs.json` · **Dépendances** : aucune
+**Périmètre** : `n8n/workflows/wf5-erreurs.json` (créé), `n8n/workflows/wf1-collecte.json`
+(uniquement `settings.errorWorkflow` → l'id fixe de WF5, branchement S1-06) · **Dépendances** : aucune
 **Taille** : S · **Rôle** : Automation
 
 ---

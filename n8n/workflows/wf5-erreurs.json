@@ -1,0 +1,326 @@
+{
+  "updatedAt": "2026-10-20T14:55:00.000Z",
+  "createdAt": "2026-10-20T14:55:00.000Z",
+  "id": "Wf5ErrS106Trace01",
+  "name": "WF5 - Erreurs",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "11111111-1111-4111-8111-111111111201",
+      "name": "Sur échec d'un workflow (Error Trigger)",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S1-06 — WF5 : présenter l'échec capturé par l'Error Trigger.\n   Entrée : le payload n8n d'erreur (execution.*, workflow.*), injecté par n8n.\n   Sortie : { workflow, message } — sans réseau ici (JsTaskRunner, AGENTS.md §10).\n   Garde : champs manquants ⇒ fallback explicite, jamais un plantage de WF5 lui-même. */\nconst j = $input.first().json || {};\nconst execution = (j && j.execution) || {};\nconst erreur = (execution && execution.error) || null;\nconst wf = (j && j.workflow) || {};\nconst brut = erreur && typeof erreur.message === 'string' && erreur.message.trim() !== ''\n  ? erreur.message\n  : (erreur && typeof erreur.stack === 'string' ? erreur.stack : null);\nconst nomWorkflow = typeof wf.name === 'string' && wf.name.trim() !== '' ? wf.name : 'workflow inconnu (WF5)';\nconst message = [\n  'echec workflow n8n',\n  '« ' + nomWorkflow + ' »',\n  execution.id != null ? 'exécution ' + execution.id : null,\n  typeof execution.lastNodeExecuted === 'string' && execution.lastNodeExecuted.trim() !== '' ? 'dernier nœud : ' + execution.lastNodeExecuted : null,\n  brut ? String(brut).slice(0, 400) : null,\n].filter(Boolean).join(' — ');\nconst ALIAS_RUNS = { 'WF1 - Collecte': 'wf1-collecte' };\n/* le champ runs.workflow est la clé du contrat (constante posée par WF1, « wf1-collecte »),\n   PAS le nom n8n — d'où la correspondance : nom n8n exact, ou nom de copie de test\n   « Nom (suffixe) » via le préfixe connu (preuve par copies jetables S1-06). */\nconst aliasRuns = Object.keys(ALIAS_RUNS).find((k) => nomWorkflow === k || nomWorkflow.startsWith(k + ' ('));\nconst workflowRuns = aliasRuns !== undefined ? ALIAS_RUNS[aliasRuns] : nomWorkflow;\nreturn [{ json: { workflow: workflowRuns, workflow_n8n: nomWorkflow, message } }];\n"
+      },
+      "id": "11111111-1111-4111-8111-111111111202",
+      "name": "Présentation de l'échec (S1-06)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "secretKey",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "runs",
+        "returnAll": true,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "workflow",
+              "condition": "eq",
+              "keyValue": "={{ $json.workflow }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "running"
+            }
+          ]
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111203",
+      "name": "Ligne(s) runs encore running (S1-06)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        300
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b61",
+          "name": "Supabase service_role (WF5)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S1-06 — WF5 : y a-t-il une ligne `runs` encore `running` du même workflow à clore ?\n   - Oui (l'échec est survenu APRÈS ouverture de la ligne) → mode 'update' : on clôt la plus\n     récente (started_at décroissant). Conforme à la règle « une ligne runs par exécution ».\n   - Non (l'échec est survenu avant toute ouverture, ou la lecture a elle-même échoué —\n     l'item d'erreur ne porte pas d'`id`) → mode 'create' : la ligne d'erreur est à créer.\n   Aucun réseau ici (JsTaskRunner, AGENTS.md §10). */\nconst base = $('Présentation de l\\'échec (S1-06)').first().json;\nconst enRunning = $input.all()\n  .filter((it) => it.json && typeof it.json.id === 'string' && it.json.status === 'running')\n  .sort((a, b) => String(b.json.started_at || '').localeCompare(String(a.json.started_at || '')));\nif (enRunning.length === 0) {\n  return [{ json: { ...base, mode: 'create' } }];\n}\nreturn [{ json: { ...base, mode: 'update', run_id: enRunning[0].json.id } }];\n"
+      },
+      "id": "11111111-1111-4111-8111-111111111204",
+      "name": "Choisir la clôture (S1-06)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "11111111-1111-4111-8111-111111111251",
+              "leftValue": "={{ $json.mode === 'update' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111205",
+      "name": "Une ligne running à clôturer ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "secretKey",
+        "resource": "row",
+        "operation": "update",
+        "tableId": "runs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.run_id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "error"
+            },
+            {
+              "fieldId": "finished_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "items_processed",
+              "fieldValue": "={{ 0 }}"
+            },
+            {
+              "fieldId": "error",
+              "fieldValue": "={{ $json.message }}"
+            }
+          ]
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111206",
+      "name": "Clôture la ligne en error (S1-06)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        840,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b61",
+          "name": "Supabase service_role (WF5)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "authentication": "secretKey",
+        "resource": "row",
+        "operation": "create",
+        "tableId": "runs",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "workflow",
+              "fieldValue": "={{ $json.workflow }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "error"
+            },
+            {
+              "fieldId": "finished_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "items_processed",
+              "fieldValue": "={{ 0 }}"
+            },
+            {
+              "fieldId": "error",
+              "fieldValue": "={{ $json.message }}"
+            }
+          ]
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111207",
+      "name": "Nouvelle ligne runs en error (S1-06)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        840,
+        420
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b61",
+          "name": "Supabase service_role (WF5)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Ce que WF5 fait (S1-06) — D-003\n\nWF5 est appelé par n8n quand **une autre exécution** échoue (chaque workflow porte `settings.errorWorkflow` vers l'id de WF5). Il s'assure qu'aucune ligne `runs` ne reste figée en `running` et qu'aucun échec ne devient silencieux :\n\n1. **Une ligne `running` existe déjà** (l'échec est survenu après son ouverture) → elle est **clôturée en `error`** avec le message n8n (retry ×3 — l'update est idempotent).\n2. **Aucune ligne** (échec avant toute ouverture) → **créer** la ligne (`workflow`, `error`, `campaign_id` NULL — cas prévu par la migration 4). Sans retry : « une ligne `runs` par exécution » (AGENTS.md §5).\n\nLe POST de lot d'écriture (piège §10) ne concerne pas WF5 : ses écritures sont **unitaires**, jamais des lots. **Pas de notification Telegram** — portée D-003 : c'est un plus non bloquant, dû seulement si `S0-06` est fait (action humaine).\n\nAucun secret dans ce fichier : le credential est référencé par `id`/`name`.",
+        "height": 400,
+        "width": 480,
+        "color": 4
+      },
+      "id": "11111111-1111-4111-8111-111111111208",
+      "name": "Note — ce que WF5 fait",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -40
+      ]
+    }
+  ],
+  "connections": {
+    "Sur échec d'un workflow (Error Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Présentation de l'échec (S1-06)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Présentation de l'échec (S1-06)": {
+      "main": [
+        [
+          {
+            "node": "Ligne(s) runs encore running (S1-06)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ligne(s) runs encore running (S1-06)": {
+      "main": [
+        [
+          {
+            "node": "Choisir la clôture (S1-06)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Choisir la clôture (S1-06)": {
+      "main": [
+        [
+          {
+            "node": "Une ligne running à clôturer ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Une ligne running à clôturer ?": {
+      "main": [
+        [
+          {
+            "node": "Clôture la ligne en error (S1-06)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nouvelle ligne runs en error (S1-06)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {},
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "6e5f9a1c-2b8d-4c3e-9f47-8fd8a2b4c7e1",
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
