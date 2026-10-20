@@ -277,7 +277,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* S1-02 — filtrage et compteurs sur les réponses de l'API (sans réseau ici non plus).\n   Entrée : les pages renvoyées par le nœud HTTP paginé (chaque item = le corps d'une page),\n   appairées à l'item couple dont elles descendent. Règles appliquées telles quelles :\n   - anti-silence : chaque résultat porte le code NAF du couple ET etat_administratif = \"A\"\n     (l'API ignore un paramètre inconnu en silence : on contrôle la réponse, pas le code HTTP) ;\n   - ADR 0005 : ne conserver que le siège ; compter les hors zone (jamais perdues) ;\n   - D-002 : recuperees = renvoyées par l'API ; ecartees = écartées (siège hors zone) ;\n     bandes_appliquees = codes INSEE quand le filtre d'effectif s'applique. */\nconst items = $input.all();\nconst STATE_ERROR = \"echec de collecte WF1 : \";\n\n/* contexte de campagne : l'item couple courant (pairing), sinon premier item (une\n   seule campagne par itération de boucle ; vérifié à l'exécution) */\nfunction contexteDe(itemPaire) {\n  let couple = $('Préparation de collecte (S1-02)').item;\n  if (couple && couple.json && typeof couple.json.naf === 'string') return couple.json;\n  const loopItem = $('Préparation de collecte (S1-02)').first();\n  return loopItem && loopItem.json && typeof loopItem.json.naf === 'string' ? loopItem.json : null;\n}\n\nlet erreur = null;\nconst conservees = [];\nlet recupereesTot = 0;\nlet ecarteesTot = 0;\nlet context = null;\n\nfor (const it of items) {\n  const j = it.json || {};\n  if (j.error) {\n    erreur = STATE_ERROR + (typeof j.error === 'string' ? j.error : (j.error.message || 'erreur API'));\n    continue;\n  }\n  const couple = contexteDe(it) || {};\n  if (!context) {\n    context = {\n      run_id: couple.run_id || null,\n      campaign_id: couple.campaign_id || null,\n      departements_cible: Array.isArray(couple.departements_cible) ? couple.departements_cible : [],\n      bandes_appliquees: Array.isArray(couple.bandes_appliquees) ? couple.bandes_appliquees : [],\n    };\n  }\n  const resultats = Array.isArray(j.results) ? j.results : [];\n  for (const resultat of resultats) {\n    if (erreur) break;\n    const nafDemande = typeof couple.naf === 'string' ? couple.naf.trim() : null;\n    if (!nafDemande) {\n      erreur = STATE_ERROR + \"contexte du couple introuvable (pairing perdu), collecte impossible\";\n      break;\n    }\n    if (resultat.activite_principale !== nafDemande) {\n      erreur = STATE_ERROR + \"vérification anti-silence : activite_principale = \" + JSON.stringify(resultat.activite_principale) + \" au lieu de \" + nafDemande;\n      break;\n    }\n    if (resultat.etat_administratif !== 'A') {\n      erreur = STATE_ERROR + \"vérification anti-silence : etat_administratif = \" + JSON.stringify(resultat.etat_administratif) + \" (demandé A)\";\n      break;\n    }\n    /* companies.name est NOT NULL (migration initiale) : on exige un nom quel que soit\n       le champ qui le porte (denomination API v3, nom_complet, nom_raison_sociale). */\n    const nomEntreprise = resultat.denomination_unite_legale || resultat.denomination || resultat.nom_complet || resultat.nom_raison_sociale || null;\n    if (typeof nomEntreprise !== 'string' || nomEntreprise.trim() === '') {\n      erreur = STATE_ERROR + \"contrat : entreprise sans name (denomination/nom_complet absents), siren=\" + JSON.stringify(resultat.siren);\n      break;\n    }\n    recupereesTot++;\n    const siege = resultat.siege || null;\n    const deptSiege = siege && typeof siege.departement === 'string' ? siege.departement.toLowerCase() : null;\n    if (deptSiege && context.departements_cible.includes(deptSiege)) {\n      conservees.push({\n        siren: resultat.siren || null,\n        name: nomEntreprise,\n        naf: resultat.activite_principale || null,\n        address: siege.adresse || null,\n        city: siege.libelle_commune || null,\n        postal_code: siege.code_postal || null,\n        effectif: typeof resultat.tranche_effectif_salarie === 'string' ? resultat.tranche_effectif_salarie : null,\n        campaign_id: context.campaign_id,\n        raw: resultat,\n        run_id: context.run_id,\n      });\n    } else {\n      ecarteesTot++;\n    }\n  }\n  if (erreur) break;\n}\n\nconst details = { recuperees: recupereesTot, ecartees: ecarteesTot, bandes_appliquees: (context ? context.bandes_appliquees : []) };\nconst base = { run_id: context ? context.run_id : null, campaign_id: context ? context.campaign_id : null };\nif (erreur) return [{ json: { ...base, couple: false, vide: false, erreur, conservees: [], details } }];\nif (conservees.length === 0) {\n  return [{ json: { ...base, couple: false, vide: true, erreur: null, conservees: [], details } }];\n}\nreturn conservees.map((ligne) => ({ json: { couple: false, vide: false, erreur: null, conservees: null, details: details, ...ligne } }));\n"
+        "jsCode": "/* S1-02 — filtrage et compteurs sur les réponses de l'API (sans réseau ici non plus).\n   Entrée : les pages renvoyées par le nœud HTTP paginé (chaque item = le corps d'une page),\n   appairées à l'item couple dont elles descendent. Règles appliquées telles quelles :\n   - anti-silence : chaque résultat porte le code NAF du couple ET etat_administratif = \"A\"\n     (l'API ignore un paramètre inconnu en silence : on contrôle la réponse, pas le code HTTP) ;\n   - contrats de colonnes : `siren` (clé primaire) ET `name` (NOT NULL) vérifiés LOCALEMENT,\n     sinon une seule ligne manquante fait échouer tout le lot à l'écriture ;\n   - plafond de pagination : le nœud HTTP S'ARRÊTE SANS ERREUR à maxRequests (≤ 100 pages) —\n     la complétude = recevoir une page renvoyant MOINS de 25 résultats, donc si la DERNIÈRE\n     page reçue est pleine, la collecte est tronquée : le run le dit, jamais le taire ;\n   - ADR 0005 : ne conserver que le siège ; compter les hors zone (jamais perdues) ;\n   - D-002 : recuperees = renvoyées par l'API ; ecartees = écartées par la règle du siège ;\n     bandes_appliquees = codes INSEE quand le filtre d'effectif s'applique. */\nconst items = $input.all();\nconst STATE_ERROR = \"echec de collecte WF1 : \";\n\n/* contexte de campagne : l'item couple courant (pairing), sinon premier item (une\n   seule campagne par itération de boucle ; vérifié à l'exécution) */\nfunction contexteDe(itemPaire) {\n  let couple = $('Préparation de collecte (S1-02)').item;\n  if (couple && couple.json && typeof couple.json.naf === 'string') return couple.json;\n  const loopItem = $('Préparation de collecte (S1-02)').first();\n  return loopItem && loopItem.json && typeof loopItem.json.naf === 'string' ? loopItem.json : null;\n}\n\nlet erreur = null;\nconst conservees = [];\nlet recupereesTot = 0;\nlet ecarteesTot = 0;\nlet context = null;\n\nfor (const it of items) {\n  const j = it.json || {};\n  if (j.error) {\n    erreur = STATE_ERROR + (typeof j.error === 'string' ? j.error : (j.error.message || 'erreur API'));\n    continue;\n  }\n  const couple = contexteDe(it) || {};\n  if (!context) {\n    context = {\n      run_id: couple.run_id || null,\n      campaign_id: couple.campaign_id || null,\n      departements_cible: Array.isArray(couple.departements_cible) ? couple.departements_cible : [],\n      bandes_appliquees: Array.isArray(couple.bandes_appliquees) ? couple.bandes_appliquees : [],\n    };\n  }\n  const resultats = Array.isArray(j.results) ? j.results : [];\n  for (const resultat of resultats) {\n    if (erreur) break;\n    const nafDemande = typeof couple.naf === 'string' ? couple.naf.trim() : null;\n    if (!nafDemande) {\n      erreur = STATE_ERROR + \"contexte du couple introuvable (pairing perdu), collecte impossible\";\n      break;\n    }\n    if (resultat.activite_principale !== nafDemande) {\n      erreur = STATE_ERROR + \"vérification anti-silence : activite_principale = \" + JSON.stringify(resultat.activite_principale) + \" au lieu de \" + nafDemande;\n      break;\n    }\n    if (resultat.etat_administratif !== 'A') {\n      erreur = STATE_ERROR + \"vérification anti-silence : etat_administratif = \" + JSON.stringify(resultat.etat_administratif) + \" (demandé A)\";\n      break;\n    }\n    /* companies : siren est la clé primaire et name est NOT NULL (migration initiale) —\n       les deux contrats sont vérifiés localement, avant toute écriture. */\n    if (typeof resultat.siren !== 'string' || resultat.siren.trim() === '') {\n      erreur = STATE_ERROR + \"contrat : entreprise sans siren, siren=\" + JSON.stringify(resultat.siren);\n      break;\n    }\n    const nomEntreprise = resultat.denomination_unite_legale || resultat.denomination || resultat.nom_complet || resultat.nom_raison_sociale || null;\n    if (typeof nomEntreprise !== 'string' || nomEntreprise.trim() === '') {\n      erreur = STATE_ERROR + \"contrat : entreprise sans name (denomination/nom_complet absents), siren=\" + JSON.stringify(resultat.siren);\n      break;\n    }\n    recupereesTot++;\n    const siege = resultat.siege || null;\n    const deptSiege = siege && typeof siege.departement === 'string' ? siege.departement.toLowerCase() : null;\n    if (deptSiege && context.departements_cible.includes(deptSiege)) {\n      conservees.push({\n        siren: resultat.siren,\n        name: nomEntreprise,\n        naf: resultat.activite_principale || null,\n        address: siege.adresse || null,\n        city: siege.libelle_commune || null,\n        postal_code: siege.code_postal || null,\n        effectif: typeof resultat.tranche_effectif_salarie === 'string' ? resultat.tranche_effectif_salarie : null,\n        campaign_id: context.campaign_id,\n        raw: resultat,\n        run_id: context.run_id,\n      });\n    } else {\n      ecarteesTot++;\n    }\n  }\n  if (erreur) break;\n}\n\n/* Plafond de pagination : le nœud HTTP s'arrête à maxRequests (≤ 100 pages) SANS erreur.\n   Complétude = recevoir une page renvoyant MOINS de 25 résultats. Donc si la DERNIÈRE\n   page reçue est pleine (25 résultats), la collecte a été tronquée au plafond — ou le\n   couple vise un volume anormal (≥ 2 500 résultats NAF × département). En parler. */\nif (!erreur) {\n  const pages = items.filter((it) => it.json && Array.isArray(it.json.results));\n  if (pages.length > 0 && pages[pages.length - 1].json.results.length >= 25) {\n    erreur = STATE_ERROR + \"plafond de pagination atteint : dernière page reçue pleine (25 résultats) — collecte tronquée à 100 pages (2 500 résultats max par couple NAF × département) ou volume anormal à arbitrer\";\n  }\n}\n\nconst details = { recuperees: recupereesTot, ecartees: ecarteesTot, bandes_appliquees: (context ? context.bandes_appliquees : []) };\nconst base = { run_id: context ? context.run_id : null, campaign_id: context ? context.campaign_id : null };\nif (erreur) return [{ json: { ...base, couple: false, vide: false, erreur, conservees: [], details } }];\nif (conservees.length === 0) {\n  return [{ json: { ...base, couple: false, vide: true, erreur: null, conservees: [], details } }];\n}\nreturn conservees.map((ligne) => ({ json: { couple: false, vide: false, erreur: null, conservees: null, details: details, ...ligne } }));\n"
       },
       "id": "11111111-1111-4111-8111-111111111137",
       "name": "Filtrage et compteurs (S1-02)",
@@ -470,7 +470,7 @@
         1480,
         60
       ],
-      "onError": "continueRegularOutput",
+      "onError": "continueErrorOutput",
       "credentials": {
         "supabaseApi": {
           "id": "c9e1f6a2-7b34-4f0e-9a5c-1d2e3f4a5b60",
@@ -498,7 +498,7 @@
           "fieldValues": [
             {
               "fieldId": "status",
-              "fieldValue": "success"
+              "fieldValue": "={{ $json.statut }}"
             },
             {
               "fieldId": "finished_at",
@@ -506,11 +506,15 @@
             },
             {
               "fieldId": "items_processed",
-              "fieldValue": "={{ $('Écriture des entreprises (S1-03: upsert)').all().length }}"
+              "fieldValue": "={{ $json.ecrites }}"
             },
             {
               "fieldId": "details",
-              "fieldValue": "={{ $('Filtrage et compteurs (S1-02)').first().json.details }}"
+              "fieldValue": "={{ $json.details }}"
+            },
+            {
+              "fieldId": "error",
+              "fieldValue": "={{ $json.echecs > 0 ? ($json.echecs + ' écriture(s) en échec (doublon SIREN possible — upsert prévu en S1-03)') : null }}"
             }
           ]
         }
@@ -607,7 +611,7 @@
     },
     {
       "parameters": {
-        "content": "## Ce que S1-02 écrit en base\n\n**Une campagne due = une ligne `runs` dédiée** (ADR 0006 ; `runs.campaign_id` ajouté par la migration 4). Un tick sans campagne due écrit une ligne à `campaign_id` NULL — cas prévu par la migration 4 (« NULL pour un run sans campagne… exécution à vide »).\n\n1. `Run démarré (campagne)` : `runs` créée en `running` avec `campaign_id` — **sans retry** (deux lignes pour un même passage, AGENTS.md §5).\n2. `Collecte API (S1-02)` : nœud **HTTP paginé** — un appel par couple (code NAF × département), `paginé` jusqu'à épuisement, pagination intégrée du nœud n8n (`$pageCount + 1` | `1 s entre les pages` | `timeout 10 s` | `≤ 100 pages`).\n   → Le Code node est sans réseau ici, mesuré le 16/10 : n8n 2.43.5 (JsTaskRunner) refuse **fetch** et `node:http` dans le Code-node.\n3. Le nœud **Filtrage et compteurs** applique l'anti-silence et la règle du siège (ADR 0005), **localement**, puis trois clôtures possibles :\n   « Clôture en erreur » : `status = error`, `items = 0` — campagne impossible à cibler : aucun appel API (validation d'entrée), ou échec de collecte (réseau ou contrat violé).\n   « Clôture sans ciblage » : `status = success`, `items = 0` — aucune entreprise dans la zone (réponse vide = cas nominal, à ne pas confondre avec une panne), ou tick à vide.\n   « Clôture de campagne » : `status = success`, `items_processed` = lignes ÉCRITES (D-002), `runs.details` = compteurs + bandes.\n4. `runs.details` (S1-08, migration 3) : `recuperees` = entreprises renvoyées par l'API (gardées ou écartées), `ecartees` = écartées par la règle du siège, `bandes_appliquees` = codes INSEE quand le filtre s'applique, `[]` sinon.\n\n**Insertion des entreprises** : « Écriture des entreprises » insère en simple ; **S1-03** fera l'upsert `on conflict (siren)` pour que re-collecter la même campagne ne duplique rien et n'écrase pas les champs enrichis.",
+        "content": "## Ce que S1-02 écrit en base\n\n**Une campagne due = une ligne `runs` dédiée** (ADR 0006 ; `runs.campaign_id` ajouté par la migration 4). Un tick sans campagne due écrit une ligne à `campaign_id` NULL — cas prévu par la migration 4 (« NULL pour un run sans campagne… exécution à vide »).\n\n1. `Run démarré (campagne)` : `runs` créée en `running` avec `campaign_id` — **sans retry** (deux lignes pour un même passage, AGENTS.md §5).\n2. `Collecte API (S1-02)` : nœud **HTTP paginé** — un appel par couple (code NAF × département), paginé jusqu'à épuisement, pagination intégrée du nœud n8n (`$pageCount + 1` | `1 s entre les pages` | `timeout 10 s` | `≤ 100 pages`).\n   → Le Code node est sans réseau ici, mesuré le 16/10 : n8n 2.43.5 (JsTaskRunner) refuse **fetch** et `node:http` dans le Code-node.\n3. Le nœud **Filtrage et compteurs** applique **localement**, avant toute écriture : anti-silence (chaque résultat porte le code NAF demandé et `etat_administratif = A`), **contrats de colonnes** (`siren` clé primaire et `name` NOT NULL), **plafond de pagination** (dernière page reçue pleine = collecte tronquée à 100 pages → run en `error`), et la règle du siège (ADR 0005). Quatre clôtures possibles :\n   « Clôture en erreur » : `status = error`, `items = 0` — campagne impossible à cibler (aucun appel API, validation d'entrée), ou contrat de collecte violé (réponse hors contrat, plafond de pagination atteint).\n   « Clôture sans ciblage » : `status = success`, `items = 0` — aucune entreprise dans la zone (réponse vide = cas nominal, à ne pas confondre avec une panne), ou tick à vide.\n   « Clôture de campagne » : reçoit le **statut calculé** par « Conciliation des écritures » : `success` si toutes les lignes visées sont écrites, `partial` sinon (AGENTS.md §5) — `items_processed` = lignes **RÉELLEMENT écrites** (D-002), `runs.details` = compteurs + bandes, `runs.error` = nombre d'écritures en échec (doublon SIREN possible — upsert livré en S1-03).\n4. `runs.details` (S1-08, migration 3) : `recuperees` = entreprises renvoyées par l'API (gardées ou écartées), `ecartees` = écartées par la règle du siège, `bandes_appliquees` = codes INSEE quand le filtre s'applique, `[]` sinon.\n\n**Insertion des entreprises** : « Écriture des entreprises » sépare les écritures réussies des échecs (`continueErrorOutput`) — les deux branches passent **réunies** par « Conciliation des écritures », qui compte les écrites et décide du statut ; **S1-03** fera l'upsert `on conflict (siren)` pour que re-collecter la même campagne ne duplique rien et n'écrase pas les champs enrichis.",
         "height": 660,
         "width": 640,
         "color": 5
@@ -635,6 +639,20 @@
       "position": [
         660,
         -280
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S1-02 — conciliation des écritures : compte les lignes RÉELLEMENT écrites\n   (D-002 : items_processed = lignes ÉCRITES) et détermine le statut du run\n   (AGENTS.md §5 : success | partial | error). Entrée : les deux sorties du nœud\n   d'écriture réunies (continueErrorOutput) — les items en échec portent un champ\n   `error` (ex. 409 doublon SIREN — à livrer en S1-03). Les deux branches étant\n   issues du même nœud, une seule exécution reçoit tous les items. */\nconst items = $input.all();\nconst echecs = items.filter((it) => it.json && it.json.error != null);\nconst source = $('Filtrage et compteurs (S1-02)').first();\nconst base = source && source.json ? source.json : {};\nreturn [{\n  json: {\n    run_id: base.run_id ?? null,\n    campaign_id: base.campaign_id ?? null,\n    details: base.details ?? { recuperees: 0, ecartees: 0, bandes_appliquees: [] },\n    statut: echecs.length > 0 ? 'partial' : 'success',\n    ecrites: items.length - echecs.length,\n    echecs: echecs.length,\n  },\n}];\n"
+      },
+      "id": "11111111-1111-4111-8111-111111111146",
+      "name": "Conciliation des écritures (S1-02)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        300
       ]
     }
   ],
@@ -782,7 +800,14 @@
       "main": [
         [
           {
-            "node": "Clôture de campagne (S1-02)",
+            "node": "Conciliation des écritures (S1-02)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Conciliation des écritures (S1-02)",
             "type": "main",
             "index": 0
           }
@@ -816,6 +841,17 @@
         [
           {
             "node": "Pour chaque campagne (S1-02)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conciliation des écritures (S1-02)": {
+      "main": [
+        [
+          {
+            "node": "Clôture de campagne (S1-02)",
             "type": "main",
             "index": 0
           }
