@@ -232,6 +232,14 @@ comme une preuve que le produit fonctionne.
      siège : sur une page de 25 résultats pour le 974, seuls **12 avaient leur siège dans le 974**
      (les autres sont des groupes nationaux avec une agence locale, ex. EIFFAGE basé à Mulhouse).
      Voir ADR 0005 — à trancher avant d'écrire WF1.
+  5. Un paramètre de query **vide** est refusé : `tranche_effectif_salarie=` (sans valeur) renvoie
+     **HTTP 422** « Au moins un paramètre … est non valide » alors qu'un nom inconnu passe en
+     silence. « Nul = aucun filtre » (D-008) signifie donc **omis** le paramètre, jamais envoyé vide
+     (mesuré le 2026-10-16 : 422 reproduit puis fixé).
+- **Le Code node de n8n (JsTaskRunner) n'a ni `fetch` ni `node:http`** (mesuré le 2026-10-16, v 2.x) :
+  toute collecte réseau passe par le **nœud HTTP Request** avec sa pagination native
+  (`$pageCount + 1`), pas par du code. Un `ReferenceError: fetch is not defined` sur un tick
+  WF1 = une collecte qui a tenté le réseau depuis un Code node.
 - **Fichiers de test SQL** : ils sont joués par la CI dans l'ordre alphabétique et partagent la même
   base. Un test ne doit pas laisser de lignes derrière lui (sinon il fausse les comptes des autres) :
   utiliser `begin; … rollback;` ou ne tester que des cas qui échouent.
@@ -256,3 +264,21 @@ comme une preuve que le produit fonctionne.
   lu leur preuve sur un fichier différent de celui qu'on croyait muter. Pour un `$` littéral dans
   la chaîne de remplacement, écrire `$$` — et vérifier l'effet mesuré du remplacement avant de
   conclure.
+- **Le nœud Supabase de n8n poste les items d'un lot en un seul POST atomique** (mesuré le
+  2026-10-20, preuve S1-02 sur instance jetable) : un seul doublon → 409 pour **tout** le lot, et
+  l'échec du lot ressort comme **UN** item d'erreur (avec `continueRegularOutput` comme avec
+  `continueErrorOutput`). D'où l'énigme « 6 tentées → items=1 » : le compteur lisait la sortie
+  d'erreur, qui contient un item **par lot**, pas par ligne. Conséquences : compter des lots en
+  échec, jamais des lignes ; et un lot **mixte** (un nouveau + un doublon) échoue au complet —
+  c'est exactement ce que l'upsert `on conflict (siren)` (S1-03) doit résoudre.
+- **Le champ du credential n8n `supabaseApi` porte la clé dans `serviceRole`** (nom vérifié dans
+  le code du nœud, version en place) : l'ancien nom `secretKey` est **ignoré en silence** — le
+  credential est créé vide et chaque appel sort en 401 « No API key found in request », seulement
+  lisible dans les logs du conteneur. Règle : vérifier les noms de champs du schéma de la version
+  réellement déployée, jamais supposer ceux d'une version précédente (deuxième occurrence du
+  « paramètre inconnu ignoré silencieusement », côté n8n cette fois).
+- **Un workflow importé dans n8n doit être archivé avant suppression** : `DELETE
+  /rest/workflows/<id>` renvoie 400 « Workflow must be archived before it can be deleted » ; la
+  voie qui marche est `POST /rest/workflows/<id>/archive` puis `DELETE`. Un PATCH avec
+  `{ isArchived: true }` renvoie 200 **sans effet** (mesuré) : ne pas conclure à l'archivage
+  d'après un 200 — vérifier par le DELETE qui le prouve.
