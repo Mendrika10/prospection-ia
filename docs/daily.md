@@ -32,7 +32,6 @@ Format :
 - **Prévu** : revue de la PR puis `S1-03`.
 - **Bloqué** : rien.
 
-
 ## 2026-10-16 (vendredi) — S1-05 : relecture PR #1 en contexte neuf — un bloquant trouvé, corrigé, rebasé
 
 - **Demandé** : relire la PR #1 (`S1-05` — garde-fou du format des codes NAF) en contexte neuf

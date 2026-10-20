@@ -83,7 +83,7 @@
             },
             {
               "fieldId": "error",
-              "fieldValue": "echec WF1 : lecture campaigns_due impossible (détail dans lexécution n8n)"
+              "fieldValue": "echec WF1 : lecture campaigns_due impossible (détail dans l'exécution n8n)"
             }
           ]
         }
