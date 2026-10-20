@@ -264,3 +264,21 @@ comme une preuve que le produit fonctionne.
   lu leur preuve sur un fichier différent de celui qu'on croyait muter. Pour un `$` littéral dans
   la chaîne de remplacement, écrire `$$` — et vérifier l'effet mesuré du remplacement avant de
   conclure.
+- **Le nœud Supabase de n8n poste les items d'un lot en un seul POST atomique** (mesuré le
+  2026-10-20, preuve S1-02 sur instance jetable) : un seul doublon → 409 pour **tout** le lot, et
+  l'échec du lot ressort comme **UN** item d'erreur (avec `continueRegularOutput` comme avec
+  `continueErrorOutput`). D'où l'énigme « 6 tentées → items=1 » : le compteur lisait la sortie
+  d'erreur, qui contient un item **par lot**, pas par ligne. Conséquences : compter des lots en
+  échec, jamais des lignes ; et un lot **mixte** (un nouveau + un doublon) échoue au complet —
+  c'est exactement ce que l'upsert `on conflict (siren)` (S1-03) doit résoudre.
+- **Le champ du credential n8n `supabaseApi` porte la clé dans `serviceRole`** (nom vérifié dans
+  le code du nœud, version en place) : l'ancien nom `secretKey` est **ignoré en silence** — le
+  credential est créé vide et chaque appel sort en 401 « No API key found in request », seulement
+  lisible dans les logs du conteneur. Règle : vérifier les noms de champs du schéma de la version
+  réellement déployée, jamais supposer ceux d'une version précédente (deuxième occurrence du
+  « paramètre inconnu ignoré silencieusement », côté n8n cette fois).
+- **Un workflow importé dans n8n doit être archivé avant suppression** : `DELETE
+  /rest/workflows/<id>` renvoie 400 « Workflow must be archived before it can be deleted » ; la
+  voie qui marche est `POST /rest/workflows/<id>/archive` puis `DELETE`. Un PATCH avec
+  `{ isArchived: true }` renvoie 200 **sans effet** (mesuré) : ne pas conclure à l'archivage
+  d'après un 200 — vérifier par le DELETE qui le prouve.
