@@ -34,8 +34,10 @@ compte comme En cours — sinon on empile les PR ouvertes.
 6. `S1-03` → upsert (dédoublonnage) : c'est ici que l'écriture en volume commence.
 7. `S1-04` → politesse de crawl et robustesse.
 
-`S1-01` et `S1-05` sont **faits** : relus en contexte neuf, fusionnés (#22 le 16/10, #1 le 16/10), CI
-de `main` verte sur les deux squash-merges. **Prochain ticket : `S1-02`** (le cœur métier).
+`S1-01`, `S1-02` et `S1-05` sont **faits** : relus en contexte neuf, fusionnés (#22 et #1 le
+16/10, **#25 le 20/10** — ce qui y a été corrigé est consigné ci-dessus), CI de `main` verte sur les squash-merges.
+**Prochain ticket : `S1-06`** (l'observabilité avant l'écriture en volume, ordre ci-dessus) ;
+`S1-03` est **préparé** mais ne démarre qu'après lui.
 `S1-07` est **refusé du sprint** ce cycle.
 `S0-04` est bien un ticket, mais son exécution est **humaine** : c'est le verrou qui conditionne la fin
 du sprint (voir la règle d'exécution) — et le seul point sur lequel un agent ne peut pas se substituer à toi.
@@ -65,7 +67,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-05 | Dépôt GitHub public + board + `main` protégée | DevOps | S | — | 🟡 dépôt, CI et protection faits et testés ; board reporté (D-005) |
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **Humain** (comptes) | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ✅ fait — PR #22 relue en contexte neuf (retry ×3 absent, corrigé), fusionnée, CI de `main` verte |
-| S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ✅ fait — PR #25 relue en contexte neuf (4 points importants corrigés : conciliation écrit, statut `partial`, plafond de pagination, contrat `siren`), preuves réelles sur instance jetable (`partial`/`ecrites` sur le cas doublons), fusionnée en squash (`76ae1eb`), CI de `main` verte |
+| S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ✅ fait — PR #25 relue en contexte neuf (4 points importants corrigés : conciliation des écrites, statut `partial`, plafond de pagination, contrat `siren`), preuves réelles sur instance jetable (`partial`/`ecrites` sur le cas doublons), fusionnée en squash (`76ae1eb`), CI de `main` verte |
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
@@ -516,22 +518,70 @@ nœud HTTP Request native avec pagination intégrée, pas par du code.
 
 ---
 
-### S1-03 — WF1 : upsert `companies` par SIREN (dédoublonnage) ⬜
+### S1-03 — WF1 : upsert `companies` par SIREN (dédoublonnage) ⬜ *(préparé le 2026-10-20 — à exécuter après S1-06, ordre D-006)*
 
-**Objectif** : relancer WF1 deux fois ne duplique rien et n'écrase pas les données enrichies.
+**Objectif** : relancer WF1 deux fois ne duplique rien, n'écrase pas les données enrichies, et un
+lot d'entreprises **mixtes** (nouv. + déjà en base) ne fait pas échouer tout le lot.
 
-**Contexte** : RF-05 · critère d'acceptation v1 « alimente `companies` sans doublon ».
+**Contexte** : RF-05 · critère d'acceptation v1 « alimente `companies` sans doublon » ·
+**mise à jour du 2026-10-20** — découvertes de la preuve S1-02 (PR #25, `AGENTS.md` §10) : le nœud
+Supabase de n8n poste les items d'un lot en **un seul POST atomique** — avec l'`insert` simple
+en place : (1) **tout** doublon SIREN fait échouer tout le lot ; (2) un lot **mixte** échoue au
+complet ; (3) un échec de lot ressort comme **UN** item d'erreur (les échecs se comptent en lots,
+pas en lignes). C'est le cas de la campagne B de la preuve : 6 conservées, 0 écrites.
 
-**Critères d'acceptation**
-- [ ] Upsert sur la clé primaire `siren` (jamais d'insertion en doublon)
+**Fait vérifié dans le code du nœud (image n8n en place, 2026-10-20)** : les opérations du nœud
+Supabase sont `create`, `delete`, `get`, `getAll`, `update` — **aucun** upsert (`grep -icE
+'upsert|on_conflict|merge-duplicates'` → 0). Un upsert est donc **techniquement impossible** par
+ce nœud : la voie passe forcément ailleurs.
+
+**Décision d'architecte à consigner avant toute implémentation** (condition de
+démarrage, modèle `S1-09` ; inscrite au §4) — la voie candidate, à valider ou écarter :
+- **Nœud HTTP Request** : `POST {SUPABASE}/rest/v1/companies?on_conflict=siren` avec l'en-tête
+  `Prefer: resolution=merge-duplicates` (sémantique PostgREST `ON CONFLICT DO UPDATE`) — l'URL du
+  projet n'est pas un secret (elle est publique par nature côté front) ; la clé est portée par un
+  **credential générique d'en-tête** (`headerAuth`) référencé par `id`/`name` — **aucune clé dans
+  le JSON exporté**
+- **Un item = un lot d'entreprises** (pas un POST par entreprise) : le lot est construit et
+  **dédupliqué par SIREN** dans un Code node (garde PostgREST : un payload contenant **deux fois la
+  même clé** échoue avec « ON CONFLICT DO UPDATE command cannot affect row a second time »)
+- **Alternatives écartées** : (a) `update` puis `create` en cascade — deux requêtes, course possible
+  entre ticks, et un lot sans atomicité ; (b) une fonction SQL `on conflict` appelée via RPC —
+  fiable mais elle sort du périmètre Automation et met du SQL dans le nœud
+
+**Critères d'acceptation** (modifiés le 2026-10-20 pour être exercés par le nouveau chemin)
+- [ ] Un POST par couple porte bien `?on_conflict=siren` et `Prefer: resolution=merge-duplicates`
+      — prouvé en observant la requête HTTP réellement émise (preuve sur instance jetable),
+      jamais déduit du seul code de statut
 - [ ] Un second passage sur la même campagne ne change **pas** le nombre de lignes
-- [ ] Les champs déjà enrichis (`website`, `email`, `website_source`) ne sont **pas** écrasés par `null`
-      lors d'un re-passage (piège classique de l'upsert : un `null` qui écrase une valeur trouvée)
-- [ ] `updated_at` est bien actualisé à l'écriture
+      (comptage `companies` avant/après, pas un « rien vu dans l'UI »)
+- [ ] Un **lot mixte** (un SIREN nouveau + un SIREN déjà en base) : le nouveau est **écrit**, l'existant
+      est **mis à jour**, et le run est `success` — c'est le cas que la campagne B de la preuve
+      S1-02 montrait en échec complet
+- [ ] Un payload contenant **deux fois le même SIREN** est détecté **avant** l'écriture (déduplication
+      dans le Code node) — jamais exposé à la garde PostgREST (« ON CONFLICT DO UPDATE
+      command cannot affect row a second time »)
+- [ ] Les colonnes `website`, `email`, `phone`, `website_source` ne figurent **pas dans le payload**
+      (plus fort que « pas écrasées par `null` » : jamais envoyées) — vérifié dans le JSON exporté
+- [ ] `updated_at` reste actualisé à l'écriture, `raw` est mis à jour, et la ligne `runs` suit la
+      sémantique D-002/§5 actuelle (les compteurs de la conciliation restent vrais : un échec de
+      lot ressort comme UN item d'erreur — AGENTS.md §10)
 - [ ] Les entreprises récupérées hors zone (ADR 0005) ne sont pas insérées
 
-**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : S1-01
-**Taille** : M · **Rôle** : Automation
+**Deux décisions à arbitrer par l'agent PO avant le démarrage** (à écrire dans
+`docs/product-decisions.md`) :
+1. **`campaign_id` au re-passage** : omettre la colonne du payload d'upsert (la ligne garde la
+   campagne qui l'a créée — recommandé, comportement par défaut si non tranché) ou l'inclure (la
+   ligne suit sa dernière collecte). Point de cohérence : ce que WF2/WF3 ont trouvé ne doit jamais
+   être écrasé par une re-collecte, et repiquer `campaign_id` n'aide à rien au dédoublonnage —
+   d'où l'omission recommandée (et c'est au PO de l'écrire).
+2. **Intra-lot dédoublonné** : si le même SIREN figure deux fois dans un lot de collecte (couple
+   multi-départements), le **premier gagne** ou le **dernier gagne** — à choisir pour être prévisible,
+   jamais pour dépendre de l'ordre du POST.
+
+**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : S1-01 (réalisé), et **le ticket
+ne démarre pas avant S1-06** (ordre D-006 : l'observabilité avant l'écriture en volume)
+**Taille** : M · **Rôle** : Automation (+ Architecte pour la décision, + PO pour les 2 arbitrages)
 
 ---
 
