@@ -519,69 +519,106 @@ nœud HTTP Request native avec pagination intégrée, pas par du code.
 
 ---
 
-### S1-03 — WF1 : upsert `companies` par SIREN (dédoublonnage) ⬜ *(préparé le 2026-10-20 — S1-06 fait : l'ordre D-006 est levé, exécutable)*
+### S1-03 — WF1 : upsert `companies` par SIREN (dédoublonnage) ✅ fait (PR à venir)
 
 **Objectif** : relancer WF1 deux fois ne duplique rien, n'écrase pas les données enrichies, et un
 lot d'entreprises **mixtes** (nouv. + déjà en base) ne fait pas échouer tout le lot.
 
-**Contexte** : RF-05 · critère d'acceptation v1 « alimente `companies` sans doublon » ·
-**mise à jour du 2026-10-20** — découvertes de la preuve S1-02 (PR #25, `AGENTS.md` §10) : le nœud
-Supabase de n8n poste les items d'un lot en **un seul POST atomique** — avec l'`insert` simple
-en place : (1) **tout** doublon SIREN fait échouer tout le lot ; (2) un lot **mixte** échoue au
-complet ; (3) un échec de lot ressort comme **UN** item d'erreur (les échecs se comptent en lots,
-pas en lignes). C'est le cas de la campagne B de la preuve : 6 conservées, 0 écrites.
+**Contexte** : RF-05 · critère d'acceptation v1 « alimente `companies` sans doublon » · **mise à
+jour du 2026-10-20** — découvertes de la preuve S1-02 (PR #25, `AGENTS.md` §10) : le nœud Supabase
+de n8n poste les items d'un lot en **un seul POST atomique** — avec l'`insert` simple en place :
+(1) **tout** doublon SIREN fait échouer tout le lot ; (2) un lot **mixte** échoue au complet ;
+(3) un échec de lot ressort comme **UN** item d'erreur (les échecs se comptent en lots, pas en
+lignes). C'est le cas de la campagne B de la preuve : 6 conservées, 0 écrites.
 
 **Fait vérifié dans le code du nœud (image n8n en place, 2026-10-20)** : les opérations du nœud
 Supabase sont `create`, `delete`, `get`, `getAll`, `update` — **aucun** upsert (`grep -icE
 'upsert|on_conflict|merge-duplicates'` → 0). Un upsert est donc **techniquement impossible** par
 ce nœud : la voie passe forcément ailleurs.
 
-**Décision d'architecte à consigner avant toute implémentation** (condition de
-démarrage, modèle `S1-09` ; inscrite au §4) — la voie candidate, à valider ou écarter :
+**Décision d'architecte posée puis appliquée (ADR 0007, créé le 2026-10-20)** — la chaîne de
+substitution, à la place du nœud Supabase natif :
 - **Nœud HTTP Request** : `POST {SUPABASE}/rest/v1/companies?on_conflict=siren` avec l'en-tête
-  `Prefer: resolution=merge-duplicates` (sémantique PostgREST `ON CONFLICT DO UPDATE`) — l'URL du
-  projet n'est pas un secret (elle est publique par nature côté front) ; la clé est portée par un
-  **credential générique d'en-tête** (`headerAuth`) référencé par `id`/`name` — **aucune clé dans
-  le JSON exporté**
+  `Prefer: return=representation,resolution=merge-duplicates` (sémantique PostgREST
+  `ON CONFLICT DO UPDATE`) — l'URL du projet n'est pas un secret (elle est publique par nature
+  côté front) ; la clé est portée par le **type prédéfini `supabaseApi`** du nœud HTTP, référencé
+  par `id`/`name` — **aucune clé dans le JSON exporté**
 - **Un item = un lot d'entreprises** (pas un POST par entreprise) : le lot est construit et
-  **dédupliqué par SIREN** dans un Code node (garde PostgREST : un payload contenant **deux fois la
-  même clé** échoue avec « ON CONFLICT DO UPDATE command cannot affect row a second time »)
-- **Alternatives écartées** : (a) `update` puis `create` en cascade — deux requêtes, course possible
-  entre ticks, et un lot sans atomicité ; (b) une fonction SQL `on conflict` appelée via RPC —
-  fiable mais elle sort du périmètre Automation et met du SQL dans le nœud
+  **dédupliqué par SIREN** dans un Code node (garde PostgREST : un payload contenant **deux fois
+  la même clé** échoue avec « ON CONFLICT DO UPDATE command cannot affect row a second time »)
+- **Passe de propriété distincte** (ADR 0007, point 3) : après le POST, le `campaign_id` est
+  attribué par un PATCH ciblé `campaign_id=is.null` + `siren=in.(…)`, dont les SIREN viennent du
+  **lot lui-même** — pas de la réponse du POST (la forme d'items n8n n'est pas garantie) ; le
+  filtre suffit à ne toucher que les lignes fraîches (D-009 : une ligne déjà attribuée — au
+  re-passage ou par une autre campagne — n'est jamais re-attribuée)
+- **Alternatives écartées** : (a) `update` puis `create` en cascade — deux requêtes, course
+  possible entre ticks, et un lot sans atomicité ; (b) une fonction SQL `on conflict` appelée
+  via RPC — fiable mais elle sort du périmètre Automation et met du SQL dans le nœud
 
-**Critères d'acceptation** (modifiés le 2026-10-20 pour être exercés par le nouveau chemin)
-- [ ] Un POST par couple porte bien `?on_conflict=siren` et `Prefer: resolution=merge-duplicates`
-      — prouvé en observant la requête HTTP réellement émise (preuve sur instance jetable),
-      jamais déduit du seul code de statut
-- [ ] Un second passage sur la même campagne ne change **pas** le nombre de lignes
-      (comptage `companies` avant/après, pas un « rien vu dans l'UI »)
-- [ ] Un **lot mixte** (un SIREN nouveau + un SIREN déjà en base) : le nouveau est **écrit**, l'existant
-      est **mis à jour**, et le run est `success` — c'est le cas que la campagne B de la preuve
-      S1-02 montrait en échec complet
-- [ ] Un payload contenant **deux fois le même SIREN** est détecté **avant** l'écriture (déduplication
-      dans le Code node) — jamais exposé à la garde PostgREST (« ON CONFLICT DO UPDATE
-      command cannot affect row a second time »)
-- [ ] Les colonnes `website`, `email`, `phone`, `website_source` ne figurent **pas dans le payload**
-      (plus fort que « pas écrasées par `null` » : jamais envoyées) — vérifié dans le JSON exporté
-- [ ] `updated_at` reste actualisé à l'écriture, `raw` est mis à jour, et la ligne `runs` suit la
-      sémantique D-002/§5 actuelle (les compteurs de la conciliation restent vrais : un échec de
-      lot ressort comme UN item d'erreur — AGENTS.md §10)
-- [ ] Les entreprises récupérées hors zone (ADR 0005) ne sont pas insérées
+**Avancement (2026-10-20)** : implémenté et **vérifié en conditions réelles** sur l'instance n8n
+jetable (conteneur `wf1-verif-s106`) avec le projet réel : collecte NAF 43.21A × 974 (13
+récupérées, 7 écartées ADR 0005, 6 écrites), deux passages de la même campagne, manipulation des
+lignes témoins entre les deux, test du dédoublonnage en Code node. Les deux arbitrares PO
+demandés par le ticket sont écrits : **D-009** (le payload d'upsert ne porte jamais
+`campaign_id`) et **D-010** (doublon intra-lot : le **premier** gagne, rejeté et compté avant
+l'écriture).
 
-**Deux décisions à arbitrer par l'agent PO avant le démarrage** (à écrire dans
-`docs/product-decisions.md`) :
-1. **`campaign_id` au re-passage** : omettre la colonne du payload d'upsert (la ligne garde la
-   campagne qui l'a créée — recommandé, comportement par défaut si non tranché) ou l'inclure (la
-   ligne suit sa dernière collecte). Point de cohérence : ce que WF2/WF3 ont trouvé ne doit jamais
-   être écrasé par une re-collecte, et repiquer `campaign_id` n'aide à rien au dédoublonnage —
-   d'où l'omission recommandée (et c'est au PO de l'écrire).
-2. **Intra-lot dédoublonné** : si le même SIREN figure deux fois dans un lot de collecte (couple
-   multi-départements), le **premier gagne** ou le **dernier gagne** — à choisir pour être prévisible,
-   jamais pour dépendre de l'ordre du POST.
+**Critères d'acceptation** (tous exercés par le nouveau chemin sur le projet réel)
+- [x] La requête émise porte `?on_conflict=siren` et
+      `Prefer: return=representation,resolution=merge-duplicates` — **observée** par une copie
+      d'écho du même nœud (hôte substitué) : URL, en-tête Prefer, les **deux en-têtes
+      d'authentification** via le credential `supabaseApi`, et un corps de 6 lignes aux colonnes
+      exactes (`siren, name, naf, address, city, postal_code, effectif, raw`) — ni `campaign_id`,
+      ni colonnes enrichies
+- [x] Un second passage sur la même campagne ne change **pas** le nombre de lignes
+      (6 lignes témoins avant/après, comptées via l'API — pas un « rien vu dans l'UI »)
+- [x] Un **lot mixte** : SIREN déjà en base mis à jour (name rafraîchi, raw réactualisé),
+      SIREN absent recréé ; run `success`, `items_processed = 6` (D-002)
+- [x] Un payload en double du même SIREN est détecté **avant** l'écriture — test réel du Code
+      node : lot de 3 items dont un doublon → lot de 2, `doublons_rejetes = 1`, **le premier
+      gagne** (D-010), la garde PostgREST (« cannot affect row a second time ») jamais exposée
+- [x] Les colonnes `website`, `email`, `phone`, `website_source` ne figurent **pas dans le
+      payload** — observé dans le corps du POST écho, et re-vérifié dans le test du Code node
+- [x] `updated_at` reste actualisé à l'écriture, `raw` est mis à jour, et la passe de propriété
+      (D-009) respecte le contrat : une ligne réattribuée à une campagne créée manuellement
+      avant le re-passage garde son `campaign_id` et ses colonnes enrichies posées à la main ;
+      une ligne supprimée avant re-passage est recréée et attribuée à la campagne de test
+      (passe distincte) ; les 6 lignes ont un `updated_at` rafraîchi au second passage
+- [x] Les entreprises récupérées hors zone (ADR 0005) ne sont pas insérées (7 écartées,
+      compteurs `runs.details` intacts : 13 récupérées / 7 écartées)
 
-**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : S1-01 (réalisé), et **S1-06 fait** (ordre D-006 levé : l'observabilité est en place)
-**Taille** : M · **Rôle** : Automation (+ Architecte pour la décision, + PO pour les 2 arbitrages)
+**Découvertes consignées au fil de la preuve (à porter dans `AGENTS.md` §10 à la rétro)**
+1. **Deux en-têtes obligatoires sur la passerelle Postgres du projet** : `Authorization: Bearer …`
+   seul renvoie 401 « No API key found in request », `apikey` seul renvoie 401 « permission
+   denied for role anon ». Le seul credential qui porte les deux depuis le même secret est le
+   **type prédéfini `supabaseApi`** du nœud HTTP (`SupabaseApi.credentials.js` l. 28-33).
+2. **Syntaxe du filtre `in.` PostgREST** : `siren=in.819…,310…` échoue en **PGRST100**
+   (« expecting "(" ») ; il faut `siren=in.("819…","310…")` — parenthèses **et** guillemets.
+   La garde (rejets « cannot affect a second time ») n'a jamais été touchée : le POST du lot
+   est resté sain.
+3. **`sendHeaders`/`headerParameters` du nœud HTTP v3 sont des paramètres de RACINE**, pas des
+   `options` (`HttpRequestV3.js` l. 185) : mis dans `options`, un en-tête est **silencieusement
+   non émis**. Conséquence `S1-04` : le User-Agent de la collecte est à re-vérifier et corriger
+   à l'occasion de « politesse de crawl ».
+4. **La passe d'attribution lit les SIREN dans le lot, pas dans la réponse du POST** : la forme
+   d'items n8n renvoyée n'est pas garantie ; le filtre `campaign_id=is.null` suffit à ne toucher
+   que les lignes fraîches — plus robuste et plus simple. Deux faux « NON PRUVE » intermédiaires
+   (harnais : comptage sur la seule campagne de test, puis exigence « ≥ 2 runs » incompatible
+   avec la purge des runs entre passages) ont été corrigés **dans le harnais**, pas dans le
+   workflow : les critères ont été écrits puis lus pour ce qu'ils disent, jamais assouplis.
+
+**Nettoyage** : base verte — `companies` / `runs` / `campaigns` comptés avant/après la preuve,
+identiques ; les campagnes de test (`S1-03-verif`, `S1-03-propriété-test`) et leurs lignes ont
+été supprimées. La preuve n'a rien laissé derrière elle, aucune donnée de production touchée.
+
+**Périmètre étendu** : `n8n/workflows/wf1-collecte.json` (chaîne d'écriture complète : Code
+« Lot des entreprises (S1-03) » → HTTP « Upsert des entreprises (S1-03) » → Code « Attribution
+des nouvelles lignes (S1-03) » → HTTP « Attribution campagne (S1-03) » → conciliations
+« Conciliation du lot (S1-03) » et « Conciliation échec de lot (S1-03) ») ·
+`docs/adr/0007-upsert-par-requete-postgrest.md` (créé : en-têtes doubles via credential
+prédéfini, passe de propriété) · `docs/product-decisions.md` (D-009, D-010)
+**Taille** : M · **Rôle** : Automation
+**Dépendances réalisées** : S1-01 (réalisé), S1-06 fait (ordre D-006 levé)
 
 ---
 
