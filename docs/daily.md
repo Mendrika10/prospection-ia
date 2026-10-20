@@ -13,6 +13,24 @@ Format :
 
 ---
 
+## 2026-10-20 (mardi) — S1-06 fait : WF5 en place, preuves create/update sans doublon, ordre D-006 levé
+
+- **Fait** : WF5 (`n8n/workflows/wf5-erreurs.json`) écrit puis **vérifié en conditions réelles** sur
+  une instance n8n jetable : deux copies de WF1 reliées par `settings.errorWorkflow`, activées
+  (mode « trigger », exclu par le code n8n pour « manual » — `execution-lifecycle-hooks.js`, l. 516-520).
+  Cas A (échec avant ouverture) → WF5 **crée** la ligne `runs` en `error` ; cas B (échec après
+  ouverture, collecte sabote au nœud clôture) → WF5 **clôt la ligne `running`** en `error`
+  (exactement la ligne ouverte, `finished_at` posé). Pas de boucle : 1 exécution WF5 par échec,
+  0 ligne figée. Nettoyage complet (comptes avant/après identiques).
+- **Découvertes consignées dans `sprint-01.md`** : le filtre WF5 doit matcher la **clé du contrat
+  `runs`** (`wf1-collecte`, constante posée par WF1) et non le nom n8n de l'exécution — le run
+  orphelin restait sinon figé ; le mode « manual » ne déclenche jamais l'error workflow ; WF5 doit
+  être **activé** ; et le verrou de versions n8n (PATCH persiste le JSON mais les exécutions
+  chargeaient l'ancienne version) impose l'archivage + suppression + réimport à neuf.
+- **Ordre D-006 levé** : `S1-03` (upsert, déjà préparé ce matin) devient exécutable.
+- **Bloqué** : rien (crash intermittent de Node sous Windows à la sortie du harnais — jamais sur les
+  preuves elles-mêmes, verdict toujours imprimé).
+
 ## 2026-10-20 (mardi) — S1-02 fusionné : PR #25, corrections de revue prouvées, CI de `main` verte
 
 - **Fait** : la PR #25 (`S1-02` — WF1 collecte réelle) est passée par sa DoD complète :

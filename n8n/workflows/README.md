@@ -8,10 +8,15 @@ Un fichier par workflow, exporté depuis l'UI n8n (`...` → *Download*) puis co
 | `wf2-enrichissement.json` | WF2 Enrichissement site | Cron | S2 |
 | `wf3-analyse-scoring.json` | WF3 Analyse + scoring | Cron | S3 |
 | `wf4-digest.json` | WF4 Digest / notification | Cron quotidien | S4 |
-| `wf5-erreurs.json` | WF5 Erreurs | Error Trigger | S4 |
+| `wf5-erreurs.json` | WF5 Erreurs | Error Trigger | S1 (S1-06) |
 
 ## Conventions
 
+- **WF5 (error workflow)** : doit rester **activé** pour servir d'error workflow ; une exécution
+  « manual » de n8n ne le déclenche **jamais** (mode non-manuel requis — vérifié dans le code n8n,
+  `execution-lifecycle-hooks.js` l. 516-520). Le champ `runs.workflow` est la **clé du contrat**
+  posée par le workflow concerné (`wf1-collecte`, etc.), pas le nom n8n : la correspondance
+  nom n8n → clé se fait dans le nœud « Présentation » de WF5 (`ALIAS_RUNS`).
 - **Export** : compléter `name`, `nodes`, `connections`, `settings`, `pinData: {}`, `versionId`, `meta`.
 - **Pas de secret dans le JSON** : les credentials n8n sont référencés par `id`/`name`, jamais par valeur.
   Vérifier avant commit : `grep -iE "eyJ|service_role|token" n8n/workflows/*.json`

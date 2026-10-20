@@ -861,7 +861,8 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "timezone": "Indian/Antananarivo"
+    "timezone": "Indian/Antananarivo",
+    "errorWorkflow": "Wf5ErrS106Trace01"
   },
   "staticData": null,
   "meta": {},
