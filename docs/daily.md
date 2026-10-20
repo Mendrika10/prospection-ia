@@ -13,6 +13,19 @@ Format :
 
 ---
 
+## 2026-10-20 (mardi) — S1-02 fusionné : PR #25, corrections de revue prouvées, CI de `main` verte
+
+- **Fait** : la PR #25 (`S1-02` — WF1 collecte réelle) est passée par sa DoD complète :
+  relue en contexte neuf deux fois (les 4 points importants signalés puis corrigés puis re-vérifiés),
+  corrections **prouvées en exécution réelle** sur instance n8n jetable (commit 458fecc : conciliation des écritures,
+  statut `partial` sur le cas doublons, plafond de pagination, contrat `siren` ;
+  10 tests de simulation + 3 mutations), fusionnée en **squash `76ae1eb`**, CI de `main` **verte**
+  (run 39376121986). `sprint-01.md` : S1-02 passe à ✅ fait (cette PR).
+- **Prévu** : `S1-03` (upsert `on conflict (siren)`) — à cadrer sur la base de la découverte « le nœud
+  Supabase poste un lot en un seul POST atomique » (`AGENTS.md` §10), et `S1-04` (politesse de
+  crawl, `Retry` ×3 sur le nœud HTTP).
+- **Bloqué** : rien.
+
 ## 2026-10-16 (vendredi) — S1-02 : WF1 collecte réellement, 3 090 entreprises écrites puis nettoyées
 
 - **Fait** : `S1-02` vérifié en conditions réelles sur une instance n8n **jetable** (conteneur local
