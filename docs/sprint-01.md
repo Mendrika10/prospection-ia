@@ -69,8 +69,8 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S0-06 | Comptes externes : bot Telegram + clé PageSpeed | **Humain** (comptes) | S | — | ⬜ |
 | S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ✅ fait — PR #22 relue en contexte neuf (retry ×3 absent, corrigé), fusionnée, CI de `main` verte |
 | S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ✅ fait — PR #25 relue en contexte neuf (4 points importants corrigés : conciliation des écrites, statut `partial`, plafond de pagination, contrat `siren`), preuves réelles sur instance jetable (`partial`/`ecrites` sur le cas doublons), fusionnée en squash (`76ae1eb`), CI de `main` verte |
-| S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ⬜ |
-| S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ⬜ |
+| S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ✅ fait — PR #30 fusionnée en squash `e6e2c14` (ADR 0007, D-009/D-010), preuves réelles sur instance jetable (dédoublonnage lot mixte, upsert atomique PostgREST, passe de propriété), CI de `main` verte |
+| S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ✅ fait — PR #32 fusionnée en squash `be89bf9` (User-Agent corrigé, Wait 1s, Retry ×3, Continue on Fail, tests endpoint faux + département vide), CI de `main` verte |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
 | S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ✅ fait — PR #28 (re-revue demandée puis fusion en squash `2969c3d`), CI de `main` verte |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
