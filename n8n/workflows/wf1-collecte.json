@@ -105,8 +105,10 @@
     },
     {
       "parameters": {
-        "batchSize": 1,
-        "options": {}
+        "batchSize": 10,
+        "options": {
+          "waitBetweenBatches": 1000
+        }
       },
       "id": "11111111-1111-4111-8111-111111111132",
       "name": "Pour chaque campagne (S1-02)",
@@ -159,7 +161,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* S1-02 — préparation de la collecte : validation d'entrée, couples NAF × département,\n   bandes d'effectif D-008 (union). AUCUN appel réseau ici : le Code node de n8n 2.43.5\n   (JsTaskRunner) n'a pas de fetch — l'appel HTTP est fait par le nœud « Collecte API ».\n   Contrat : AGENTS.md §10 · ADR 0005 (siège) · D-002 (runs.details) · ADR 0006 (runs par campagne). */\nconst campagne = $('Pour chaque campagne (S1-02)').first().json;\nconst runsRow  = $('Run démarré (campagne)').first().json;\nconst runId      = runsRow && typeof runsRow.id === 'string' ? runsRow.id : null;\nconst campaignId = campagne && typeof campagne.id === 'string' ? campagne.id : null;\n\n/* 1) Tick à vide : l'item renvoyé par campaigns_due (alwaysOutputData) n'est pas une campagne. */\nif (!campagne || typeof campagne.id !== 'string') {\n  return [{ json: { run_id: runId, campaign_id: null, couple: false, vide: true, erreur: null,\n    conservees: [], details: { recuperees: 0, ecartees: 0, bandes_appliquees: [] } } }];\n}\n\n/* 2) Validation d'entrée (critère du ticket) : aucun appel si aucun couple (code NAF × département). */\nconst nafCodes = Array.isArray(campagne.naf_codes) ? campagne.naf_codes.filter((c) => typeof c === 'string' && c.trim() !== '') : [];\nconst cibles   = Array.isArray(campagne.departements) ? campagne.departements.filter((d) => typeof d === 'string' && d.trim() !== '') : [];\nif (nafCodes.length === 0 || cibles.length === 0) {\n  return [{ json: { run_id: runId, campaign_id: campaignId, couple: false, vide: false,\n    erreur: \"campagne impossible à cibler : naf_codes ou departements vides — aucun appel API\", conservees: [], details: null } }];\n}\n\n/* 3) Bandes d'effectif D-008 : la bande contenant effectif_min puis toutes les bandes supérieures,\n      en UNION dans une seule requête. Bornes inf INSEE des 15 codes du vocabulaire figé. */\nconst codesBande  = [\"00\",\"01\",\"02\",\"03\",\"11\",\"12\",\"21\",\"22\",\"31\",\"32\",\"41\",\"42\",\"51\",\"52\",\"53\"];\nconst bornesBasse = [0, 1, 3, 6, 10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000];\nconst effectifMin = typeof campagne.effectif_min === 'number' && campagne.effectif_min > 0 ? campagne.effectif_min : null;\nlet bandesAppliquees = [];\nif (effectifMin !== null) {\n  let indice = 0;\n  for (let i = 0; i < codesBande.length; i++) {\n    if (bornesBasse[i] <= effectifMin) indice = i; else break;\n  }\n  bandesAppliquees = codesBande.slice(indice);\n}\n\n/* 4) Un item par couple (code NAF × département). Les pages de chaque couple sont créées par le\n      nœud HTTP suivant (pagination native) ; le Code suivant vérifie anti-silence et règle du siège. */\nconst departementsCible = cibles.map((d) => d.trim().toLowerCase());\nconst items = [];\nfor (const nafCode of nafCodes) {\n  for (const departement of departementsCible) {\n    items.push({\n      json: {\n        couple: true, vide: false, erreur: null,\n        run_id: runId,\n        campaign_id: campaignId,\n        naf: nafCode.trim(),\n        departement: departement,\n        departements_cible: departementsCible,\n        naf_codes: nafCodes,\n        bandes_appliquees: bandesAppliquees,\n      },\n    });\n  }\n}\nreturn items;\n"
+        "jsCode": "/* S1-02 — préparation de la collecte : validation d'entrée, couples NAF × département,\n   bandes d'effectif D-008 (union). AUCUN appel réseau ici : le Code node de n8n 2.43.5\n   (JsTaskRunner) n'a pas de fetch — l'appel HTTP est fait par le nœud « Collecte API ».\n   Contrat : AGENTS.md §10 · ADR 0005 (siège) · D-002 (runs.details) · ADR 0006 (runs par campagne). */\nconst campagne = $('Pour chaque campagne (S1-02)').first().json;\nconst runsRow  = $('Run démarré (campagne)').first().json;\nconst runId      = runsRow && typeof runsRow.id === 'string' ? runsRow.id : null;\nconst campaignId = campagne && typeof campagne.id === 'string' ? campagne.id : null;\n\n/* 1) Tick à vide : l'item renvoyé par campaigns_due (alwaysOutputData) n'est pas une campagne. */\n/* S1-04 — drapeau de test : active les nœuds de test de robustesse */\nconst TEST_S104 = false;\n\nif (!campagne || typeof campagne.id !== 'string') {\n  return [{ json: { run_id: runId, campaign_id: null, couple: false, vide: true, erreur: null, test_s104: TEST_S104,\n    conservees: [], details: { recuperees: 0, ecartees: 0, bandes_appliquees: [] } } }];\n}\n\n/* 2) Validation d'entrée (critère du ticket) : aucun appel si aucun couple (code NAF × département). */\nconst nafCodes = Array.isArray(campagne.naf_codes) ? campagne.naf_codes.filter((c) => typeof c === 'string' && c.trim() !== '') : [];\nconst cibles   = Array.isArray(campagne.departements) ? campagne.departements.filter((d) => typeof d === 'string' && d.trim() !== '') : [];\nif (nafCodes.length === 0 || cibles.length === 0) {\n  return [{ json: { run_id: runId, campaign_id: campaignId, couple: false, vide: false, test_s104: TEST_S104,\n    erreur: \"campagne impossible à cibler : naf_codes ou departements vides — aucun appel API\", conservees: [], details: null } }];\n}\n\n/* 3) Bandes d'effectif D-008 : la bande contenant effectif_min puis toutes les bandes supérieures,\n      en UNION dans une seule requête. Bornes inf INSEE des 15 codes du vocabulaire figé. */\nconst codesBande  = [\"00\",\"01\",\"02\",\"03\",\"11\",\"12\",\"21\",\"22\",\"31\",\"32\",\"41\",\"42\",\"51\",\"52\",\"53\"];\nconst bornesBasse = [0, 1, 3, 6, 10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000];\nconst effectifMin = typeof campagne.effectif_min === 'number' && campagne.effectif_min > 0 ? campagne.effectif_min : null;\nlet bandesAppliquees = [];\nif (effectifMin !== null) {\n  let indice = 0;\n  for (let i = 0; i < codesBande.length; i++) {\n    if (bornesBasse[i] <= effectifMin) indice = i; else break;\n  }\n  bandesAppliquees = codesBande.slice(indice);\n}\n\n/* 4) Un item par couple (code NAF × département). Les pages de chaque couple sont créées par le\n      nœud HTTP suivant (pagination native) ; le Code suivant vérifie anti-silence et règle du siège. */\nconst departementsCible = cibles.map((d) => d.trim().toLowerCase());\nconst items = [];\nfor (const nafCode of nafCodes) {\n  for (const departement of departementsCible) {\n    items.push({\n      json: {\n        couple: true, vide: false, erreur: null,\n        test_s104: TEST_S104,\n    run_id: runId,\n        campaign_id: campaignId,\n        naf: nafCode.trim(),\n        departement: departement,\n        departements_cible: departementsCible,\n        naf_codes: nafCodes,\n        bandes_appliquees: bandesAppliquees,\n      },\n    });\n  }\n}\nreturn items;\n"
       },
       "id": "11111111-1111-4111-8111-111111111134",
       "name": "Préparation de collecte (S1-02)",
@@ -252,16 +254,16 @@
               "requestInterval": 1000
             }
           },
-          "timeout": 10000,
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "User-Agent",
-                "value": "Prospection-ia/1.0 (n8n WF1 collecte)"
-              }
-            ]
-          }
+          "timeout": 10000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Prospection-ia/1.0 (n8n WF1 collecte)"
+            }
+          ]
         }
       },
       "id": "11111111-1111-4111-8111-111111111136",
@@ -272,7 +274,10 @@
         760,
         300
       ],
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
     },
     {
       "parameters": {
@@ -714,6 +719,181 @@
         1960,
         300
       ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://recherche-entreprises.api.gouv.fr/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "activite_principale",
+              "value": "43.21A"
+            },
+            {
+              "name": "departement",
+              "value": "XX"
+            },
+            {
+              "name": "etat_administratif",
+              "value": "A"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 3000,
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "Prospection-ia/1.0 (n8n WF1 collecte)"
+              }
+            ]
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      "id": "11111111-1111-4111-8111-111111111147",
+      "name": "Test S1-04 : endpoint faux",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://recherche-entreprises.api.gouv.fr/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "activite_principale",
+              "value": "43.21A"
+            },
+            {
+              "name": "departement",
+              "value": "99"
+            },
+            {
+              "name": "etat_administratif",
+              "value": "A"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "Prospection-ia/1.0 (n8n WF1 collecte)"
+              }
+            ]
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      "id": "11111111-1111-4111-8111-111111111148",
+      "name": "Test S1-04 : departement vide",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        1050
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S1-04 — verdict des deux tests de robustesse.\n   Test A (endpoint faux) : l'item sort en error → le statut du run doit être 'partial'.\n   Test B (departement inexistant) : réponse vide → le statut doit être 'success'.\n   Sortie : un item par test avec le verdict. */\nconst items = $input.all();\nconst verdicts = [];\nfor (const it of items) {\n  const j = it.json || {};\n  const nom = it.source && it.source.name ? it.source.name : 'inconnu';\n  const aEchoue = j.error != null;\n  verdicts.push({\n    test: nom,\n    a_echoue: aEchoue,\n    message: aEchoue ? (typeof j.error === 'string' ? j.error.slice(0, 200) : JSON.stringify(j.error).slice(0, 200)) : null,\n    verdict: aEchoue ? 'PARTIAL_ATTENDU' : 'SUCCES_ATTENDU'\n  });\n}\nreturn verdicts.map(v => ({ json: v }));"
+      },
+      "id": "11111111-1111-4111-8111-111111111149",
+      "name": "Verdict tests S1-04",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "11111111-1111-4111-8111-111111111150",
+              "leftValue": "={{ $json.test_s104 === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111150",
+      "name": "Tests S1-04 ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        520,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 1,
+        "unit": "seconds",
+        "options": {}
+      },
+      "id": "11111111-1111-4111-8111-111111111147",
+      "name": "Wait 1 s entre lots (S1-04)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## S1-04 — politesse de crawl et robustesse\n\n- **Split in Batches** : batchSize = **10** (plage 10-25 du ticket) ; jamais un appel par élément.\n- **Wait 1 s** (nœud Wait v1.1, `amount=1 unit=seconds`) entre les lots, sur le chemin\n  `Des couples à collecter ?` → Wait → `Collecte API`. La pagination interne du nœud HTTP\n  (`requestInterval=1000`) fait déjà 1 req/s entre les **pages** ; le Wait ajoute 1 s entre les\n  **couples** (NAF × département).\n- **Retry on Fail ×3** sur `Collecte API` : `retryOnFail=true, maxTries=3, waitBetweenTries=1000`\n  (plafonné à 5000 ms par n8n, donc 1000 est gardé). Le retry rejoue **tout le lot** si le premier\n  item de la première sortie porte un champ `error` (workflow-execute.js `checkFailure`).\n- **Continue on Fail** : `onError=continueRegularOutput` — un élément en erreur ne bloque pas le lot.\n- **User-Agent** : `Prospection-ia/1.0 (n8n WF1 collecte)` en racine (`sendHeaders` + `headerParameters`),\n  vérifié par l'exécution (pas dans `options` : silencieusement non émis).\n- **Statut** : `partial` si échecs d'écriture (conciliation), `error` si erreur de collecte (endpoint faux,\n  anti-silence, contrat violé, plafond de pagination), `success` sinon. Réponse vide (département\n  inexistant) = `success`, pas d'erreur.",
+        "height": 620,
+        "width": 640,
+        "color": 3
+      },
+      "id": "11111111-1111-4111-8111-111111111148",
+      "name": "Note — S1-04 politesse de crawl",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -260
+      ]
     }
   ],
   "connections": {
@@ -784,14 +964,14 @@
       "main": [
         [
           {
-            "node": "Collecte API (S1-02)",
+            "node": "Wait 1 s entre lots (S1-04)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Une erreur de collecte ?",
+            "node": "Tests S1-04 ?",
             "type": "main",
             "index": 0
           }
@@ -972,6 +1152,67 @@
           }
         ]
       ]
+    },
+    "Test S1-04 : endpoint faux": {
+      "main": [
+        [
+          {
+            "node": "Verdict tests S1-04",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test S1-04 : departement vide": {
+      "main": [
+        [
+          {
+            "node": "Verdict tests S1-04",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verdict tests S1-04": {
+      "main": [
+        []
+      ]
+    },
+    "Tests S1-04 ?": {
+      "main": [
+        [
+          {
+            "node": "Test S1-04 : endpoint faux",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Test S1-04 : departement vide",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Une erreur de collecte ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1 s entre lots (S1-04)": {
+      "main": [
+        [
+          {
+            "node": "Collecte API (S1-02)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -983,9 +1224,9 @@
   "meta": {},
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "87816ead-6f7e-4e28-a44a-eaaddb5ce8cc",
+  "versionId": "a1b2c3d4-0000-4000-8000-000000000001",
   "activeVersionId": null,
-  "versionCounter": 1,
+  "versionCounter": 2,
   "triggerCount": 0,
   "sourceWorkflowId": null,
   "tags": [],
