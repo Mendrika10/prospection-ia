@@ -13,6 +13,12 @@ Format :
 
 ---
 
+## 2026-10-22 (jeudi) — S1-04 fait : politesse de crawl et robustesse, PR #32 fusionnée
+
+- **Fait** : `S1-04` exécuté — User-Agent corrigé (sorti de `options`, silencieusement non émis, vers racine `sendHeaders`/`headerParameters`), `waitBetweenBatches: 1000` sur Split in Batches, `retryOnFail ×3` sur Collecte API (délai fixe 5 s, plafond n8n), `onError: continueRegularOutput` (Continue on Fail), tests intégrés : endpoint faux (département `XX` → `partial`) + département vide (`99` → `success`), verdict via Code node `Verdict tests S1-04`. PR #32 fusionnée en squash `be89bf9`, CI de `main` **verte** (run 39784921649 : sql, secrets, node). Sprint 1 : **tous les tickets de développement sont ✅ fait**.
+- **Prévu** : Sprint Review (démo de ce qui tourne réellement) + Rétrospective (1 à garder, 1 à arrêter, 1 à essayer → mise à jour `AGENTS.md` §10).
+- **Bloqué** : rien (S0-06 Telegram/PageSpeed verrou humain, non bloquant pour le sprint).
+
 ## 2026-10-20 (mardi) — S1-03 fait : upsert `companies` par SIREN, preuve complète, PR #30
 fusionnée
 
