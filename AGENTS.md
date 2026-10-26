@@ -301,17 +301,30 @@ comme une preuve que le produit fonctionne.
   **valide** sans résultat : `05.10Z` × `2A` → HTTP 200, `total_results: 0`. Confondre les deux,
   c'est croire qu'on teste le silence alors qu'on teste une panne.
 - **`recherche-entreprises.api.gouv.fr` résout trois adresses, et une seule répond** (mesuré le
-  2026-10-26, re-mesuré le même jour : `docs/reviews/2026-10-26-mesure-rotation-api.md`, D-014) :
-  `37.59.183.76` → HTTP 200 en ~0,2 s (TCP) / ~0,27 s (HTTP) ; `37.59.183.77` et `37.59.183.78` →
-  **muettes au niveau TCP** (SYN sans réponse : 6 essais sur 6 en timeout à 12 s, 15,0 s à la
-  première mesure). Ce ne sont donc **pas** des adresses lentes qu'un timeout plus long sauverait.
-  **Correction du 2026-10-26** : la version précédente de ce piège affirmait qu'aucun client ne
-  réessaie une autre adresse — c'est **faux**, mesuré par différence : `http`/`https` de Node ≥ 20
-  bascule seul sur une autre adresse quand la première ne répond pas (`autoSelectFamily`, actif par
-  défaut), et **8 appels sur 8** ont réussi depuis un résolveur qui rendait l'adresse **muette** en
-  premier. Le vrai piège n'est donc pas le timeout : c'est que **l'API dépend d'une seule adresse
-  vivante**, et que cette dépendance est **masquée** par la bascule du client. Le jour où elle tombe,
-  aucun repli n'existe plus — et c'est au run de le dire (`error` + message), jamais au silence.
+  2026-10-26 : `docs/reviews/2026-10-26-mesure-rotation-api.md` et
+  `docs/reviews/2026-10-26-execution-reelle-wf1-api-publique.md`) : `37.59.183.76` → HTTP 200 en
+  ~0,2 s (TCP) / ~0,27 s (HTTP) ; `37.59.183.77` et `37.59.183.78` → **muettes au niveau TCP** (SYN
+  sans réponse : 6 essais sur 6 en timeout à 12 s, 15,0 s à la première mesure). Ce ne sont donc
+  **pas** des adresses lentes qu'un timeout plus long sauverait.
+- **Le repli d'adresse dépend du client — ne pas confondre « Node » et « le nœud HTTP de n8n »**
+  (mesuré le 2026-10-26, `D-014` puis `D-015`) : un client `http`/`https` **nu** de Node ≥ 20
+  bascule seul sur une autre adresse (`autoSelectFamily`, actif par défaut) — 8 appels sur 8 ont
+  réussi malgré un résolveur qui rendait une adresse **muette** en premier. Le **nœud HTTP de n8n**,
+  lui, **ne bascule pas** : deux exécutions réelles de WF1, **3 tentatives × 10 s, 3 timeouts**, rien
+  collecté (`runs.status = error`, message exploitable — c'est le comportement voulu). Corollaire :
+  « ça marche depuis mon poste » ne dit **rien** de ce que fera la collecte. La seule bascule
+  observée a été obtenue en épinglant le nom sur l'adresse vivante **au niveau du conteneur**
+  (`--add-host`), ce qui n'est pas une configuration de production.
+- **`pairedItem.item` d'un nœud HTTP paginé est l'index de PAGE, pas l'index de l'item d'entrée**
+  (mesuré le 2026-10-26 sur deux mini-workflows, `D-015`) : 1 couple sur 2 pages → `{item:0}` puis
+  **`{item:1}`** ; 2 couples (A sur 2 pages, B sur 1) → la page 2 de A est **attribuée à B**. Un
+  rattachement qui lit `pairedItem.item` comme « l'index du couple » (choix de `S1-04`) marche donc
+  uniquement quand **chaque couple tient sur une page** : au-delà, la collecte est soit abandonnée
+  (index hors bornes — visible), soit **mal attribuée en silence** (mauvais département → filtre de
+  siège d'ADR 0005 appliqué au mauvais couple). Le rattachement doit se faire sur une **clé portée
+  par la donnée**, jamais sur un index implicite. Et « ≤ 25 résultats » est une prémisse fausse :
+  sur 30 couples testés, 2 seulement tenaient sur une page (`43.21A` × `974` en compte **1 515**,
+  soit 61 pages).
 - **Le message d'une erreur HTTP n'a pas de forme unique dans n8n** (mesuré le 2026-10-26, preuve
   `S1-04`) : un délai dépassé porte `message` + `name` (`timeout of 10000ms exceeded`), une réponse
   en erreur porte `statusCode` + `error` et **pas** de `message` (`{statusCode: 500, error: "…"}`).

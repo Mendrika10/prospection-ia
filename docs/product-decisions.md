@@ -615,7 +615,7 @@ Documentation (`S1-07`) · le PO (l'arbitrage écrit ici).
 
 ---
 
-## D-014 — La panne d'adresses de l'API est réelle mais absorbée par le client : le timeout reste à 10 s · 2026-10-26 · en vigueur
+## D-014 — La panne d'adresses de l'API est réelle mais absorbée par le client : le timeout reste à 10 s · 2026-10-26 · **révisée par D-015** (l'exécution réelle montre que le nœud HTTP de n8n, lui, ne bascule pas)
 
 **Décision** : trois choses, et la première est que **rien ne change** dans les réglages.
 
@@ -684,4 +684,87 @@ rien — le ticket de mesure est clos — et surveille le premier run `error` de
 [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md) §5, décision n° 2.
 
 **Consigné** : PR **#45** fusionnée en squash `99efd2c`, CI de `main` **verte** (run 40335525914).
+
+---
+
+## D-015 — L'exécution réelle a prouvé la chaîne et révélé deux défauts bloquants · 2026-10-26 · en vigueur
+
+**Décision** : quatre points, dont le premier corrige une décision que j'ai prise trois heures plus tôt.
+
+1. **`D-014` est révisée, et sa conclusion est fausse pour le client qui compte.** Elle affirmait que
+   la panne d'adresses est « absorbée par le client » — vérifié sur un client Node **nu**, démenti sur
+   le **nœud HTTP de n8n** : deux exécutions réelles, **3 tentatives × 10 s, 3 timeouts**, rien
+   collecté. Le timeout de 10 s n'était pas l'obstacle, l'adresse choisie l'était.
+2. **Deux défauts mesurés deviennent des tickets de levée, en tête du sprint 2** :
+   - **Défaut A — sélection d'adresse.** La collecte ne doit pas dépendre du hasard du résolveur :
+     il faut un moyen d'atteindre l'adresse vivante, décidé sur mesure (pas d'épinglage `/etc/hosts`
+     en production, qui transformerait une adresse muette en panne **définitive**).
+   - **Défaut B — attribution des pages.** `pairedItem.item` d'un nœud HTTP **paginé** est l'index de
+     **page**, pas celui du couple : au-delà de la première page, la collecte est soit abandonnée
+     (index hors bornes — visible), soit **mal attribuée en silence** (les pages d'un couple
+     comparées au département d'un autre). Le rattachement de `S1-04` doit être refait sur une
+     **clé portée par la donnée**, jamais sur un index implicite.
+   Ces deux défauts bloquent la collecte d'une campagne réelle : ils passent **avant tout nouveau
+   périmètre** du sprint 2.
+3. **La prémisse « ≤ 25 éléments » est abandonnée.** Mesuré : sur **30 couples** testés, **2**
+   tenaient sur une page ; `43.21A` × `974` en compte **1 515** (61 pages). Toute preuve de collecte
+   doit désormais se faire sur un couple **multi-pages** — sinon elle ne prouve rien du cas normal.
+4. **`S1-07` passe en `Prêt`.** Sa condition de retour (`D-013`) est **remplie** : une exécution a
+   réellement appelé l'API publique et écrit **20 lignes `companies`** (`runs.status = success`,
+   `items_processed = 20`, compteurs cohérents). La documentation devra décrire l'état **réel**,
+   défauts compris, plutôt qu'un idéal.
+
+**Pourquoi** : cela sert l'objectif « une chaîne qui collecte réellement » et le garde-fou de
+**vérité d'état**. Le défaut B mérite à lui seul une décision : il **corrompt des données en
+silence** quand deux couples partagent un code NAF, ce qui est exactement la classe du défaut
+critique de `S1-04` (un mensonge qui ressemble à un succès). Le défaut A, lui, rend la collecte
+impossible : aucune campagne réelle ne peut être honorée aujourd'hui.
+
+**Règle d'arbitrage utilisée** : `(valeur × certitude) / effort`, ajustée du **coût du délai**. Le
+coût d'un défaut silencieux est le plus élevé du journal (il a déjà coûté 6 jours sur `main`) ; ces
+correctifs passent donc devant le périmètre de WF2. Certitude : **totale**, les deux défauts sont
+mesurés, pas déduits.
+
+**Options écartées** :
+
+- *Livrer les correctifs dans la foulée de la preuve* : la Definition of Ready exige un ticket avec
+  ses critères vérifiables **avant** le code, et la DoD exige une relecture en contexte neuf — que
+  la même session ne peut pas fournir. Décider et exécuter dans le même souffle, c'est rejouer
+  l'écart de `S1-04`.
+- *Contourner le défaut A par un `/etc/hosts` ou un `--add-host` en production* : cela fixe une IP
+  dans une configuration invisible du dépôt ; le jour où l'adresse change, la panne devient
+  **définitive** (plus aucun repli) et sans propriétaire.
+- *Ne traiter que le défaut A* (le plus visible) : c'est le défaut B qui écrit de **fausses lignes**,
+  et il touche la quasi-totalité des campagnes réelles (2 couples sur 30 tiennent sur une page).
+  Traiter le visible et laisser le silencieux serait l'erreur exacte que ce sprint a déjà payée.
+- *Garder `S1-07` refusé* : sa condition est remplie telle que `D-013` l'a écrite ; la refuser encore
+  reviendrait à déplacer les poteaux. Une doc qui décrit une chaîne à deux défauts connus est
+  **plus** utile qu'une doc écrite quand tout marchait.
+- *Refaire la preuve sur `43.21A` × `974` pour « voir de ses yeux »* : déjà fait (run 3), coûte 125 s
+  et 61 pages, et le procès du défaut B est instruit par deux mini-workflows isolés.
+
+**Preuves utilisées** :
+[`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md)
+— protocole, 4 exécutions avec leurs sorties, 2 mini-workflows de diagnostic, sondes de pagination
+(`1 515` résultats / 61 pages), et **remise en état de la base** (20 entreprises écrites → supprimées,
+base relevée à **0 / 0 / 0**). En bref : run 1 et 2 `error` (3 × timeout), run 3 `error` (60 pages
+sans couple rattachable), run 4 **`success`** + 20 lignes + compteurs cohérents.
+
+**Conséquence / coût** : la collecte sur l'API publique est **inutilisable en l'état** pour une
+campagne réelle — non par le timeout, mais par l'adresse choisie et l'attribution des pages. Coût
+assumé : deux tickets avant tout nouveau périmètre, et une **preuve multi-pages** à refaire après
+correctif. Ce qui a été prouvé reste acquis : la chaîne écrit correctement, les compteurs sont
+cohérents, et un échec est **toujours** visible dans `runs`.
+
+**Ce qui me ferait changer d'avis** : une collecte **multi-pages** réussie après correctif (2 couples,
+≥ 2 pages chacun, `runs.details` cohérents et lignes attribuées au **bon** département) ; ou la
+preuve que l'API répond normalement depuis un autre réseau d'exécution — la panne d'adresses serait
+alors locale, et le défaut A n'existerait que sur ce poste.
+
+**Qui exécute** : Automation (les deux correctifs, sur tickets) · Reviewer (relecture en contexte
+neuf, obligatoire cette fois) · Orchestrateur (ouvrir les deux tickets en tête du sprint 2, refaire
+la preuve sur un couple multi-pages) · le PO (l'arbitrage écrit ici).
+
+**Origine** : exécution de bout en bout exigée par `D-011` et par la condition de retour de `D-013`,
+faite le 2026-10-26 ; révise `D-014` ; complète `D-012`.
 
