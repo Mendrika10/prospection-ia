@@ -53,7 +53,8 @@ Format :
 - **Fait (décisions)** : les trois arbitrages laissés « sur la table » par la review sont **tranchés
   par écrit** — **`D-011`** (le « vérifié » d'un ticket de collecte = une exécution de bout en bout),
   **`D-012`** (timeout de 10 s **conservé** ; la rotation d'adresses se mesure avant d'être décidée),
-  **`D-013`** (`S1-07` reste refusé, condition de retour rendue vérifiable).
+  **`D-013`** (`S1-07` reste refusé, condition de retour rendue vérifiable). PR #41 fusionnée en squash
+  `41b6b86`, CI de `main` verte (run 40330489974).
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
   porter `D-011` dans la liste de la DoD (`methode-equipe-agents.md` §2.4, hors périmètre du PO).
 - **Bloqué** : rien.
