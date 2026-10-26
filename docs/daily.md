@@ -88,6 +88,7 @@ Format :
   (qui **révise `D-014`**), deux tickets prioritaires en tête du sprint 2, `S1-07` **remis en `Prêt`**.
   Relevé complet :
   [`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md).
+  PR #47 fusionnée en squash `cd6bbb4`, CI de `main` verte (run 40339795807).
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
   ouvrir les deux tickets de levée (défauts A et B) et refaire la preuve sur un couple **multi-pages**.
 - **Bloqué** : rien.

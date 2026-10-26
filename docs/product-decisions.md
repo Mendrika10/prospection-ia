@@ -768,3 +768,5 @@ la preuve sur un couple multi-pages) · le PO (l'arbitrage écrit ici).
 **Origine** : exécution de bout en bout exigée par `D-011` et par la condition de retour de `D-013`,
 faite le 2026-10-26 ; révise `D-014` ; complète `D-012`.
 
+**Consigné** : PR **#47** fusionnée en squash `cd6bbb4`, CI de `main` **verte** (run 40339795807).
+

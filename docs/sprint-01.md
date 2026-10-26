@@ -1053,6 +1053,9 @@ restées « sur la table, non prises » pendant la review :
 **Consigné** : PR **#41** fusionnée en squash `41b6b86`, CI de `main` **verte** (run 40330489974).
 **Consigné (suite)** : la mesure de la rotation et `D-014` — PR **#45** fusionnée en squash `99efd2c`,
 CI de `main` **verte** (run 40335525914).
+**Consigné (fin)** : la **première exécution réelle de WF1 sur l'API publique** et `D-015` — PR **#47**
+fusionnée en squash `cd6bbb4`, CI de `main` **verte** (run 40339795807). Relevé :
+[`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md).
 
 ---
 
