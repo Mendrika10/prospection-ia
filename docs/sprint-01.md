@@ -983,15 +983,21 @@ verrous du §2 du brief Product Owner (identifiants, argent, hors dépôt, suppr
 et **testés** (push direct et merge anticipé refusés par GitHub) · **`ADR 0006`** (cadence des
 campagnes, 2026-10-15) — condition de démarrage de `S1-09`, levée et implémentée dans la foulée.*
 
-## 5. Métriques à relever en review (vendredi 23/10)
+## 5. Métriques à relever en review (vendredi 23/10) — **relevées le 2026-10-26**
 
 | Indicateur | Objectif | Valeur relevée |
 |---|---|---|
-| Vélocité (tickets terminés) | stable ou croissante | — |
-| Lead time (`Prêt` → `Fait`) | < 2 jours | — |
-| Taux de PR refusées par le Reviewer | décroissant | — |
-| Échecs de CI | < 20 % | — |
-| Bugs échappés en production | 0 critique | — |
+| Vélocité (tickets terminés) | stable ou croissante | **8** (`S1-01`→`S1-06`, `S1-08`, `S1-09`) + 1 refusé (`S1-07`) · Sprint 0 : 4 + `S0-05` partiel → **croissante** |
+| Lead time (`Prêt` → `Fait`) | < 2 jours | médiane **0,1 h** ; **8 PR sur 9** sous 48 h ; **1 outlier à 89 h** (PR #25, `S1-02`) — proxy *premier commit → fusion*, faute d'horodatage « Prêt » |
+| Taux de PR refusées par le Reviewer | décroissant | **0 PR refusée** (38 ouvertes, 38 fusionnées) ; **mais** 3 tickets sur 8 corrigés après une relecture en contexte neuf et **4 fusionnés sans relecture tierce** (écart écrit au ticket) |
+| Échecs de CI | < 20 % | **1 échec réel sur 91 runs (1,1 %)** — 2,2 % en comptant 1 run annulé |
+| Bugs échappés en production | 0 critique | **1 critique** : WF1 sortait en `success` avec **0 élément** sur n'importe quel échec réseau (livré le 2026-10-20, trouvé le 2026-10-26) |
+
+Détail, mode de mesure de chaque ligne et limites :
+[`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md).
+**La seule ligne rouge est celle des bugs échappés** — les quatre autres indicateurs sont bons, et
+c'est précisément pourquoi ils ne l'ont pas vu : un défaut critique a vécu 6 jours sur `main` derrière
+une CI verte et deux tickets marqués `fait`.
 
 ## 6. Fin de sprint — questions à trancher en rétro
 
@@ -999,6 +1005,24 @@ campagnes, 2026-10-15) — condition de démarrage de `S1-09`, levée et implém
 2. La limite WIP de 2 a-t-elle réellement été respectée ? Si non, pourquoi ?
 3. Quelles erreurs se sont répétées ? → à ajouter dans `AGENTS.md` §10 (pièges connus).
 4. Le découpage de WF1 en 4 tickets (S1-01..S1-04) était-il le bon grain, ou trop fin ?
+
+### Rétrospective — **tenue le 2026-10-26** (3 jours de retard)
+
+Mesures, mode de mesure et limites de chaque métrique :
+[`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md).
+
+- **À garder** : la preuve d'exécution réelle avant `fait` — c'est elle qui a trouvé le défaut critique.
+- **À arrêter** : clore un ticket dont la preuve est « à faire » — **un `✅` sans preuve est un `🟦`**
+  (`S1-04` a vécu 4 jours dans cet état, section restée à `⬜`).
+- **À essayer** : une **exécution de bout en bout de WF1** (1 campagne, 1 couple, ≤ 25 éléments, la
+  ligne `runs` à l'appui) avant de clore tout ticket qui touche la chaîne de collecte — la raison est
+  que `S1-02`, `S1-03` et `S1-04` ont chacun passé leur CI et leur preuve locale, et que la chaîne
+  entière n'avait jamais tourné d'un bout à l'autre.
+
+**Décisions mises sur la table, non prises** : garde-fou de clôture ci-dessus · timeout de 10 s face à
+l'API publique (deux de ses trois adresses sont muettes d'ici) · `S1-07` (sa condition de retour est
+« dès 1 collecte réelle » : une collecte a tourné le 2026-10-26, mais **contre un hôte d'écho**, donc
+la condition **n'est pas** remplie à la lettre).
 
 ---
 

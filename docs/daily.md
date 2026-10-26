@@ -40,9 +40,17 @@ Format :
   jamais** depuis ce réseau (`.76` → 200 en 2,0 s ; `.77` → timeout 15,0 s ; `.78` → timeout
   12,7 s). Selon l'adresse tirée, l'appel dépasse le timeout de 10 s imposé par le ticket — et le
   run le dit (`error` + message) au lieu de le taire, ce qui est le comportement voulu.
+- **Sprint review + rétrospective** (dues le 23/10, tenues le 26/10) : métriques relevées — vélocité
+  **8** tickets (croissante), lead time médian **0,1 h** (1 outlier à 89 h, `S1-02`), **1 échec de CI
+  sur 91 runs (1,1 %)**, **0 PR refusée**, et surtout **1 bug critique échappé** : WF1 ne collectait
+  rien tout en annonçant `success`. **1 à garder** : la preuve d'exécution réelle avant `fait` ·
+  **1 à arrêter** : clore un ticket dont la preuve est « à faire » · **1 à essayer** : une exécution de
+  bout en bout de WF1 avant de clore tout ticket touchant la chaîne de collecte.
+  Détail : [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md).
+- **Fait (suite)** : rétrospective versée dans `AGENTS.md` §10 (**5 pièges mesurés**, réponse à la
+  question 3 du §6) et §5/§6 de `docs/sprint-01.md` relevés (PR #38 fusionnée en squash `0ab43a9`).
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
-  porter les 3 découvertes dans `AGENTS.md` §10 ; trancher avec le PO si le timeout de 10 s reste
-  tenable face à cette API.
+  trancher avec le PO si le timeout de 10 s reste tenable face à cette API.
 - **Bloqué** : rien.
 
 ---
