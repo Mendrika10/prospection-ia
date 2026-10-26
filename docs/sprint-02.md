@@ -122,6 +122,8 @@ seconde campagne **affamée** et sa ligne restée **`running`**. L'observation e
 probable est l'adressage `.first()` de « Préparation de collecte » et de la clôture — **pas de ticket
 ouvert ici** : la DoR exige des critères vérifiables, et l'instruction revient au planning.
 
+**Consigné** : PR **#51** fusionnée en squash `e93d69e`, CI de `main` **verte** (run 40348892594).
+
 ---
 
 ## S2-02 — WF1 : rattacher chaque page au bon couple, sans index implicite (défaut B) · 🟦 Prêt

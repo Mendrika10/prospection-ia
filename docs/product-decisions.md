@@ -885,3 +885,5 @@ la question ouverte par `D-014` ; confirme `D-011`, `D-012` et le point 3 de `D-
 **Tickets** : **`S2-01`** ✅ clos sans correctif (critères 1, 2, 3, 4, 5 vérifiés —
 [`sprint-02.md`](sprint-02.md)) · **`S2-02`** 🟦 prêt, dépendance levée.
 
+**Consigné** : PR **#51** fusionnée en squash `e93d69e`, CI de `main` **verte** (run 40348892594).
+
