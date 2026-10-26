@@ -70,7 +70,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ✅ fait — PR #22 relue en contexte neuf (retry ×3 absent, corrigé), fusionnée, CI de `main` verte |
 | S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ✅ fait — PR #25 relue en contexte neuf (4 points importants corrigés : conciliation des écrites, statut `partial`, plafond de pagination, contrat `siren`), preuves réelles sur instance jetable (`partial`/`ecrites` sur le cas doublons), fusionnée en squash (`76ae1eb`), CI de `main` verte |
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ✅ fait — PR #30 fusionnée en squash `e6e2c14` (ADR 0007, D-009/D-010), preuves réelles sur instance jetable (dédoublonnage lot mixte, upsert atomique PostgREST, passe de propriété), CI de `main` verte |
-| S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ✅ fait — PR #32 (réglages) puis **preuve réelle du 2026-10-26** : 3 défauts corrigés (échec réseau avalé en silence, échecs de collecte non comptés, nœud de conciliation orphelin) ; User-Agent **observé sur le fil**, ~1 req/s, retry ×3, `Continue on Fail` → `partial`, endpoint faux → `error`, réponse vide → `success` |
+| S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ✅ fait — PR #32 (réglages) + **correctif PR #36** après la **preuve réelle du 2026-10-26** : 3 défauts corrigés (échec réseau avalé en silence, échecs de collecte non comptés, nœud de conciliation orphelin) ; User-Agent **observé sur le fil**, ~1 req/s, retry ×3, `Continue on Fail` → `partial`, endpoint faux → `error`, réponse vide → `success` |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
 | S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ✅ fait — PR #28 (re-revue demandée puis fusion en squash `2969c3d`), CI de `main` verte |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
@@ -712,6 +712,8 @@ par un hôte d'écho local (même pratique que S1-02/S1-06 : preuves sur copie, 
    « Conciliation des écritures (S1-02) » a porté la logique de statut `partial` pendant deux
    tickets sans être branchée. Contrôle à inscrire dans toute relecture de workflow : lister les
    nœuds sans entrant.
+
+**Correctif (PR #36, 2026-10-26)** : les trois défauts ci-dessus ont été corrigés dans la foulée de la preuve, avec les six scénarios rejoués après correction.
 
 **Écart de relecture, assumé et écrit** : comme `S1-03`/`S1-06`/`S1-08`/`S1-09`, la revue en
 contexte neuf par un agent **Reviewer** n'a pas été faite avant la mise en `fait` — les preuves
