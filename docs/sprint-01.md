@@ -713,6 +713,10 @@ par un hôte d'écho local (même pratique que S1-02/S1-06 : preuves sur copie, 
    tickets sans être branchée. Contrôle à inscrire dans toute relecture de workflow : lister les
    nœuds sans entrant.
 
+
+**Fusion (2026-10-26)** : **PR #36 fusionnée en squash `3945450`** sur instruction explicite du
+propriétaire ; CI de la PR **verte** (run 40325057310 : sql, secrets, node) et CI de `main` **verte**
+(run 40325270121). Écart de relecture assumé, écrit ci-dessous, comme `S1-03`/`S1-06`/`S1-08`/`S1-09`.
 **Correctif (PR #36, 2026-10-26)** : les trois défauts ci-dessus ont été corrigés dans la foulée de la preuve, avec les six scénarios rejoués après correction.
 
 **Écart de relecture, assumé et écrit** : comme `S1-03`/`S1-06`/`S1-08`/`S1-09`, la revue en
