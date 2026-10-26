@@ -161,7 +161,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* S1-02 — préparation de la collecte : validation d'entrée, couples NAF × département,\n   bandes d'effectif D-008 (union). AUCUN appel réseau ici : le Code node de n8n 2.43.5\n   (JsTaskRunner) n'a pas de fetch — l'appel HTTP est fait par le nœud « Collecte API ».\n   Contrat : AGENTS.md §10 · ADR 0005 (siège) · D-002 (runs.details) · ADR 0006 (runs par campagne). */\nconst campagne = $('Pour chaque campagne (S1-02)').first().json;\nconst runsRow  = $('Run démarré (campagne)').first().json;\nconst runId      = runsRow && typeof runsRow.id === 'string' ? runsRow.id : null;\nconst campaignId = campagne && typeof campagne.id === 'string' ? campagne.id : null;\n\n/* 1) Tick à vide : l'item renvoyé par campaigns_due (alwaysOutputData) n'est pas une campagne. */\n/* S1-04 — drapeau de test : active les nœuds de test de robustesse */\nconst TEST_S104 = false;\n\nif (!campagne || typeof campagne.id !== 'string') {\n  return [{ json: { run_id: runId, campaign_id: null, couple: false, vide: true, erreur: null, test_s104: TEST_S104,\n    conservees: [], details: { recuperees: 0, ecartees: 0, bandes_appliquees: [] } } }];\n}\n\n/* 2) Validation d'entrée (critère du ticket) : aucun appel si aucun couple (code NAF × département). */\nconst nafCodes = Array.isArray(campagne.naf_codes) ? campagne.naf_codes.filter((c) => typeof c === 'string' && c.trim() !== '') : [];\nconst cibles   = Array.isArray(campagne.departements) ? campagne.departements.filter((d) => typeof d === 'string' && d.trim() !== '') : [];\nif (nafCodes.length === 0 || cibles.length === 0) {\n  return [{ json: { run_id: runId, campaign_id: campaignId, couple: false, vide: false, test_s104: TEST_S104,\n    erreur: \"campagne impossible à cibler : naf_codes ou departements vides — aucun appel API\", conservees: [], details: null } }];\n}\n\n/* 3) Bandes d'effectif D-008 : la bande contenant effectif_min puis toutes les bandes supérieures,\n      en UNION dans une seule requête. Bornes inf INSEE des 15 codes du vocabulaire figé. */\nconst codesBande  = [\"00\",\"01\",\"02\",\"03\",\"11\",\"12\",\"21\",\"22\",\"31\",\"32\",\"41\",\"42\",\"51\",\"52\",\"53\"];\nconst bornesBasse = [0, 1, 3, 6, 10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000];\nconst effectifMin = typeof campagne.effectif_min === 'number' && campagne.effectif_min > 0 ? campagne.effectif_min : null;\nlet bandesAppliquees = [];\nif (effectifMin !== null) {\n  let indice = 0;\n  for (let i = 0; i < codesBande.length; i++) {\n    if (bornesBasse[i] <= effectifMin) indice = i; else break;\n  }\n  bandesAppliquees = codesBande.slice(indice);\n}\n\n/* 4) Un item par couple (code NAF × département). Les pages de chaque couple sont créées par le\n      nœud HTTP suivant (pagination native) ; le Code suivant vérifie anti-silence et règle du siège. */\nconst departementsCible = cibles.map((d) => d.trim().toLowerCase());\nconst items = [];\nfor (const nafCode of nafCodes) {\n  for (const departement of departementsCible) {\n    items.push({\n      json: {\n        couple: true, vide: false, erreur: null,\n        test_s104: TEST_S104,\n    run_id: runId,\n        campaign_id: campaignId,\n        naf: nafCode.trim(),\n        departement: departement,\n        departements_cible: departementsCible,\n        naf_codes: nafCodes,\n        bandes_appliquees: bandesAppliquees,\n      },\n    });\n  }\n}\nreturn items;\n"
+        "jsCode": "/* S1-02 — préparation de la collecte : validation d'entrée, couples NAF × département,\n   bandes d'effectif D-008 (union). AUCUN appel réseau ici : le Code node de n8n 2.43.5\n   (JsTaskRunner) n'a pas de fetch — l'appel HTTP est fait par le nœud « Collecte API ».\n   Contrat : AGENTS.md §10 · ADR 0005 (siège) · D-002 (runs.details) · ADR 0006 (runs par campagne). */\nconst campagne = $('Pour chaque campagne (S1-02)').first().json;\nconst runsRow  = $('Run démarré (campagne)').first().json;\nconst runId      = runsRow && typeof runsRow.id === 'string' ? runsRow.id : null;\nconst campaignId = campagne && typeof campagne.id === 'string' ? campagne.id : null;\n\n/* 1) Tick à vide : l'item renvoyé par campaigns_due (alwaysOutputData) n'est pas une campagne. */\n\nif (!campagne || typeof campagne.id !== 'string') {\n  return [{ json: { run_id: runId, campaign_id: null, couple: false, vide: true, erreur: null,\n    conservees: [], details: { recuperees: 0, ecartees: 0, bandes_appliquees: [] } } }];\n}\n\n/* 2) Validation d'entrée (critère du ticket) : aucun appel si aucun couple (code NAF × département). */\nconst nafCodes = Array.isArray(campagne.naf_codes) ? campagne.naf_codes.filter((c) => typeof c === 'string' && c.trim() !== '') : [];\nconst cibles   = Array.isArray(campagne.departements) ? campagne.departements.filter((d) => typeof d === 'string' && d.trim() !== '') : [];\nif (nafCodes.length === 0 || cibles.length === 0) {\n  return [{ json: { run_id: runId, campaign_id: campaignId, couple: false, vide: false,\n    erreur: \"campagne impossible à cibler : naf_codes ou departements vides — aucun appel API\", conservees: [], details: null } }];\n}\n\n/* 3) Bandes d'effectif D-008 : la bande contenant effectif_min puis toutes les bandes supérieures,\n      en UNION dans une seule requête. Bornes inf INSEE des 15 codes du vocabulaire figé. */\nconst codesBande  = [\"00\",\"01\",\"02\",\"03\",\"11\",\"12\",\"21\",\"22\",\"31\",\"32\",\"41\",\"42\",\"51\",\"52\",\"53\"];\nconst bornesBasse = [0, 1, 3, 6, 10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000];\nconst effectifMin = typeof campagne.effectif_min === 'number' && campagne.effectif_min > 0 ? campagne.effectif_min : null;\nlet bandesAppliquees = [];\nif (effectifMin !== null) {\n  let indice = 0;\n  for (let i = 0; i < codesBande.length; i++) {\n    if (bornesBasse[i] <= effectifMin) indice = i; else break;\n  }\n  bandesAppliquees = codesBande.slice(indice);\n}\n\n/* 4) Un item par couple (code NAF × département). Les pages de chaque couple sont créées par le\n      nœud HTTP suivant (pagination native) ; le Code suivant vérifie anti-silence et règle du siège. */\nconst departementsCible = cibles.map((d) => d.trim().toLowerCase());\nconst items = [];\nfor (const nafCode of nafCodes) {\n  for (const departement of departementsCible) {\n    items.push({\n      json: {\n        couple: true, vide: false, erreur: null,\n        run_id: runId,\n        campaign_id: campaignId,\n        naf: nafCode.trim(),\n        departement: departement,\n        departements_cible: departementsCible,\n        naf_codes: nafCodes,\n        bandes_appliquees: bandesAppliquees,\n      },\n    });\n  }\n}\nreturn items;\n"
       },
       "id": "11111111-1111-4111-8111-111111111134",
       "name": "Préparation de collecte (S1-02)",
@@ -283,12 +283,12 @@
       "onError": "continueRegularOutput",
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 1000
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/** S1-04 — filtrage multi-couples (lot de 10 max) + Continue on Fail.\n   Entrée : les pages renvoyées par le nœud HTTP paginé (chaque item = le corps d'une page),\n   appairées à l'item couple dont elles descendent via pairedItem.\n   Règles :\n   - anti-silence : chaque résultat porte le code NAF du couple ET etat_administratif = \"A\"\n   - contrats de colonnes : siren (clé primaire) ET name (NOT NULL) vérifiés LOCALEMENT\n   - plafond de pagination : HTTP s'arrête à maxRequests (<= 100 pages) SANS erreur\n   - ADR 0005 : ne conserver que le siège ; compter les hors zone (jamais perdues)\n   - D-002 : recuperees = renvoyées par l'API ; ecartees = écartées par la règle du siège\n     bandes_appliquees = codes INSEE quand le filtre d'effectif s'applique.\n   - Continue on Fail : un couple en erreur ne bloque pas les autres -> run partial. */\n\nconst items = $input.all();\nconst STATE_ERROR = \"echec de collecte WF1 : \";\n\n/* Récupère le contexte du couple via pairedItem (robuste multi-couples). */\nfunction getCoupleContext(pageItem) {\n  // L'item page a un pairedItem pointant vers l'item couple dans \"Préparation de collecte\"\n  const paired = pageItem.pairedItem;\n  if (!paired) return null;\n  // pairedItem peut être un objet {item: index, sourceOverwrite: ...} ou un tableau\n  const sourceIdx = paired.item ?? (Array.isArray(paired) ? paired[0]?.item : null);\n  if (sourceIdx === null || sourceIdx === undefined) return null;\n  // Récupère les données source du nœud Préparation (sourceOverwrite)\n  const sourceData = paired.sourceOverwrite;\n  if (!sourceData || !Array.isArray(sourceData)) return null;\n  const coupleItem = sourceData[sourceIdx];\n  return coupleItem?.json ?? null;\n}\n\n/* Agrégation par couple : map<coupleKey, { context, pages[], error?, stats }> */\nconst couples = new Map();\n\nfor (const it of items) {\n  const j = it.json || {};\n  const ctx = getCoupleContext(it);\n  if (!ctx) {\n    // Pas de contexte couple -> ignorer (page orpheline)\n    continue;\n  }\n  const key = ctx.naf + \"|\" + ctx.departement;\n  let entry = couples.get(key);\n  if (!entry) {\n    entry = {\n      context: ctx,\n      pages: [],\n      error: null,\n      recuperees: 0,\n      ecartees: 0,\n    };\n    couples.set(key, entry);\n  }\n  if (j.error) {\n    // Erreur réseau/API sur ce couple\n    entry.error = STATE_ERROR + (typeof j.error === 'string' ? j.error : (j.error.message || 'erreur API'));\n  } else {\n    entry.pages.push(j);\n  }\n}\n\n/* Traiter chaque couple indépendamment */\nlet globalErreur = null;\nconst allConservees = [];\nlet totalRecuperees = 0;\nlet totalEcartees = 0;\nlet couplesAvecErreur = 0;\nlet contexteGlobal = null;\n\nfor (const [key, entry] of couples) {\n  const { context: couple, pages, error: coupleError } = entry;\n  \n  // Pour les erreurs réseau, on doit quand même capturer le contexte run/campaign\n  if (coupleError) {\n    couplesAvecErreur++;\n    if (!contexteGlobal) {\n      contexteGlobal = {\n        run_id: couple.run_id || null,\n        campaign_id: couple.campaign_id || null,\n        departements_cible: Array.isArray(couple.departements_cible) ? couple.departements_cible : [],\n        bandes_appliquees: Array.isArray(couple.bandes_appliquees) ? couple.bandes_appliquees : [],\n      };\n    }\n    continue; // Continue on Fail : on ne casse pas, on continue avec les autres couples\n  }\n  \n  if (!contexteGlobal) {\n    contexteGlobal = {\n      run_id: couple.run_id || null,\n      campaign_id: couple.campaign_id || null,\n      departements_cible: Array.isArray(couple.departements_cible) ? couple.departements_cible : [],\n      bandes_appliquees: Array.isArray(couple.bandes_appliquees) ? couple.bandes_appliquees : [],\n    };\n  }\n  \n  const nafDemande = typeof couple.naf === 'string' ? couple.naf.trim() : null;\n  if (!nafDemande) {\n    couplesAvecErreur++;\n    continue;\n  }\n  \n  let coupleErreur = null;\n  for (const page of pages) {\n    const resultats = Array.isArray(page.results) ? page.results : [];\n    for (const resultat of resultats) {\n      if (coupleErreur) break;\n      // Anti-silence\n      if (resultat.activite_principale !== nafDemande) {\n        coupleErreur = STATE_ERROR + \"verification anti-silence : activite_principale = \" + JSON.stringify(resultat.activite_principale) + \" au lieu de \" + nafDemande;\n        break;\n      }\n      if (resultat.etat_administratif !== 'A') {\n        coupleErreur = STATE_ERROR + \"verification anti-silence : etat_administratif = \" + JSON.stringify(resultat.etat_administratif) + \" (demande A)\";\n        break;\n      }\n      // Contrats colonnes\n      if (typeof resultat.siren !== 'string' || resultat.siren.trim() === '') {\n        coupleErreur = STATE_ERROR + \"contrat : entreprise sans siren, siren=\" + JSON.stringify(resultat.siren);\n        break;\n      }\n      const nomEntreprise = resultat.denomination_unite_legale || resultat.denomination || resultat.nom_complet || resultat.nom_raison_sociale || null;\n      if (typeof nomEntreprise !== 'string' || nomEntreprise.trim() === '') {\n        coupleErreur = STATE_ERROR + \"contrat : entreprise sans name (denomination/nom_complet absents), siren=\" + JSON.stringify(resultat.siren);\n        break;\n      }\n      totalRecuperees++;\n      const siege = resultat.siege || null;\n      const deptSiege = siege && typeof siege.departement === 'string' ? siege.departement.toLowerCase() : null;\n      if (deptSiege && contexteGlobal.departements_cible.includes(deptSiege)) {\n        allConservees.push({\n          siren: resultat.siren,\n          name: nomEntreprise,\n          naf: resultat.activite_principale || null,\n          address: siege.adresse || null,\n          city: siege.libelle_commune || null,\n          postal_code: siege.code_postal || null,\n          effectif: typeof resultat.tranche_effectif_salarie === 'string' ? resultat.tranche_effectif_salarie : null,\n          campaign_id: contexteGlobal.campaign_id,\n          raw: resultat,\n          run_id: contexteGlobal.run_id,\n        });\n      } else {\n        totalEcartees++;\n      }\n    }\n  }\n  \n  if (coupleErreur) {\n    couplesAvecErreur++;\n  }\n}\n\n/* Plafond de pagination : vérifier la dernière page de CHAQUE couple */\nif (!globalErreur) {\n  for (const [key, entry] of couples) {\n    if (entry.error) continue;\n    const pages = entry.pages;\n    if (pages.length > 0 && pages[pages.length - 1].json?.results?.length >= 25) {\n      globalErreur = STATE_ERROR + \"plafond de pagination atteint sur couple \" + key + \" : derniere page recue pleine (25 resultats) — collecte tronquee a 100 pages (2 500 resultats max par couple NAF x departement) ou volume anormal a arbitrer\";\n      break;\n    }\n  }\n}\n\n/* Construction du résultat */\nconst details = { recuperees: totalRecuperees, ecartees: totalEcartees, bandes_appliquees: (contexteGlobal ? contexteGlobal.bandes_appliquees : []) };\nconst base = { run_id: contexteGlobal ? contexteGlobal.run_id : null, campaign_id: contexteGlobal ? contexteGlobal.campaign_id : null };\n\n/* Si erreur globale (plafond, contrat) -> error */\nif (globalErreur) {\n  return [{ json: { ...base, couple: false, vide: false, erreur: globalErreur, conservees: [], details } }];\n}\n\n/* Si couples en erreur mais au moins un couple avec données -> partial (marqué via conservees.length + erreur spéciale) */\n/* Le statut final (partial/success) est déterminé en aval par la conciliation selon echecs > 0. */\n/* Ici on retourne les données + un compteur d'erreurs de collecte pour la conciliation. */\nif (allConservees.length === 0) {\n  // Aucune entreprise conservée : soit tous couples en erreur, soit réponses vides\n  if (couplesAvecErreur > 0) {\n    // Au moins un couple en erreur réseau -> partial (le run contiendra le message d'erreur)\n    return [{ json: { ...base, couple: false, vide: false, erreur: couplesAvecErreur + \" couple(s) en erreur réseau\", conservees: [], details, echecs_collecte: couplesAvecErreur } }];\n  }\n  // Tous couples vides (ex: départements inexistants) -> success, items=0\n  return [{ json: { ...base, couple: false, vide: true, erreur: null, conservees: [], details, echecs_collecte: 0 } }];\n}\n\n// Il y a des entreprises à écrire\nreturn allConservees.map((ligne) => ({ json: { couple: false, vide: false, erreur: null, conservees: null, details, echecs_collecte: couplesAvecErreur, ...ligne } }));"
+        "jsCode": "/* S1-02 · S1-04 — filtrage et compteurs sur les réponses de l'API (aucun réseau ici :\n   le Code node de n8n n'a pas de fetch, cf. AGENTS.md §10).\n   Entrée : les pages renvoyées par le nœud HTTP paginé (un item = le corps d'une page).\n   Règles :\n   - rattachement : `pairedItem.item` EST l'index du couple dans « Préparation de collecte ».\n     NE JAMAIS se fier à `pairedItem.sourceOverwrite` : n8n ne le remplit pas — mesuré le\n     2026-10-26, un échec réseau complet ressortait en « success, 0 élément » : plantage\n     silencieux, exactement ce que le ticket S1-04 interdit.\n   - anti-silence : chaque résultat porte le code NAF du couple ET etat_administratif = \"A\"\n   - contrats de colonnes : `siren` (clé primaire) ET `name` (NOT NULL) vérifiés LOCALEMENT\n   - plafond de pagination : le nœud HTTP s'arrête à maxRequests sans erreur ; une dernière\n     page pleine (25) signale une collecte tronquée → le run le dit\n   - ADR 0005 : ne conserver que le siège ; compter les hors zone (jamais perdues)\n   - D-002 : recuperees = renvoyées par l'API ; ecartees = écartées par la règle du siège\n   - Continue on Fail : un couple en échec n'empêche pas les autres. S'il reste des données,\n     le run écrit ce qu'il a et sort en `partial` ; s'il n'y en a aucune, il sort en `error`\n     avec le message du couple fautif. Jamais de « succès » muet. */\n\nconst items = $input.all();\nconst couplesPrep = $('Préparation de collecte (S1-02)').all();\nconst STATE_ERROR = \"echec de collecte WF1 : \";\nconst TAILLE_PAGE = 25;\n\n/* Le message d'un item en erreur n'a pas de forme unique : un délai dépassé porte\n   `message` + `name`, une réponse HTTP en erreur porte `statusCode` + `error` (mesuré\n   le 2026-10-26 : 500 → {statusCode, error}, timeout → {message}). On essaie dans\n   l'ordre du plus informatif au plus générique, jamais un texte creux. */\nfunction messageErreur(e) {\n  if (e == null) return 'erreur inconnue';\n  if (typeof e === 'string') return e.slice(0, 300);\n  const parties = [];\n  if (e.statusCode) parties.push('HTTP ' + e.statusCode);\n  if (typeof e.error === 'string') parties.push(e.error.slice(0, 200));\n  if (e.message) parties.push(String(e.message).slice(0, 200));\n  if (e.description) parties.push(String(e.description).slice(0, 200));\n  if (e.code && e.code !== e.statusCode) parties.push(String(e.code));\n  if (parties.length === 0) parties.push(JSON.stringify(e).slice(0, 200));\n  return parties.join(' — ').slice(0, 400);\n}\n\n\nfunction contexteDe(item) {\n  const p = item && item.pairedItem;\n  const idx = Array.isArray(p) ? (p[0] && p[0].item) : (p && p.item);\n  if (typeof idx !== 'number') return null;\n  const c = couplesPrep[idx];\n  return c && c.json ? c.json : null;\n}\n\nconst couples = new Map();\nlet sansContexte = 0;\nlet contexteGlobal = null;\n\nfor (const it of items) {\n  const j = (it && it.json) || {};\n  const couple = contexteDe(it);\n  if (!couple) { sansContexte++; continue; }\n  if (!contexteGlobal) {\n    contexteGlobal = {\n      run_id: couple.run_id || null,\n      campaign_id: couple.campaign_id || null,\n      departements_cible: Array.isArray(couple.departements_cible) ? couple.departements_cible : [],\n      bandes_appliquees: Array.isArray(couple.bandes_appliquees) ? couple.bandes_appliquees : [],\n    };\n  }\n  const cle = couple.naf + '|' + couple.departement;\n  let entree = couples.get(cle);\n  if (!entree) { entree = { couple, pages: [], erreurs: [] }; couples.set(cle, entree); }\n  if (j.error != null) {\n    entree.erreurs.push(messageErreur(j.error));\n  } else {\n    entree.pages.push(j);\n  }\n}\n\nconst details = { recuperees: 0, ecartees: 0, bandes_appliquees: contexteGlobal ? contexteGlobal.bandes_appliquees : [] };\nconst base = { run_id: contexteGlobal ? contexteGlobal.run_id : null, campaign_id: contexteGlobal ? contexteGlobal.campaign_id : null };\nconst departementsCible = contexteGlobal ? contexteGlobal.departements_cible : [];\nconst conservees = [];\nconst messagesEchec = [];\n\n/* Un rattachement perdu est un échec : mieux vaut ne rien écrire que de faire passer un\n   résultat partiel pour un résultat complet. */\nif (sansContexte > 0) {\n  return [{ json: { ...base, couple: false, vide: false, conservees: [], details, echecs_collecte: sansContexte,\n    erreur: STATE_ERROR + sansContexte + \" page(s) sans couple rattachable (pairedItem perdu) — collecte interrompue\" } }];\n}\n\nfor (const [cle, entree] of couples) {\n  if (entree.erreurs.length > 0) {\n    messagesEchec.push(cle + \" : \" + entree.erreurs.join(' / ').slice(0, 300));\n    continue;                       /* Continue on Fail : ce couple ne bloque pas les autres */\n  }\n  const couple = entree.couple;\n  const nafDemande = typeof couple.naf === 'string' ? couple.naf.trim() : null;\n  if (!nafDemande) { messagesEchec.push(cle + \" : code NAF du couple introuvable\"); continue; }\n\n  let erreurCouple = null;\n  for (const page of entree.pages) {\n    const resultats = Array.isArray(page.results) ? page.results : [];\n    for (const resultat of resultats) {\n      if (resultat.activite_principale !== nafDemande) {\n        erreurCouple = \"verification anti-silence : activite_principale = \" + JSON.stringify(resultat.activite_principale) + \" au lieu de \" + nafDemande;\n        break;\n      }\n      if (resultat.etat_administratif !== 'A') {\n        erreurCouple = \"verification anti-silence : etat_administratif = \" + JSON.stringify(resultat.etat_administratif) + \" (demande A)\";\n        break;\n      }\n      if (typeof resultat.siren !== 'string' || resultat.siren.trim() === '') {\n        erreurCouple = \"contrat : entreprise sans siren, siren=\" + JSON.stringify(resultat.siren);\n        break;\n      }\n      const nomEntreprise = resultat.denomination_unite_legale || resultat.denomination || resultat.nom_complet || resultat.nom_raison_sociale || null;\n      if (typeof nomEntreprise !== 'string' || nomEntreprise.trim() === '') {\n        erreurCouple = \"contrat : entreprise sans name (denomination/nom_complet absents), siren=\" + JSON.stringify(resultat.siren);\n        break;\n      }\n      details.recuperees++;\n      const siege = resultat.siege || null;\n      const deptSiege = siege && typeof siege.departement === 'string' ? siege.departement.toLowerCase() : null;\n      if (deptSiege && departementsCible.includes(deptSiege)) {\n        conservees.push({\n          siren: resultat.siren,\n          name: nomEntreprise,\n          naf: resultat.activite_principale || null,\n          address: siege.adresse || null,\n          city: siege.libelle_commune || null,\n          postal_code: siege.code_postal || null,\n          effectif: typeof resultat.tranche_effectif_salarie === 'string' ? resultat.tranche_effectif_salarie : null,\n          campaign_id: base.campaign_id,\n          raw: resultat,\n          run_id: base.run_id,\n        });\n      } else {\n        details.ecartees++;\n      }\n    }\n    if (erreurCouple) break;\n  }\n  if (!erreurCouple && entree.pages.length > 0) {\n    const derniere = entree.pages[entree.pages.length - 1];\n    if (Array.isArray(derniere.results) && derniere.results.length >= TAILLE_PAGE) {\n      erreurCouple = \"plafond de pagination atteint sur \" + cle + \" : derniere page recue pleine (25 resultats) — collecte tronquee (100 pages max) ou volume anormal a arbitrer\";\n    }\n  }\n  if (erreurCouple) messagesEchec.push(cle + \" : \" + erreurCouple);\n}\n\nconst nbEchecs = messagesEchec.length;\nconst messageEchec = nbEchecs > 0 ? (nbEchecs + \" couple(s) en echec — \" + messagesEchec.join(' || ')).slice(0, 900) : null;\n\n/* Aucune donnée : s'il y a un échec, le run part en ERREUR (jamais un « succès » muet). */\nif (conservees.length === 0) {\n  if (nbEchecs > 0) {\n    return [{ json: { ...base, couple: false, vide: false, conservees: [], details, echecs_collecte: nbEchecs, erreur: messageEchec } }];\n  }\n  /* Réponse vide = cas nominal (département valide × NAF valide sans résultat) → success, 0 écrit. */\n  return [{ json: { ...base, couple: false, vide: true, erreur: null, conservees: [], details, echecs_collecte: 0, message_echec: null } }];\n}\n\n/* Des données ET des couples en échec : on écrit ce qu'on a, le run sortira `partial`. */\nreturn conservees.map((ligne) => ({\n  json: { ...ligne, couple: false, vide: false, erreur: null, conservees: null, details, echecs_collecte: nbEchecs, message_echec: messageEchec },\n}));"
       },
       "id": "11111111-1111-4111-8111-111111111137",
       "name": "Filtrage et compteurs (S1-02)",
@@ -461,7 +461,7 @@
             },
             {
               "fieldId": "error",
-              "fieldValue": "={{ $json.echecs > 0 ? ($json.echecs + ' écriture(s) en échec (doublon SIREN possible — upsert prévu en S1-03)') : null }}"
+              "fieldValue": "={{ $json.echecs > 0 ? ($json.message_echec || ($json.echecs + ' échec(s) sans message')) : null }}"
             }
           ]
         }
@@ -591,20 +591,6 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* S1-04 — conciliation des écritures + erreurs collecte : compte les lignes RÉELLEMENT écrites\n   (D-002 : items_processed = lignes ÉCRITES) et détermine le statut du run\n   (AGENTS.md §5 : success | partial | error). Entrée : les deux sorties du nœud\n   d'écriture réunies (continueErrorOutput) — les items en échec portent un champ\n   `error` (ex. 409 doublon SIREN — à livrer en S1-03). Les deux branches étant\n   issues du même nœud, une seule exécution reçoit tous les items.\n   Le contexte vient de \"Filtrage et compteurs\" qui inclut maintenant `echecs_collecte`. */\n\nconst items = $input.all();\nconst echecsEcriture = items.filter((it) => it.json && it.json.error != null);\nconst source = $('Filtrage et compteurs (S1-02)').first();\nconst base = source && source.json ? source.json : {};\nconst echecsCollecte = base.echecs_collecte || 0;\n\nreturn [{\n  json: {\n    run_id: base.run_id ?? null,\n    campaign_id: base.campaign_id ?? null,\n    details: base.details ?? { recuperees: 0, ecartees: 0, bandes_appliquees: [] },\n    statut: (echecsEcriture.length + echecsCollecte) > 0 ? 'partial' : 'success',\n    ecrites: items.length - echecsEcriture.length,\n    echecs: echecsEcriture.length + echecsCollecte,\n  },\n}];"
-      },
-      "id": "11111111-1111-4111-8111-111111111146",
-      "name": "Conciliation des écritures (S1-02)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1700,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
         "jsCode": "/* S1-03 — construction du LOT d'entreprises à upsert (aucun réseau ici — AGENTS.md §10).\n   Contrats :\n   - ADR 0007 : l'écriture est un SEUL POST PostgREST atomique ?on_conflict=siren\n     + Prefer: resolution=merge-duplicates ; le lot est dédoublonné ICI, avant le POST,\n     pour ne jamais toucher la garde PostgREST (« cannot affect row a second time »).\n   - D-010 : doublon de SIREN intra-lot (couple multi-départements) → le PREMIER item\n     gagne ; les suivants sont rejetés et comptés (jamais perdus).\n   - D-009 : campaign_id n'est PAS dans le payload d'upsert (la passe de propriété,\n     distincte, attribue les lignes fraîches après le POST — cf. ADR 0007, point 3).\n   - Critère S1-03 : les colonnes enrichies (website, email, phone, website_source)\n     ne sont jamais envoyées — absentes du payload, pas « écrasées à null ».\n   Sortie : UNE item = UN lot (payload `lot` + contexte de conciliation). */\nconst items = $input.all();\nconst source = $('Filtrage et compteurs (S1-02)').first();\nconst base = source && source.json ? source.json : {};\nconst COLONNES_PAYLOAD = ['siren', 'name', 'naf', 'address', 'city', 'postal_code', 'effectif', 'raw'];\nconst lot = [];\nconst vus = new Set();\nlet entrees = 0;\nlet doublons_rejetes = 0;\nfor (const it of items) {\n  const j = (it && it.json) || {};\n  if (typeof j.siren !== 'string' || j.siren.trim() === '') continue;\n  entrees++;\n  if (vus.has(j.siren)) { doublons_rejetes++; continue; }\n  vus.add(j.siren);\n  const ligne = {};\n  for (const c of COLONNES_PAYLOAD) ligne[c] = j[c] ?? null;\n  lot.push(ligne);\n}\nconst details = base.details ?? { recuperees: 0, ecartees: 0, bandes_appliquees: [] };\nreturn [{ json: { ...base, details, entrees, doublons_rejetes, log: 'lot sirens=' + vus.size + ' entrees=' + entrees + ' doublons=' + doublons_rejetes, lot } }];"
       },
       "id": "11111111-1111-4111-8111-111111111161",
@@ -701,7 +687,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* S1-03 — conciliation de la chaîne d'écriture (Atomicité du POST, ADR 0007).\n   Entrée : la sortie du nœud PATCH (alwaysOutputData : un item même si rien n'a\n   été attribué) ; un item porte `error` si la chaîne d'attribution a échoué —\n   le run en parle, jamais il ne tait l'échec.\n   D-002 : `items_processed` = lignes RÉELLEMENT écrites. Le POST étant atomique,\n   la taille du lot (`lot.lot.length`) vaud N écritures si le POST passe, 0 sinon\n   (l'échec du POST ressort comme UN item d'erreur — AGENTS.md §10). */\nconst items = $input.all();\nconst lotItem = $('Lot des entreprises (S1-03)').first();\nconst base = lotItem && lotItem.json ? lotItem.json : {};\nconst lot = Array.isArray(base.lot) ? base.lot : [];\nconst echecs = items.filter((it) => it.json && it.json.error != null);\nreturn [{\n  json: {\n    run_id: base.run_id ?? null,\n    campaign_id: base.campaign_id ?? null,\n    details: base.details ?? { recuperees: 0, ecartees: 0, bandes_appliquees: [] },\n    statut: echecs.length > 0 ? 'partial' : 'success',\n    ecrites: lot.length,\n    echecs: echecs.length,\n  },\n}];"
+        "jsCode": "/* S1-03 · S1-04 — conciliation de la chaîne d'écriture.\n   Entrée : la sortie du nœud PATCH (alwaysOutputData : un item même si rien n'a été attribué) ;\n   un item porte `error` si la chaîne d'écriture a échoué.\n   D-002 : `items_processed` = lignes RÉELLEMENT écrites = taille du lot (POST atomique).\n   S1-04 : les ÉCHECS DE COLLECTE comptent aussi — un couple en panne, invisibles sinon,\n   faisait sortir le run en `success` alors que sa collecte était incomplète. */\nconst items = $input.all();\nconst lotItem = $('Lot des entreprises (S1-03)').first();\nconst base = lotItem && lotItem.json ? lotItem.json : {};\nconst lot = Array.isArray(base.lot) ? base.lot : [];\nconst echecsEcriture = items.filter((it) => it.json && it.json.error != null);\nconst echecsCollecte = Number(base.echecs_collecte) || 0;\nconst total = echecsEcriture.length + echecsCollecte;\nconst messages = [];\nif (echecsCollecte > 0) messages.push(base.message_echec || (echecsCollecte + \" couple(s) en echec de collecte (message absent)\"));\nif (echecsEcriture.length > 0) messages.push(echecsEcriture.length + \" echec(s) sur la chaine d'ecriture (le POST du lot est atomique : un echec annule tout le lot)\");\nreturn [{\n  json: {\n    run_id: base.run_id ?? null,\n    campaign_id: base.campaign_id ?? null,\n    details: base.details ?? { recuperees: 0, ecartees: 0, bandes_appliquees: [] },\n    statut: total > 0 ? 'partial' : 'success',\n    ecrites: lot.length,\n    echecs: total,\n    message_echec: messages.length > 0 ? messages.join(' || ').slice(0, 900) : null,\n  },\n}];"
       },
       "id": "11111111-1111-4111-8111-111111111165",
       "name": "Conciliation du lot (S1-03)",
@@ -728,149 +714,6 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://recherche-entreprises.api.gouv.fr/search",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "activite_principale",
-              "value": "43.21A"
-            },
-            {
-              "name": "departement",
-              "value": "XX"
-            },
-            {
-              "name": "etat_administratif",
-              "value": "A"
-            },
-            {
-              "name": "per_page",
-              "value": "1"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 3000,
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "User-Agent",
-                "value": "Prospection-ia/1.0 (n8n WF1 collecte)"
-              }
-            ]
-          }
-        },
-        "onError": "continueRegularOutput"
-      },
-      "id": "11111111-1111-4111-8111-111111111147",
-      "name": "Test S1-04 : endpoint faux",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        760,
-        900
-      ]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://recherche-entreprises.api.gouv.fr/search",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "activite_principale",
-              "value": "43.21A"
-            },
-            {
-              "name": "departement",
-              "value": "99"
-            },
-            {
-              "name": "etat_administratif",
-              "value": "A"
-            },
-            {
-              "name": "per_page",
-              "value": "1"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 10000,
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "User-Agent",
-                "value": "Prospection-ia/1.0 (n8n WF1 collecte)"
-              }
-            ]
-          }
-        },
-        "onError": "continueRegularOutput"
-      },
-      "id": "11111111-1111-4111-8111-111111111148",
-      "name": "Test S1-04 : departement vide",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        760,
-        1050
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "/* S1-04 — verdict des deux tests de robustesse.\n   Test A (endpoint faux) : l'item sort en error → le statut du run doit être 'partial'.\n   Test B (departement inexistant) : réponse vide → le statut doit être 'success'.\n   Sortie : un item par test avec le verdict. */\nconst items = $input.all();\nconst verdicts = [];\nfor (const it of items) {\n  const j = it.json || {};\n  const nom = it.source && it.source.name ? it.source.name : 'inconnu';\n  const aEchoue = j.error != null;\n  verdicts.push({\n    test: nom,\n    a_echoue: aEchoue,\n    message: aEchoue ? (typeof j.error === 'string' ? j.error.slice(0, 200) : JSON.stringify(j.error).slice(0, 200)) : null,\n    verdict: aEchoue ? 'PARTIAL_ATTENDU' : 'SUCCES_ATTENDU'\n  });\n}\nreturn verdicts.map(v => ({ json: v }));"
-      },
-      "id": "11111111-1111-4111-8111-111111111149",
-      "name": "Verdict tests S1-04",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1000,
-        900
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "11111111-1111-4111-8111-111111111150",
-              "leftValue": "={{ $json.test_s104 === true }}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "11111111-1111-4111-8111-111111111150",
-      "name": "Tests S1-04 ?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        520,
-        600
-      ]
-    },
-    {
-      "parameters": {
         "resume": "timeInterval",
         "amount": 1,
         "unit": "seconds",
@@ -887,7 +730,7 @@
     },
     {
       "parameters": {
-        "content": "## S1-04 — politesse de crawl et robustesse\n\n- **Split in Batches** : batchSize = **10** (plage 10-25 du ticket) ; jamais un appel par élément.\n- **Wait 1 s** (nœud Wait v1.1, `amount=1 unit=seconds`) entre les lots, sur le chemin\n  `Des couples à collecter ?` → Wait → `Collecte API`. La pagination interne du nœud HTTP\n  (`requestInterval=1000`) fait déjà 1 req/s entre les **pages** ; le Wait ajoute 1 s entre les\n  **couples** (NAF × département).\n- **Retry on Fail ×3** sur `Collecte API` : `retryOnFail=true, maxTries=3, waitBetweenTries=1000`\n  (plafonné à 5000 ms par n8n, donc 1000 est gardé). Le retry rejoue **tout le lot** si le premier\n  item de la première sortie porte un champ `error` (workflow-execute.js `checkFailure`).\n- **Continue on Fail** : `onError=continueRegularOutput` — un élément en erreur ne bloque pas le lot.\n- **User-Agent** : `Prospection-ia/1.0 (n8n WF1 collecte)` en racine (`sendHeaders` + `headerParameters`),\n  vérifié par l'exécution (pas dans `options` : silencieusement non émis).\n- **Statut** : `partial` si échecs d'écriture (conciliation), `error` si erreur de collecte (endpoint faux,\n  anti-silence, contrat violé, plafond de pagination), `success` sinon. Réponse vide (département\n  inexistant) = `success`, pas d'erreur.",
+        "content": "## S1-04 — politesse de crawl et robustesse\n\n- **Split in Batches** : batchSize = **10** (plage 10-25 du ticket) ; un appel HTTP couvre un\n  **couple** (NAF × département), jamais un élément.\n- **Wait 1 s** (nœud Wait v1.1, `amount=1 unit=seconds`) entre les couples, avant `Collecte API` ;\n  la pagination interne du nœud HTTP (`requestInterval=1000`) espace les **pages** d'1 s.\n  Max 1 requête/s.\n- **Timeout** : 10 s par appel (`Collecte API` → `options.timeout = 10000`).\n- **Retry on Fail ×3** : `retryOnFail=true, maxTries=3, waitBetweenTries=5000`.\n  **ÉCART CONNU** : n8n n'offre qu'un délai **fixe** (`waitBetweenTries`, plafonné à 5 000 ms) ;\n  le « délai croissant » du ticket n'est pas implémenté nativement. Écart écrit au ticket.\n- **Continue on Fail** : `onError=continueRegularOutput` — un couple en erreur ne bloque pas les autres.\n- **User-Agent** : `Prospection-ia/1.0 (n8n WF1 collecte)`, en **racine** du nœud (`sendHeaders` +\n  `headerParameters`). Dans `options`, il n'est **pas émis** (AGENTS.md §10) — vérifié à l'exécution.\n- **Statut** : `error` sur erreur de collecte (endpoint faux, anti-silence, contrat violé, plafond de\n  pagination), `partial` si des écritures échouent, `success` sinon.\n- **« Réponse vide »** : un **département inexistant** (`99`) n'est PAS ce cas — l'API le rejette en\n  **HTTP 400** « departement non valide ». Le cas vide nominal est un département **valide** × un NAF\n  **valide** sans résultat (`2A` × `05.10Z` → HTTP 200, `total_results: 0`) → run `success`, 0 écrit.",
         "height": 620,
         "width": 640,
         "color": 3
@@ -977,7 +820,7 @@
         ],
         [
           {
-            "node": "Tests S1-04 ?",
+            "node": "Une erreur de collecte ?",
             "type": "main",
             "index": 0
           }
@@ -1075,17 +918,6 @@
         ]
       ]
     },
-    "Conciliation des écritures (S1-02)": {
-      "main": [
-        [
-          {
-            "node": "Clôture de campagne (S1-02)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Lot des entreprises (S1-03)": {
       "main": [
         [
@@ -1153,56 +985,6 @@
         [
           {
             "node": "Clôture de campagne (S1-02)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Test S1-04 : endpoint faux": {
-      "main": [
-        [
-          {
-            "node": "Verdict tests S1-04",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Test S1-04 : departement vide": {
-      "main": [
-        [
-          {
-            "node": "Verdict tests S1-04",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Verdict tests S1-04": {
-      "main": [
-        []
-      ]
-    },
-    "Tests S1-04 ?": {
-      "main": [
-        [
-          {
-            "node": "Test S1-04 : endpoint faux",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Test S1-04 : departement vide",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Une erreur de collecte ?",
             "type": "main",
             "index": 0
           }
