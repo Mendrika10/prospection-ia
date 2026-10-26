@@ -74,7 +74,22 @@ Format :
   est que l'API dépende d'**une seule** adresse vivante. Protocole et sorties brutes :
   [`reviews/2026-10-26-mesure-rotation-api.md`](reviews/2026-10-26-mesure-rotation-api.md). PR #45
   fusionnée en squash `99efd2c`, CI de `main` verte (run 40335525914).
-- **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket).
+- **Fait (exécution réelle)** : **première exécution de bout en bout de WF1 contre l'API publique**
+  (conteneur n8n jetable, export versionné + **1 seul** nœud de déclencheur ajouté sur la copie,
+  credential construit depuis `.env` dans le conteneur, jamais affiché). Quatre essais : `43.21A × 974`
+  → **2 échecs** (`3 tentatives × 10 s, 3 timeouts`, rien collecté), puis le même couple avec le nom
+  **épinglé sur l'adresse vivante** → `error` « **60 page(s) sans couple rattachable** », puis
+  `41.20A × 48` (22 résultats, **une** page) → **`success`, `items_processed = 20`**, 20 lignes
+  `companies` écrites avec leur `campaign_id`. **Base rendue à 0/0/0** (20 lignes retirées).
+  **Deux défauts bloquants** : **(A)** le nœud HTTP de n8n **ne bascule pas** d'adresse — la collecte
+  échoue sur l'API publique ; **(B)** `pairedItem.item` d'un nœud HTTP **paginé** est l'index de
+  **page**, pas celui du couple : au-delà de la 1ʳᵉ page, la collecte est abandonnée ou **mal
+  attribuée en silence** — et seuls **2 couples sur 30** tiennent sur une page. Décision **`D-015`**
+  (qui **révise `D-014`**), deux tickets prioritaires en tête du sprint 2, `S1-07` **remis en `Prêt`**.
+  Relevé complet :
+  [`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md).
+- **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
+  ouvrir les deux tickets de levée (défauts A et B) et refaire la preuve sur un couple **multi-pages**.
 - **Bloqué** : rien.
 
 ---

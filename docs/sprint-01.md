@@ -73,7 +73,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ✅ fait — PR #32 (réglages) + **correctif PR #36** après la **preuve réelle du 2026-10-26** : 3 défauts corrigés (échec réseau avalé en silence, échecs de collecte non comptés, nœud de conciliation orphelin) ; User-Agent **observé sur le fil**, ~1 req/s, retry ×3, `Continue on Fail` → `partial`, endpoint faux → `error`, réponse vide → `success` |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
 | S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ✅ fait — PR #28 (re-revue demandée puis fusion en squash `2969c3d`), CI de `main` verte |
-| S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
+| S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | 🟦 **Prêt** — condition de retour **remplie le 2026-10-26** (`D-015`) : une exécution réelle a appelé l'API publique et écrit **20 lignes** (`success`, `items_processed = 20`) ; la doc devra décrire les **deux défauts** ouverts en §7, pas une chaîne idéale |
 | S1-08 | `runs.details` — compteurs récupérées / écartées (**D-002**) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
 | S1-09 | `campaigns`/`runs` — rendre la fréquence par campagne implémentable (créé au planning) | Backend/Data | S | — | ✅ vérifié sur le vrai projet · écart de relecture consigné |
 
@@ -850,7 +850,15 @@ Telegram est un **plus non bloquant**. Le ticket ne dépend donc plus de `S0-06`
 
 ---
 
-### S1-07 — Documentation d'exploitation de WF1 ❌ refusé du sprint 1
+### S1-07 — Documentation d'exploitation de WF1 🟦 **Prêt** (remis en `Prêt` le 2026-10-26)
+
+**Avancement (2026-10-26)** : refusé au planning du 2026-10-15, faute d'avoir jamais tourné
+« pour de vrai ». Sa condition de retour, réécrite par **`D-013`** en « une exécution de WF1 a
+réellement appelé `recherche-entreprises.api.gouv.fr` et écrit au moins une ligne `companies` », est
+**remplie** : exécution du 2026-10-26 → `runs.status = success`, `items_processed = 20`,
+`recuperees = 22` / `ecartees = 2`, **20 lignes `companies`** avec leur `campaign_id`
+([`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md),
+**`D-015`**). Reste au ticket : décrire l'état **réel**, défauts A et B compris (cf. §7).
 
 **Objectif** : pouvoir relancer WF1 et diagnostiquer un échec sans relire le workflow.
 
@@ -1057,7 +1065,9 @@ n'est pas encore écrit. Ils sont listés ici pour ne pas disparaître entre deu
 |---|---|---|
 | Supprimer le garde-fou `node` de `.github/workflows/ci.yml` | S5 | Tant qu'il est là, une CI « verte » ne prouve que le SQL : le job `node` s'annonce ignoré au lieu de vérifier quoi que ce soit |
 | Écrire l'ADR hébergement front (Vercel Hobby non commercial, risque R4) | S7 | Décision à trancher **avant** la mise en production, pas après |
-| **`S1-07` refusé du sprint 1** — Documentation d'exploitation de WF1 | dès 1 collecte réelle | Condition de retour **explicite** (planning 2026-10-15) : on documente une procédure qui a tourné au moins une fois, sinon elle sera réécrite au premier incident |
+| **Défaut A — la collecte n'atteint pas l'adresse vivante de l'API** (aucun repli sur une autre adresse côté nœud HTTP de n8n) | **S2, prioritaire** | Mesuré le 2026-10-26 : 2 exécutions réelles, **3 tentatives × 10 s, 3 timeouts**, rien collecté ([`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md), **`D-015`**). La collecte est **inutilisable** pour une campagne réelle tant que ce défaut vit. Le timeout de 10 s n'est pas la cause |
+| **Défaut B — les pages d'un couple sont mal attribuées** (`pairedItem.item` d'un nœud HTTP paginé = index de **page**) | **S2, prioritaire** | Mesuré le 2026-10-26 (2 mini-workflows) : au-delà de la 1ʳᵉ page, le rattachement de `S1-04` soit **abandonne** la collecte (index hors bornes), soit l'**attribue au mauvais couple** — en silence si les deux couples partagent un NAF. **2 couples sur 30** seulement tiennent sur une page (`43.21A` × `974` = **1 515** résultats, 61 pages) : ce n'est pas un cas de bord. Correctif à faire sur une **clé portée par la donnée** |
+| ~~**`S1-07` refusé du sprint 1** — Documentation d'exploitation de WF1~~ | **remis en `Prêt` le 2026-10-26** | Condition de retour **remplie** (`D-013` → `D-015`) : une exécution réelle a écrit 20 lignes. La doc doit décrire l'état réel, **défauts A et B compris** |
 | Réévaluer la visibilité du dépôt dès qu'une donnée d'entreprise réelle entre dans le pipeline | fin S1 | Point de révision explicite de **D-004** : le dépôt est public, aucune donnée d'entreprise ne peut y entrer |
 | Protocole de calibrage de la grille (30 fiches relues à la main) | S3 | Point de déclenchement de **D-001** : à 100 analyses réelles, avant toute nouvelle collecte |
 

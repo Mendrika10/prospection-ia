@@ -134,6 +134,11 @@ Cette review avait laissé les trois arbitrages ci-dessous **sur la table, non t
    d'**une seule** adresse vivante. La phrase « aucun client ne réessaie une autre adresse » ci-dessus
    est **démentie par la mesure** (c'était l'hypothèse, pas un fait).
    Détail : [`2026-10-26-mesure-rotation-api.md`](2026-10-26-mesure-rotation-api.md).
+   → **et re-démenti, dans l'autre sens, par l'exécution réelle du même jour : `D-015`**. Le client qui
+   bascule est un client Node **nu** ; le **nœud HTTP de n8n ne bascule pas** — 2 exécutions réelles,
+   3 tentatives × 10 s, **3 timeouts**, rien collecté. La collecte n'est donc pas seulement « une
+   partie des runs » en erreur : elle est **inutilisable en l'état** sur l'API publique. Détail :
+   [`2026-10-26-execution-reelle-wf1-api-publique.md`](2026-10-26-execution-reelle-wf1-api-publique.md).
 3. **`S1-07`** — sa condition de retour est « dès 1 collecte réelle ». Une collecte réelle a bien
    tourné le 2026-10-26… **contre un hôte d'écho local** (pour prouver la robustesse), pas sur l'API
    publique. La condition n'est donc **pas remplie à la lettre**, et le ticket reste refusé.
