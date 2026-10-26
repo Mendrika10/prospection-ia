@@ -492,7 +492,12 @@ autre voie (il serait alors mal placé, non inutile).
 la clôture sans elle) · le PO (l'arbitrage écrit ici). Inscrire la règle dans la liste de la DoD
 (`methode-equipe-agents.md` §2.4) sortait du périmètre d'édition de ce rôle : **fait le 2026-10-26
 sur instruction du propriétaire du dépôt** — la ligne « Déployé et vérifié sur l'environnement
-cible » y porte désormais la règle, sans qu'une autre décision soit nécessaire.
+cible » y porte désormais la règle, sans qu'une autre décision soit nécessaire. Même exigence portée
+sur les deux gabarits de clôture (`.github/ISSUE_TEMPLATE/ticket.md`,
+`.github/PULL_REQUEST_TEMPLATE.md`), qui listaient leur propre DoD sans cette ligne : une règle que
+l'agent qui ferme le ticket ne lit pas n'est pas encore appliquée.
+
+**Consigné** : PR **#43** fusionnée en squash `afd196b`, CI de `main` **verte** (run 40333027573).
 
 **Origine** : revue [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md)
 §5, décision n° 1.
