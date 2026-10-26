@@ -1031,6 +1031,8 @@ restées « sur la table, non prises » pendant la review :
 - **`D-013`** — `S1-07` **reste refusé**, avec une condition de retour désormais **vérifiable** :
   1 ligne `companies` écrite par un appel réel à `recherche-entreprises.api.gouv.fr`.
 
+**Consigné** : PR **#41** fusionnée en squash `41b6b86`, CI de `main` **verte** (run 40330489974).
+
 ---
 
 ## 7. Reporté aux sprints suivants (à ne pas perdre)
