@@ -35,3 +35,4 @@ $ pnpm lint && pnpm typecheck && pnpm test
 - [ ] RLS activée si nouvelle table ; aucune policy pour `anon`
 - [ ] Documentation mise à jour si nécessaire
 - [ ] Périmètre du ticket respecté
+- [ ] *Si la PR touche la chaîne de collecte (WF1)* : **exécution de bout en bout** (1 campagne, 1 couple, ≤ 25 attendus), **la ligne `runs` lue en base** à l'appui, et un **scénario d'échec provoqué** s'il touche la robustesse — `D-011`, §2.4 de [`methode-equipe-agents.md`](../docs/methode-equipe-agents.md)

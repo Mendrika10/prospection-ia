@@ -57,7 +57,11 @@ Format :
   `41b6b86`, CI de `main` verte (run 40330489974).
 - **Fait (DoD)** : `D-011` **inscrit dans la Definition of Done** (`methode-equipe-agents.md` §2.4),
   sur instruction du propriétaire — la ligne « Déployé et vérifié sur l'environnement cible » y porte
-  désormais l'exigence d'exécution de bout en bout pour tout ticket touchant WF1.
+  désormais l'exigence d'exécution de bout en bout pour tout ticket touchant WF1. La même case est
+  ajoutée aux **deux gabarits de clôture** (`.github/ISSUE_TEMPLATE/ticket.md`,
+  `.github/PULL_REQUEST_TEMPLATE.md`), qui n'avaient pas cette ligne du tout : sans elle, l'agent qui
+  ferme le ticket ne voyait pas l'exigence. PR #43 fusionnée en squash `afd196b`, CI de `main` verte
+  (run 40333027573).
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
   le prévu du ticket de mesure de la rotation d'adresses (D-012) pour le sprint 2.
 - **Bloqué** : rien.
