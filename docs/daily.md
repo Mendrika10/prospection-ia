@@ -13,6 +13,36 @@ Format :
 
 ---
 
+## 2026-10-26 (lundi, soir) — S2-01 : le défaut A n'existe pas, la mesure le prouve et la décision le dit
+
+- **Fait** : `S2-01` **clos le soir même de son ouverture, sans un seul correctif** — l'instruction
+  demandée par le ticket (« pourquoi le nœud HTTP de n8n ne bascule-t-il pas ? ») a répondu par la
+  négative : **il bascule**. Mesures, image n8n 2.43.5 / node 26.7.0, conteneurs jetables, **aucun
+  épinglage** : le résolveur rend toujours trois adresses dont une seule répond (20 relevés sur 20,
+  ≤ 20 ms) ; **le nœud de WF1 copié tel quel atteint l'API 10 fois sur 10** (22 résultats, < 1 s) ;
+  la trace réseau du **code de n8n** (`NODE_DEBUG=net`) montre le repli **exercé** — `connect:
+  autodetecting`, deux adresses muettes à 500 ms chacune, puis l'adresse vivante connectée ; le mode
+  d'échec, lui, se reproduit **à volonté** en épinglant le nom sur une adresse muette (**40,1 s**,
+  3 × 10 s, `timeout of 10000ms exceeded`, 0 résultat — la signature **exacte** des runs 1 et 2).
+  Les deux seuls réglages qui cassent la bascule (`family: 4`, `autoSelectFamily: false`) sont
+  mesurés et désormais interdits. **WF1 entier, sans épinglage** : campagne `41.20A × 48`,
+  `runs.status = success`, `items_processed = 20`, `details = {recuperees: 22, ecartees: 2}`,
+  `error = null`, **4,2 s**, 20 lignes `companies` rattachées à leur campagne, `website` intact
+  (D-009), base rendue à **0 / 0 / 0**. `D-016` **révise le point 1 de `D-015`** et écrit la règle
+  qui manquait : **un symptôme reproduit n'est pas une cause attribuée** — deux mesures non
+  simultanées avaient été lues comme si elles l'étaient. `AGENTS.md` §10 : le piège « le nœud ne
+  bascule pas » est **réécrit** (il affirmait le contraire), et trois pièges ajoutés (les réglages
+  qui cassent la bascule, l'épinglage comme outil de preuve, la règle d'attribution).
+- **Constat annexe, sans ticket** : une campagne laissée par un essai interrompu a fait tourner WF1
+  sur **deux campagnes dues dans le même lot** — deux lignes `runs` créées dans la **même
+  transaction** (`started_at` identique à la microseconde), **une seule** clôturée, la seconde
+  campagne **affamée** et sa ligne restée `running`. Observation **réelle mais non isolée** : elle
+  n'a pas de critères vérifiables, donc pas de ticket — le planning l'instruira avec sa propre mesure.
+- **Prévu** : `S2-02` (rattacher chaque page au bon couple, par une clé **portée par la donnée**),
+  désormais **débloqué** par ce constat : la collecte mono-page est prouvée apte, le rattachement des
+  pages est le dernier défaut de la collecte. Puis le planning du sprint 2 (WF2, reports du §7).
+- **Bloqué** : rien.
+
 ## 2026-10-26 (lundi) — S1-04 : la preuve faite a révélé que WF1 ne collectait rien
 
 - **Fait** : `S1-04` **réellement clos**. La PR #32 avait fusionné les réglages de politesse et un

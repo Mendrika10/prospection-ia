@@ -4,6 +4,12 @@
 > exécution de bout en bout ») et la **condition de retour de `D-013`** pour `S1-07`. Date :
 > **2026-10-26**. Demandé explicitement : 1 campagne, 1 couple, ≤ 25 éléments, puis **remise en état
 > de la base**. C'est cette exécution qui **révise `D-014`** par **`D-015`**.
+>
+> **Requalifié le même jour — à lire avant de citer le défaut A** : le « défaut A » de ce relevé
+> n'en est pas un. Le nœud HTTP de n8n **bascule bien d'adresse** (`10/10` sans épinglage, trace
+> réseau à l'appui) ; la panne d'adresses de ce jour-là était **transitoire**. Voir
+> [`2026-10-26-requalification-defaut-a-bascule-adresse.md`](2026-10-26-requalification-defaut-a-bascule-adresse.md)
+> et `D-016`. Le **défaut B**, lui, reste entier — c'est toujours la preuve de `S2-02`.
 
 ## Ce qui a été lancé, et comment
 
@@ -59,6 +65,12 @@ Les 20 lignes portent **le `campaign_id` de la campagne** (passe de propriété 
    aujourd'hui les trois échecs en erreurs lisibles au lieu de « `success`, 0 élément ».
 
 ## Défaut A — le nœud HTTP de n8n ne bascule pas d'adresse : la collecte échoue
+
+> **Ce titre est faux, et il est conservé comme tel** : la mesure du même jour montre que le nœud
+> HTTP de n8n **bascule** (`D-016`) — ce qui suit décrit un symptôme **réel**, pas sa cause. La
+> cause retenue ici (« le nœud ne bascule pas ») a été **réfutée** ; lire la
+> [requalification](2026-10-26-requalification-defaut-a-bascule-adresse.md) avant de s'appuyer sur
+> cette section.
 
 Mesuré, deux fois, à 3 minutes d'intervalle :
 
