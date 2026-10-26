@@ -770,7 +770,8 @@ faite le 2026-10-26 ; révise `D-014` ; complète `D-012`.
 
 **Tickets ouverts** : **`S2-01`** (défaut A — atteindre une adresse vivante) et **`S2-02`** (défaut B
 — rattacher chaque page au bon couple), en tête du backlog du sprint 2, critères d'acceptation et
-DoR compris : [`sprint-02.md`](sprint-02.md).
+DoR compris : [`sprint-02.md`](sprint-02.md) — PR **#49** fusionnée en squash `0f5ca02`, CI de
+`main` **verte** (run 40341246152).
 
 **Consigné** : PR **#47** fusionnée en squash `cd6bbb4`, CI de `main` **verte** (run 40339795807).
 
