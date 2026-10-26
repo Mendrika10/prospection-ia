@@ -48,7 +48,8 @@ Format :
   bout en bout de WF1 avant de clore tout ticket touchant la chaîne de collecte.
   Détail : [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md).
 - **Fait (suite)** : rétrospective versée dans `AGENTS.md` §10 (**5 pièges mesurés**, réponse à la
-  question 3 du §6) et §5/§6 de `docs/sprint-01.md` relevés (PR #38 fusionnée en squash `0ab43a9`).
+  question 3 du §6, PR #38 fusionnée en squash `0ab43a9`) ; **Sprint Review et Rétrospective** tenues,
+  §5/§6 de `docs/sprint-01.md` relevés (PR #39 fusionnée en squash `3313343`, CI de `main` verte).
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
   trancher avec le PO si le timeout de 10 s reste tenable face à cette API.
 - **Bloqué** : rien.

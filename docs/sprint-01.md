@@ -999,6 +999,8 @@ Détail, mode de mesure de chaque ligne et limites :
 c'est précisément pourquoi ils ne l'ont pas vu : un défaut critique a vécu 6 jours sur `main` derrière
 une CI verte et deux tickets marqués `fait`.
 
+**Consigné** : PR **#39** fusionnée en squash `3313343`, CI de `main` **verte** (run 40328217731).
+
 ## 6. Fin de sprint — questions à trancher en rétro
 
 1. `ADR 0005` a-t-il évité des faux positifs, ou surestimé le problème ?
