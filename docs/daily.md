@@ -34,6 +34,7 @@ Format :
   (`2A` × `05.10Z`, département **valide**) → `success` 0 écrit, collecte réelle 2 couples →
   `success`, `items_processed = 2`, 2 lignes `companies` écrites. Base rendue à 0/0/0 après chaque
   scénario.
+- **Fusion** : PR #36 fusionnée en squash `3945450`, CI de `main` **verte** (run 40325270121).
 - **Limitation, non bloquante** : la collecte sur l'**API publique** n'a pas pu être rejouée en
   `success`. `recherche-entreprises.api.gouv.fr` résout trois adresses et **deux ne répondent
   jamais** depuis ce réseau (`.76` → 200 en 2,0 s ; `.77` → timeout 15,0 s ; `.78` → timeout
