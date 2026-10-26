@@ -306,15 +306,40 @@ comme une preuve que le produit fonctionne.
   ~0,2 s (TCP) / ~0,27 s (HTTP) ; `37.59.183.77` et `37.59.183.78` → **muettes au niveau TCP** (SYN
   sans réponse : 6 essais sur 6 en timeout à 12 s, 15,0 s à la première mesure). Ce ne sont donc
   **pas** des adresses lentes qu'un timeout plus long sauverait.
-- **Le repli d'adresse dépend du client — ne pas confondre « Node » et « le nœud HTTP de n8n »**
-  (mesuré le 2026-10-26, `D-014` puis `D-015`) : un client `http`/`https` **nu** de Node ≥ 20
-  bascule seul sur une autre adresse (`autoSelectFamily`, actif par défaut) — 8 appels sur 8 ont
-  réussi malgré un résolveur qui rendait une adresse **muette** en premier. Le **nœud HTTP de n8n**,
-  lui, **ne bascule pas** : deux exécutions réelles de WF1, **3 tentatives × 10 s, 3 timeouts**, rien
-  collecté (`runs.status = error`, message exploitable — c'est le comportement voulu). Corollaire :
-  « ça marche depuis mon poste » ne dit **rien** de ce que fera la collecte. La seule bascule
-  observée a été obtenue en épinglant le nom sur l'adresse vivante **au niveau du conteneur**
-  (`--add-host`), ce qui n'est pas une configuration de production.
+- **Le repli d'adresse fonctionne — pour un client Node *et* pour le nœud HTTP de n8n** (mesuré le
+  2026-10-26, `S2-01` : [`reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md`](docs/reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md),
+  décision `D-016`) : Node ≥ 20 bascule seul d'adresse (`autoSelectFamily`, actif par défaut,
+  `attemptTimeout` **500 ms**), et le nœud HTTP de n8n **en profite comme n'importe quel client** —
+  **10 exécutions sur 10** ont atteint l'API sans épinglage, et la trace réseau (`NODE_DEBUG=net`)
+  montre le repli **exercé par le code de n8n** : `connect: autodetecting`, deux adresses muettes à
+  500 ms chacune, puis l'adresse vivante connectée. Ce qui avait fait écrire l'inverse (`D-015`) :
+  deux exécutions en `timeout` comparées à un client nu qui réussissait — **deux mesures non
+  simultanées**, lues comme si elles l'étaient. Corollaire inverse du précédent : « ça marche depuis
+  mon poste » dit **quelque chose** de la collecte, à condition de regarder **le jeu d'adresses rendu
+  au même moment**.
+- **Ce qui casse la bascule, en revanche, se reproduit à volonté** (mesuré le 2026-10-26, `S2-01`) :
+  figer la famille (`family: 4`) ou **désactiver l'autosélection** (`autoSelectFamily: false`) réduit
+  la résolution à **une** adresse — la première du jeu, souvent muette — et rend exactement le
+  symptôme du 26/10 : `timeout of 10000ms exceeded`, 3 tentatives × 10 s (**10,0 s mesurées**, contre
+  **1,9 s** de réussite avec le même nom, le même réseau et aucune de ces deux options). Ces réglages
+  ne sont **pas** dans WF1 : ne pas les y introduire, et les écarter **en premier** si la panne
+  revient.
+- **Épingler le nom sur une adresse muette est le moyen de reproduire le mode d'échec** (mesuré le
+  2026-10-26 : **40,1 s**, 3 tentatives, `timeout of 10000ms exceeded`, **0 résultat** — la signature
+  exacte des runs 1 et 2). C'est un **diagnostic de preuve**, jamais une configuration de production :
+  le jour où l'adresse change, la panne devient **définitive** et sans repli.
+- **Un symptôme reproduit n'est pas une cause attribuée** (payé le 2026-10-26 : un ticket ouvert,
+  cette section réécrite, une décision révisée) : « ça échoue ici, ça marche là » ne désigne un
+  coupable que si les deux mesures sont prises **dans la même fenêtre et sur le même chemin
+  d'exécution**. Sinon, écrire une **hypothèse** — jamais une cause.
+- **Un lot de campagnes n'est pas traité campagne par campagne** (observé incidemment le 2026-10-26,
+  `S2-01`, **non isolé** — à instruire) : avec **deux campagnes dues** dans le même lot, deux lignes
+  `runs` ont été créées dans la **même transaction** (`started_at` identique à la microseconde),
+  **une seule** a été clôturée (`success`, 20 items), et la seconde campagne n'a **rien** reçu — sa
+  ligne restant `running`, donc comptée comme « dernier passage » par `campaigns_due`. Lecture du
+  code, cohérente : « Préparation de collecte » et la clôture lisent
+  `$('Pour chaque campagne (S1-02)').first()` et `$('Run démarré (campagne)').first()`. Le cas est
+  atteignable avec le `batchSize: 10` du nœud : à mesurer isolément avant d'ouvrir un ticket.
 - **`pairedItem.item` d'un nœud HTTP paginé est l'index de PAGE, pas l'index de l'item d'entrée**
   (mesuré le 2026-10-26 sur deux mini-workflows, `D-015`) : 1 couple sur 2 pages → `{item:0}` puis
   **`{item:1}`** ; 2 couples (A sur 2 pages, B sur 1) → la page 2 de A est **attribuée à B**. Un

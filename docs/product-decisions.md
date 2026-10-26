@@ -687,7 +687,7 @@ rien — le ticket de mesure est clos — et surveille le premier run `error` de
 
 ---
 
-## D-015 — L'exécution réelle a prouvé la chaîne et révélé deux défauts bloquants · 2026-10-26 · en vigueur
+## D-015 — L'exécution réelle a prouvé la chaîne et révélé deux défauts bloquants · 2026-10-26 · en vigueur — **point 1 révisé par D-016** (le nœud HTTP de n8n bascule : le défaut A n'existe pas)
 
 **Décision** : quatre points, dont le premier corrige une décision que j'ai prise trois heures plus tôt.
 
@@ -774,4 +774,114 @@ DoR compris : [`sprint-02.md`](sprint-02.md) — PR **#49** fusionnée en squash
 `main` **verte** (run 40341246152).
 
 **Consigné** : PR **#47** fusionnée en squash `cd6bbb4`, CI de `main` **verte** (run 40339795807).
+
+---
+
+## D-016 — Le défaut A n'existe pas : le nœud HTTP de n8n bascule bien d'adresse · 2026-10-26 · en vigueur
+
+**Décision** : cinq points, dont le premier **corrige `D-015`** — que j'avais écrite le matin même.
+
+1. **Le défaut A est requalifié : il n'existe pas.** Le nœud HTTP de n8n **bascule** d'adresse —
+   **10 exécutions sur 10** réussies sans aucun épinglage (22 résultats, < 1 s), et la trace réseau du
+   code de n8n montre le repli exercé : deux adresses muettes à 500 ms chacune, puis l'adresse
+   vivante connectée. Le point 1 de `D-015` (« le nœud HTTP de n8n ne bascule pas ») est **révisé**.
+2. **L'échec du 2026-10-26 s'explique par ce que le résolveur rendait, pas par le client** : le
+   symptôme enregistré — 3 tentatives × 10 s, `timeout of 10000ms exceeded`, rien collecté — se
+   reproduit **à volonté** dès qu'aucune adresse du jeu ne répond (`40,1 s` mesurées en épinglant le
+   nom sur une adresse muette). Pendant les runs 1 et 2, aucune adresse du jeu rendu ne répondait.
+   Le contre-argument « un client Node **nu** réussit 8 fois sur 8 » **ne départage pas** : ce relevé
+   n'est pas daté par rapport aux deux échecs, et le repli ne fabrique pas une adresse qui répond.
+3. **`S2-01` se clôt sans une ligne de code changée** — et le ticket avait raison de demander une
+   décision écrite : ici, *corriger* signifie corriger **le dossier**. Critère 1 (collecte réussie
+   sans épinglage) et critère 2 (mode d'échec intact) sont **vérifiés** ; critère 4 (politesse)
+   l'est **par construction** (`n8n/workflows/` non modifié).
+4. **Deux réglages passent en interdit explicite**, mesurés comme les seuls à reproduire la panne
+   **sans** épingler le nom : figer la famille d'adresses (`family`) et **désactiver l'autosélection**
+   (`autoSelectFamily: false`) réduisent la résolution à une adresse (timeout 10,0 s mesuré dans les
+   deux cas, contre 200 en 1,9 s sans eux). Épingler le nom sur une adresse muette reste autorisé
+   **en preuve** — c'est l'outil qui reproduit le mode d'échec — et reste **interdit en production**.
+   
+   Règle générale qui en sort, et qui vaut au-delà de ce ticket : **un symptôme reproduit n'est pas
+   une cause attribuée.** Deux mesures non simultanées comparées comme si elles l'étaient ont coûté
+   un ticket, une section de `AGENTS.md` §10 fausse, et une révision de décision. Toute attribution
+   (« c'est X qui ne suit pas ») doit être établie **dans la même fenêtre**, sur le même chemin
+   d'exécution, ou rester une hypothèse.
+5. **Le défaut B reste le seul défaut de la collecte, et `S2-02` reste le ticket de levée.** Sa
+   dépendance (`S2-01`) est **satisfaite** : le code peut être préparé et éprouvé dès maintenant. Un
+   **constat annexe** est consigné — deux campagnes dues dans un même lot : deux lignes `runs` créées
+   dans la même transaction, **une seule** clôturée, la seconde campagne affamée et sa ligne figée en
+   `running` — mais il n'est **pas** transformé en ticket ici : la Definition of Ready exige des
+   critères vérifiables, je n'ai qu'une observation **non isolée**. À instruire au planning, avec sa
+   propre mesure ; ne pas décider sur une observation incidente, c'est exactement l'erreur du matin.
+
+**Pourquoi** : `D-011` ne rend un « vérifié » utilisable que s'il est vrai ; ici, la règle a produit
+l'effet inverse de celui espéré — elle a transformé une panne transitoire en défaut de code, et un
+ticket a été ouvert pour corriger un composant qui fonctionne. Laisser ce dossier en l'état coûterait
+un correctif inutile dans la partie la plus fragile de WF1 (le rattachement des pages, là où `S2-02`
+intervient pour de vrai), et surtout **laisserait croire que « ça marche depuis mon poste » ne dit rien
+de la collecte** — ce qui est faux : la mesure montre l'inverse. Corriger la fiche fait gagner le
+correctif, et rend la prochaine panne d'adresse interprétable en trois minutes.
+
+**Règle d'arbitrage utilisée** : `(valeur × certitude) / effort`, ajustée du **coût du délai**.
+Certitude : **totale**, et c'est le point — `10/10` en environnement réel, une trace réseau, un
+symptôme reproduit à volonté, une preuve de bout en bout en base. Effort du « correctif » : **nul**,
+puisqu'il n'y a rien à corriger ; valeur : élevée, parce que la cause est nommée et le mode de
+défaillance reste **visible** (`error`, jamais un faux `success`).
+
+**Options écartées** :
+
+- *Écrire quand même un correctif dans le nœud* (repli maison, second appel, hôte substitué) : le
+  repli existe déjà et fonctionne (10/10, trace à l'appui). Ajouter du code pour un défaut non
+  constaté, dans la partie de WF1 que `S2-02` doit de toute façon refaire, serait du travail sans
+  mesure — et le prochain débugueur chercherait un défaut qui n'existe pas.
+- *Augmenter le timeout de 10 s* : une adresse muette ne répond à **aucun** délai (SYN sans réponse —
+  timeouts de 4 s reproduits ici, 6 essais sur 6 lors de la mesure du matin) et le mode d'échec dure
+  déjà 40 s. `D-012` tient : le timeout n'est pas le sujet.
+- *Viser l'adresse vivante par épinglage, ou figer la famille d'adresses en production* : le premier
+  transforme une adresse muette en panne **définitive** (interdit par `S2-01` et par `D-015`) ; le
+  second **crée** la panne — `family: 4` et `autoSelectFamily: false` la reproduisent à volonté.
+- *Ressusciter `D-014`* (« la panne est **absorbée par le client** ») : sa conclusion est vraie, mais
+  elle ne suffisait pas — « le client bascule » et « le client ne bascule pas » sont deux mauvaises
+  réponses à une question mal posée. La bonne est « **aucune adresse ne répondait** ». Ni `D-014` ni
+  `D-015` ne l'avaient isolée ; `D-016` ne rétablit donc pas `D-014`, elle la remplace sur ce point.
+- *Ouvrir un troisième ticket dans la foulée* (le constat annexe) : décider sur une observation
+  incidente non isolée, c'est rejouer l'écart du matin. Le planning instruira.
+- *Clore `S2-01` sur « rien à faire », sans exécution de bout en bout* : la règle de preuve de
+  [`sprint-02.md`](sprint-02.md) l'interdit — un ticket de la chaîne de collecte ne se clôt que sur
+  une exécution complète et la ligne `runs` lue en base. Elle a été faite (§ Preuves).
+
+**Preuves utilisées** :
+[`reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md`](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md)
+— image et digests, résolveur relevé 20 fois sur 20, **trace verbatim** du repli dans le code de n8n,
+le nœud de WF1 copié tel quel **10 fois sur 10 en 200**, le mode d'échec reproduit à volonté (40,1 s),
+les deux réglages qui cassent la bascule, et **WF1 entier sans épinglage** : une campagne due,
+`runs.status = success`, `items_processed = 20`, `details = {recuperees: 22, ecartees: 2}`, 20 lignes
+`companies` rattachées à leur campagne, `website` intact (D-009), `runs.error = null` — puis base
+rendue à **0 / 0 / 0**, identique au relevé d'avant. Le constat annexe vient d'une exécution
+accidentelle à deux campagnes dues (deux lignes `runs` au même `started_at`, une seule clôturée).
+
+**Conséquence / coût** : `S2-01` ✅ **clos sans correctif**, sur une décision écrite et des mesures
+reproductibles (`n8n/workflows/` n'a pas changé d'une ligne : `git diff` vide). Coût assumé : une
+section de `AGENTS.md` §10 à réécrire — celle qui affirmait le contraire — et le constat annexe à ne
+pas perdre. Ce qui reste vrai de la panne : une campagne réelle **mono-page** se collecte
+normalement aujourd'hui ; une campagne **multi-pages** ne le peut pas encore, à cause du défaut B
+(`S2-02`), et une API qui cesse de répondre produit un `error` exploitable — jamais un faux `success`.
+
+**Ce qui me ferait changer d'avis** : une exécution de WF1 qui échoue en `timeout of 10000ms exceeded`
+**alors que** le jeu d'adresses rendu contient une adresse qui répond (constaté au même instant, dans
+le même conteneur) — là, le client serait bien en cause et le correctif redeviendrait légitime ; ou la
+découverte que les runs 1 et 2 du 26/10 tournaient avec la famille figée ou l'autosélection coupée
+(`family`, `autoSelectFamily`, `--add-host` oublié dans le harnais) — l'attribution redeviendrait
+locale, mais au harnais, jamais au nœud.
+
+**Qui exécute** : Automation (mesure et preuve — fait) · Orchestrateur (poursuivre sur `S2-02`, faire
+instruire le constat annexe au planning) · Reviewer (relecture **en contexte neuf** du correctif de
+`S2-02` — cette décision-ci n'ajoute pas de code, elle ne demande qu'à être reproduite).
+
+**Origine** : ticket **`S2-01`** (« instruire pourquoi le nœud HTTP de n8n ne bascule pas, puis
+écrire la décision et corriger »), traité le 2026-10-26 ; **révise le point 1 de `D-015`** ; referme
+la question ouverte par `D-014` ; confirme `D-011`, `D-012` et le point 3 de `D-015`.
+
+**Tickets** : **`S2-01`** ✅ clos sans correctif (critères 1, 2, 3, 4, 5 vérifiés —
+[`sprint-02.md`](sprint-02.md)) · **`S2-02`** 🟦 prêt, dépendance levée.
 
