@@ -683,3 +683,5 @@ rien — le ticket de mesure est clos — et surveille le premier run `error` de
 **Origine** : ticket de mesure annoncé par `D-012`, exécuté le 2026-10-26 ; revue
 [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md) §5, décision n° 2.
 
+**Consigné** : PR **#45** fusionnée en squash `99efd2c`, CI de `main` **verte** (run 40335525914).
+

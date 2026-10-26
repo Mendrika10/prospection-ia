@@ -72,7 +72,8 @@ Format :
   et pourtant **8 appels sur 8 réussissent** en 263–1 247 ms — le client **bascule tout seul**
   d'adresse. Conclusion : **aucun réglage ne change** (`D-014` **révise `D-012`**), et le vrai risque
   est que l'API dépende d'**une seule** adresse vivante. Protocole et sorties brutes :
-  [`reviews/2026-10-26-mesure-rotation-api.md`](reviews/2026-10-26-mesure-rotation-api.md).
+  [`reviews/2026-10-26-mesure-rotation-api.md`](reviews/2026-10-26-mesure-rotation-api.md). PR #45
+  fusionnée en squash `99efd2c`, CI de `main` verte (run 40335525914).
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket).
 - **Bloqué** : rien.
 
