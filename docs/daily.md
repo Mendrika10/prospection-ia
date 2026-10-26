@@ -13,6 +13,39 @@ Format :
 
 ---
 
+## 2026-10-26 (lundi) — S1-04 : la preuve faite a révélé que WF1 ne collectait rien
+
+- **Fait** : `S1-04` **réellement clos**. La PR #32 avait fusionné les réglages de politesse et un
+  harnais de test embarqué dans le workflow, mais sa preuve restait « à faire pour la DoD
+  complète ». Preuve faite sur instance n8n jetable (conteneurs jetables, n8n 2.43.5) contre le
+  projet Supabase réel — et elle a mis au jour **trois défauts réels** : (1) `Filtrage et
+  compteurs` rattachait les pages à leur couple via `pairedItem.sourceOverwrite`, **champ que n8n
+  ne remplit jamais** → *tout* échec réseau (endpoint inexistant, timeout 10 s) ressortait en
+  **`success`, 0 élément** : un plantage silencieux, exactement ce que le ticket interdit ; (2) la
+  logique `echecs_collecte` vivait dans un nœud **orphelin** (aucun entrant depuis S1-03) → « un
+  couple en panne ⇒ `partial` » était du code mort ; (3) le harnais de test embarqué (4 nœuds)
+  était **cassé** (`onError` dans `parameters`, en-têtes User-Agent dans `options`) et sa sortie
+  ne menait nulle part — retiré, la preuve étant une exécution sur copie (pratique S1-02/S1-06).
+  **Corrigé** : rattachement sur `pairedItem.item`, échecs de collecte comptés par la conciliation
+  réellement branchée, `runs.error` porteur du message, `waitBetweenTries` aligné à 5 000 ms.
+  **Mesuré** : User-Agent `Prospection-ia/1.0 (n8n WF1 collecte)` **observé sur le fil**, écart
+  **948 ms** entre deux appels, retry ×3 (503 puis 200) → `success`, 2 couples dont un en panne →
+  `partial` avec message exploitable, endpoint faux → `error` + `ENOTFOUND`, réponse vide
+  (`2A` × `05.10Z`, département **valide**) → `success` 0 écrit, collecte réelle 2 couples →
+  `success`, `items_processed = 2`, 2 lignes `companies` écrites. Base rendue à 0/0/0 après chaque
+  scénario.
+- **Limitation, non bloquante** : la collecte sur l'**API publique** n'a pas pu être rejouée en
+  `success`. `recherche-entreprises.api.gouv.fr` résout trois adresses et **deux ne répondent
+  jamais** depuis ce réseau (`.76` → 200 en 2,0 s ; `.77` → timeout 15,0 s ; `.78` → timeout
+  12,7 s). Selon l'adresse tirée, l'appel dépasse le timeout de 10 s imposé par le ticket — et le
+  run le dit (`error` + message) au lieu de le taire, ce qui est le comportement voulu.
+- **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
+  porter les 3 découvertes dans `AGENTS.md` §10 ; trancher avec le PO si le timeout de 10 s reste
+  tenable face à cette API.
+- **Bloqué** : rien.
+
+---
+
 ## 2026-10-22 (jeudi) — S1-04 fait : politesse de crawl et robustesse, PR #32 fusionnée
 
 - **Fait** : `S1-04` exécuté — User-Agent corrigé (sorti de `options`, silencieusement non émis, vers racine `sendHeaders`/`headerParameters`), `waitBetweenBatches: 1000` sur Split in Batches, `retryOnFail ×3` sur Collecte API (délai fixe 5 s, plafond n8n), `onError: continueRegularOutput` (Continue on Fail), tests intégrés : endpoint faux (département `XX` → `partial`) + département vide (`99` → `success`), verdict via Code node `Verdict tests S1-04`. PR #32 fusionnée en squash `be89bf9`, CI de `main` **verte** (run 39784921649 : sql, secrets, node). Sprint 1 : **tous les tickets de développement sont ✅ fait**.

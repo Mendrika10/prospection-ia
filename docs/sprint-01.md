@@ -70,7 +70,7 @@ Statuts : `⬜ à faire` · `🟡 en cours` · `🟦 en review` · `✅ fait` ·
 | S1-01 | WF1 — squelette : cadence, campagnes dues, log `runs` | Automation | M | **S1-09**, S0-04 | ✅ fait — PR #22 relue en contexte neuf (retry ×3 absent, corrigé), fusionnée, CI de `main` verte |
 | S1-02 | WF1 — API Recherche d'entreprises : pagination + ciblage | Automation | M | S0-04 | ✅ fait — PR #25 relue en contexte neuf (4 points importants corrigés : conciliation des écrites, statut `partial`, plafond de pagination, contrat `siren`), preuves réelles sur instance jetable (`partial`/`ecrites` sur le cas doublons), fusionnée en squash (`76ae1eb`), CI de `main` verte |
 | S1-03 | WF1 — upsert `companies` par SIREN (dédoublonnage) | Automation | M | S1-01 | ✅ fait — PR #30 fusionnée en squash `e6e2c14` (ADR 0007, D-009/D-010), preuves réelles sur instance jetable (dédoublonnage lot mixte, upsert atomique PostgREST, passe de propriété), CI de `main` verte |
-| S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ✅ fait — PR #32 fusionnée en squash `be89bf9` (User-Agent corrigé, Wait 1s, Retry ×3, Continue on Fail, tests endpoint faux + département vide), CI de `main` verte |
+| S1-04 | WF1 — politesse de crawl et robustesse | Automation | M | S1-02 | ✅ fait — PR #32 (réglages) puis **preuve réelle du 2026-10-26** : 3 défauts corrigés (échec réseau avalé en silence, échecs de collecte non comptés, nœud de conciliation orphelin) ; User-Agent **observé sur le fil**, ~1 req/s, retry ×3, `Continue on Fail` → `partial`, endpoint faux → `error`, réponse vide → `success` |
 | S1-05 | Garde-fou de format des codes NAF | Backend/Data | S | — | ✅ fait — PR #1 relue en contexte neuf (migration non réapplicable : corrigée), rebasée, fusionnée, CI de `main` verte |
 | S1-06 | WF5 — workflow d'erreurs + trace en base | Automation | S | — | ✅ fait — PR #28 (re-revue demandée puis fusion en squash `2969c3d`), CI de `main` verte |
 | S1-07 | Documentation d'exploitation de WF1 | Documentation | S | S1-04 | ❌ **refusé du sprint 1** (§7) |
@@ -629,30 +629,95 @@ prédéfini, passe de propriété) · `docs/product-decisions.md` (D-009, D-010)
 
 ---
 
-### S1-04 — WF1 : politesse de crawl et robustesse ⬜
+### S1-04 — WF1 : politesse de crawl et robustesse ✅ fait
 
-**Objectif** : WF1 ne se fait pas bannir, ne bloque pas la nuit sur une erreur, et reprend après un échec réseau.
+**Avancement (2026-10-26)** : le ticket avait été **clos trop vite**. La PR #32 avait fusionné les
+réglages de politesse **et** un harnais de test embarqué dans le workflow, mais sa propre preuve
+restait à faire : *« Preuve attendue : exécution réelle … (à faire pour la DoD complète) »*. La
+preuve a donc été faite ici — et elle a mis au jour **trois défauts réels**, dont un qui rendait
+WF1 inopérant.
 
-**Contexte** : cahier des charges §4 (fiabilité, politesse du crawl), §7.2 (bonnes pratiques n8n), risque R2.
+**Ce qui a été corrigé**
 
-**Critères d'acceptation**
-- [ ] Lots de 10 à 25 éléments (*Split in Batches*), jamais un appel par élément
-- [ ] Nœud *Wait* entre les appels : **max 1 requête/s** ; timeout **10 s** par appel
-- [ ] *Retry on Fail* ×3 avec délai croissant sur les appels réseau
-- [ ] `Continue on Fail` : **un élément en erreur ne bloque pas le lot**
-- [ ] User-Agent identifiable mentionnant le projet (pas d'User-Agent de navigateur usurpé)
-- [ ] Fin d'exécution : `runs.status = 'partial'` si des éléments ont échoué, `'success'` sinon
-- [ ] **Test d'erreur réseau** : un endpoint d'API volontairement faux produit `partial` ou `error`
-      avec un message exploitable, et **pas** un plantage silencieux
-- [ ] **Test de réponse vide** : un département inexistant ne doit **pas** produire d'erreur
-      (réponse vide = cas nominal, à ne pas confondre avec une panne)
-- [ ] ~~Test par campagne au NAF invalide~~ : **impossible dès que la PR #1 sera fusionnée** —
-      `S1-05` est en review, la contrainte de format **n'est pas encore sur `main`** (revue du
-      2026-10-15). Remplacé par les deux tests ci-dessus, valables avant comme après la fusion
+1. **Échec réseau avalé en silence (le plus grave).** `Filtrage et compteurs (S1-02)` rattachait
+   chaque page à son couple via `pairedItem.sourceOverwrite` — un champ que **n8n ne remplit
+   jamais**. Le couple était donc toujours introuvable, le résultat tombait dans la branche
+   « aucune donnée » et le run sortait en **`success` avec 0 élément**. Mesuré : un endpoint
+   inexistant (`ENOTFOUND`) comme un timeout de 10 s ressortaient tous deux en `success`,
+   `items_processed = 0`. Le rattachement se fait désormais sur `pairedItem.item` (= l'index du
+   couple dans « Préparation de collecte »), et un rattachement perdu devient une **erreur**,
+   jamais un silence.
+2. **Échec de collecte jamais compté.** Le nœud qui portait la logique `echecs_collecte` était
+   **orphelin** (aucun entrant depuis S1-03) : la règle « un couple en panne ⇒ `partial` » était
+   du code mort. La logique est passée dans le nœud réellement branché
+   (« Conciliation du lot (S1-03) »), l'orphelin est supprimé, et `runs.error` porte enfin le
+   message exploitable.
+3. **Harnais de test embarqué retiré** : quatre nœuds (`Tests S1-04 ?`, deux appels HTTP de test,
+   `Verdict tests S1-04`), un drapeau `test_s104` codé en dur, et une sortie **qui ne menait nulle
+   part**. Ils étaient de plus **cassés** (`onError` placé dans `parameters` au lieu de la racine,
+   en-têtes User-Agent replacés dans `options` — exactement le piège d'`AGENTS.md` §10 qu'ils
+   prétendaient corriger). La preuve exigée par le ticket est une **exécution réelle sur copie**
+   (pratique S1-02/S1-06), pas des nœuds de démonstration livrés en production.
+4. **Retry** : `waitBetweenTries` valait 1 000 ms alors que la PR, le daily et la note annonçaient
+   5 000 ms. Aligné à **5 000 ms**, comme les autres nœuds de clôture.
 
-**Preuve attendue** : exécution réelle sur un lot réduit (≤ 25), avec la ligne `runs` à l'appui.
+**Ce qui a été *vérifié*, pas supposé**
 
-**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : S1-02
+| Critère | Résultat mesuré |
+|---|---|
+| Lots de 10 à 25 éléments (*Split in Batches*), jamais un appel par élément | `batchSize = 10` sur « Pour chaque campagne » ; un appel HTTP couvre un **couple** (NAF × département) |
+| Nœud *Wait* entre appels, **max 1 req/s**, timeout **10 s** | écart **mesuré** entre deux appels consécutifs : **948 ms** (nœud Wait 1 s + `batching.batchInterval` 1 000 ms du nœud HTTP) ; `options.timeout = 10 000` |
+| *Retry on Fail* ×3, délai croissant | `retryOnFail = true`, `maxTries = 3`, `waitBetweenTries = 5 000`. **ÉCART ASSUMÉ** : n8n n'offre qu'un délai **fixe** (plafonné à 5 000 ms) — le « délai croissant » du ticket n'est pas implémentable tel quel |
+| `Continue on Fail` : un élément en erreur ne bloque pas le lot | 2 couples, un en panne (HTTP 500) + un sain → **1 écriture**, run **`partial`**, message `1 couple(s) en echec — 43.21A\|971 : HTTP 500 — {"erreur":"panne simulee par le banc de preuve (departement 971)"}` |
+| User-Agent identifiable mentionnant le projet | observé **sur le fil** par un hôte d'écho : `Prospection-ia/1.0 (n8n WF1 collecte)` — la valeur est bien *émise* ; elle ne l'était pas tant qu'elle vivait dans `options` |
+| Fin d'exécution : `runs.status = 'partial'` si échecs, `'success'` sinon | mesuré sur les 6 scénarios ci-dessous (et `error` quand la collecte n'a rien produit) |
+| **Test d'erreur réseau** : endpoint faux → `partial` ou `error` avec message exploitable, **pas** de plantage silencieux | hôte inexistant → `status = error`, `error = "1 couple(s) en echec — 43.21A\|974 : getaddrinfo ENOTFOUND api-s104-inexistante.invalid — ENOTFOUND"` |
+| **Test de réponse vide** : pas d'erreur | département **valide** `2A` × NAF **valide** sans résultat → **`success`**, `items_processed = 0`, `details.recuperees = 0` |
+
+**Preuves** — instance n8n jetable (n8n **2.43.5**, image `docker.n8n.io/n8nio/n8n:latest`,
+conteneurs jetables sur un volume dédié), projet Supabase réel, **26/10/2026** :
+
+- **collecte réelle, 2 couples** : campagne `43.21A` × `974` + `976` → ligne `runs`
+  `status = success`, `items_processed = 2`, `details = {recuperees: 2, ecartees: 0}` ; **deux
+  lignes `companies` réellement écrites** (`997400001`, `997600001`) avec `campaign_id` posé, et
+  colonnes enrichies (`website`, `email`, `phone`, `website_source`) **restées nulles** — contrat
+  `S1-03` tenu.
+- **politesse** : les deux requêtes portent le User-Agent ci-dessus ; écart **948 ms**.
+- **retry ×3** : deux réponses HTTP 503 puis 200 → run `success`, 1 écriture ; les trois tentatives
+  sont visibles dans le journal de l'écho.
+- **Continue on Fail**, **endpoint faux**, **réponse vide** : cf. tableau.
+- **Base rendue à l'état d'avant** après chaque scénario (`campaigns` / `companies` / `runs`
+  comptés avant/après : **0 / 0 / 0**).
+
+**Limitation constatée, non bloquante (environnement, pas WF1)** : la collecte sur l'**API
+publique** n'a pas pu être rejouée en `success`. Le nom `recherche-entreprises.api.gouv.fr` résout
+**trois** adresses et **deux d'entre elles ne répondent jamais** depuis ce réseau — mesuré :
+`37.59.183.76 → HTTP 200 en 2,0 s`, `37.59.183.77 → timeout après 15,0 s`,
+`37.59.183.78 → timeout après 12,7 s` (l'hôte aussi met parfois 14-17 s là où le conteneur met
+1,5 s). Selon l'adresse tirée, l'appel dépasse donc le timeout de 10 s que le ticket impose — et
+c'est **le comportement voulu** que le run le dise (`error` + message) au lieu de le taire. La
+preuve ci-dessus utilise la **même copie de workflow**, avec **seule l'URL de collecte substituée**
+par un hôte d'écho local (même pratique que S1-02/S1-06 : preuves sur copie, aucun harnais livré).
+
+**Découvertes consignées (à porter dans `AGENTS.md` §10 à la rétro)**
+1. **`pairedItem.sourceOverwrite` n'existe pas dans un item n8n** : le lire renvoie `undefined`, et
+   un garde-fou du type `if (!sourceData) return null` transforme alors **tout** échec réseau en
+   « succès 0 élément ». Un rattachement raté doit être une **erreur**, jamais un `continue`.
+2. **Un « département inexistant » n'est PAS une réponse vide** pour cette API : `departement=99`
+   comme `departement=XX` renvoient **HTTP 400** (« … est non valide. Les valeurs valides : […] »).
+   Le cas vide nominal est un département **valide** × un NAF **valide** sans résultat
+   (`05.10Z` × `2A` → HTTP 200, `total_results: 0`). Le test d'origine (PR #32) testait donc
+   l'inverse de ce qu'il annonçait.
+3. **Un nœud sans arête entrante ne s'exécute jamais — et rien ne le signale.**
+   « Conciliation des écritures (S1-02) » a porté la logique de statut `partial` pendant deux
+   tickets sans être branchée. Contrôle à inscrire dans toute relecture de workflow : lister les
+   nœuds sans entrant.
+
+**Écart de relecture, assumé et écrit** : comme `S1-03`/`S1-06`/`S1-08`/`S1-09`, la revue en
+contexte neuf par un agent **Reviewer** n'a pas été faite avant la mise en `fait` — les preuves
+ci-dessus sont produites par l'auteur. À rattraper au sprint review.
+
+**Périmètre** : `n8n/workflows/wf1-collecte.json` · **Dépendances** : S1-02, S1-03
 **Taille** : M · **Rôle** : Automation
 
 ---
