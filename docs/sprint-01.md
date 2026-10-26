@@ -1043,6 +1043,8 @@ restées « sur la table, non prises » pendant la review :
   1 ligne `companies` écrite par un appel réel à `recherche-entreprises.api.gouv.fr`.
 
 **Consigné** : PR **#41** fusionnée en squash `41b6b86`, CI de `main` **verte** (run 40330489974).
+**Consigné (suite)** : la mesure de la rotation et `D-014` — PR **#45** fusionnée en squash `99efd2c`,
+CI de `main` **verte** (run 40335525914).
 
 ---
 
