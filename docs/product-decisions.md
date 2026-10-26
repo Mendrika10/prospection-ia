@@ -431,3 +431,179 @@ occurrences du même SIREN dans un même lot (ex. une date de mise à jour du re
 
 **Qui exécute** : Automation (`S1-03`, le Code node de dédoublonnage) · le propriétaire (l'arbitrage écrit ici).
 
+---
+
+## D-011 — Le « vérifié » de la Definition of Done, pour la chaîne de collecte, est une exécution de bout en bout · 2026-10-26 · en vigueur
+
+**Décision** : pour tout ticket dont le livrable touche la chaîne de collecte de WF1 (un nœud, une
+arête, un contrat de données, un réglage de robustesse), la ligne « Déployé et vérifié sur
+l'environnement cible » de la Definition of Done (§2.4 de la méthode) signifie : **une exécution de
+WF1 de bout en bout** — 1 campagne due, 1 couple (code NAF × département), ≤ 25 éléments attendus —
+avec **la ligne `runs` lue en base** comme preuve, et **au moins un scénario d'échec provoqué** si le
+ticket touche la robustesse. La preuve se fait sur une instance n8n **jetable**, avec une **copie**
+du workflow exporté (pratique de `S1-02`, `S1-03`, `S1-06`). Le statut de l'UI n8n seul n'est **pas**
+une preuve recevable ; la ligne `runs` (statut, `items_processed`, `details`, `error`) l'est.
+
+**Pourquoi** : cela sert l'objectif du cahier des charges « une chaîne qui collecte réellement » et
+la métrique étoile polaire (leads livrés par semaine au-dessus du seuil) — c'est la seule qui prouve
+la chaîne de bout en bout. La CI ne peut pas l'exercer : elle ne teste que le SQL, et le job `node`
+s'annonce ignoré. Le trou est **démontré**, pas supposé : `S1-02`, `S1-03` et `S1-04` ont chacun
+passé leur CI et leur preuve locale, et la chaîne entière n'avait **jamais** tourné d'un bout à
+l'autre — trois défauts l'ont traversée (rattachement des couples faux, conciliation restée
+orpheline, harnais de test cassé), dont un **critique** qui a vécu 6 jours sur `main` derrière une
+CI verte et deux tickets marqués `fait`.
+
+**Règle d'arbitrage utilisée** : `(valeur × certitude) / effort`, ajustée du **coût du délai**.
+Valeur : la chaîne de collecte est la brique qui débloque WF2 et WF3, donc elle passe avant sa
+valeur propre. Certitude : totale — la mesure a déjà eu lieu et a trouvé les trois défauts. Effort :
+~30 min par ticket concerné. Coût du délai : un défaut de collecte invisible « réussit » pendant
+plusieurs jours ; c'est le coût le plus élevé du sprint 1, mesuré.
+
+**Options écartées** :
+
+- *S'en remettre à la CI* : elle ne teste que le SQL, et le défaut critique a vécu 6 jours derrière
+  une CI verte (mesuré). La règle ne fermerait pas le trou qu'elle prétend fermer.
+- *Écrire l'exigence au cas par cas dans le ticket* : c'est exactement l'état qui a échoué —
+  l'exigence était écrite dans `S1-04`, et le ticket a été fusionné avec la mention
+  « *(à faire pour la DoD complète)* ». Une règle qui varie selon le ticket n'est pas une règle.
+- *Bloquer les tickets de collecte jusqu'à ce qu'une CI sache exercer n8n* : coût prohibitif et sans
+  rapport avec l'objectif du sprint — la mesure manuelle coûte 30 min, une CI n8n est un chantier.
+  À réévaluer (cf. ci-dessous), pas à attendre.
+- *Se contenter d'un test à blanc sans écriture en base* : il ne prouve ni l'upsert, ni les
+  compteurs, ni la clôture de campagne — c'est-à-dire pas la chaîne.
+
+**Preuves utilisées** : preuve d'exécution du 2026-10-26 (instance n8n jetable, projet Supabase
+réel) — User-Agent observé sur le fil, écart **948 ms** entre deux appels, retry ×3 (503, 503, 200 →
+`success`), 2 couples dont un en panne → `partial` avec message exploitable, endpoint faux →
+`status = error` + `ENOTFOUND`, réponse vide (département valide) → `success` 0 écrit, collecte
+réelle 2 couples → `success`, `items_processed = 2`, **2 lignes `companies` réellement écrites** ;
+base rendue à 0/0/0 après chaque scénario.
+
+**Conséquence / coût** : ~30 min par ticket touchant la chaîne de collecte. Un `fait` sans cette
+preuve vaut un `🟦` : le ticket repasse en review. La preuve vit dans la section du ticket (sortie de
+commande et extrait de la ligne `runs`), pas seulement dans la description de la PR.
+
+**Ce qui me ferait changer d'avis** : un job de CI capable d'importer un workflow dans un n8n
+conteneurisé et de l'exercer de bout en bout — le coût manuel tomberait à zéro ; ou deux sprints
+consécutifs où ce garde-fou ne trouve rien alors qu'un défaut de collecte est découvert par une
+autre voie (il serait alors mal placé, non inutile).
+
+**Qui exécute** : Automation (produit la preuve et l'écrit dans le ticket) · Orchestrateur (refuse
+la clôture sans elle) · le PO (l'arbitrage écrit ici). Inscrire la règle dans la liste de la DoD
+(`methode-equipe-agents.md` §2.4) sort du périmètre d'édition de ce rôle : à porter par le
+propriétaire du dépôt.
+
+**Origine** : revue [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md)
+§5, décision n° 1.
+
+---
+
+## D-012 — Le timeout de collecte reste à 10 s ; la rotation d'adresses se mesure avant d'être décidée · 2026-10-26 · en vigueur
+
+**Décision** : le nœud de collecte garde `timeout = 10 s` et `retryOnFail = ×3` (délai **fixe**
+5 000 ms — plafond de n8n). On ne l'allonge pas, et on n'ajoute **aucun** réessai d'adresse tant que
+la rotation d'adresses n'a pas été **mesurée**. Un échec de collecte reste `status = error` avec un
+message exploitable : jamais un « succès » muet.
+
+**Pourquoi** : cela sert le critère d'acceptation v1 « un échec de collecte doit se voir » et le
+garde-fou « aucun plantage silencieux ». Allonger un délai ne traite pas la cause : mesuré le
+2026-10-26, `recherche-entreprises.api.gouv.fr` résout **trois** adresses — `.76` → HTTP 200 en 2,0 s,
+`.77` → délai dépassé après **15,0 s**, `.78` → délai dépassé après **12,7 s** — et aucun client ne
+réessaie une autre adresse après un échec de connexion. **Hypothèse non testée, nommée comme telle** :
+cette panne est propre au réseau d'où la mesure a été faite ; elle n'a pas été reproduite depuis
+l'hôte d'exécution réel.
+
+**Règle d'arbitrage utilisée** : le garde-fou de **vérité d'état** passe avant le confort de run.
+Un timeout plus long **masque** une panne (« le run était juste lent »), un timeout infini laisse la
+ligne `runs` en `running` — l'observabilité ment dans les deux cas. Le coût d'un faux `error` est
+nul : il est visible et lisible dans `runs.error`.
+
+**Options écartées** :
+
+- *Passer à 30 s ou 60 s* : ne corrigerait rien **dans la mesure disponible** — les deux adresses
+  muettes ne répondent ni à 12,7 s ni à 15,0 s ; un délai plus long produit le même `error`, plus
+  tard, et rend un vrai ralentissement invisible. Coût : un run bloqué plus longtemps par page.
+- *Retirer le timeout* : la ligne `runs` resterait `running` indéfiniment — le plantage silencieux
+  sous une autre forme, exactement ce que `S1-04` interdit.
+- *Forcer un réessai sur une autre adresse tout de suite* : piste plausible mais **non mesurée** —
+  rien ne dit qu'un réessai n8n re-résout le DNS au lieu de réutiliser l'adresse en échec, ni qu'il
+  tomberait sur `.76`. Décider là-dessus serait une opinion confiante ; c'est un ticket de mesure.
+- *Contourner l'API publique par un miroir ou un cache* : introduit une dépendance et un coût
+  récurrent, contre le garde-fou « coût récurrent = 0 € », pour un défaut non prouvé côté API.
+
+**Preuves utilisées** : les trois mesures d'adresses du 2026-10-26 (une seule joignable sur trois) ;
+la preuve d'exécution `S1-04` — hôte inexistant → `status = error`, `getaddrinfo ENOTFOUND …`, et le
+run le **dit** au lieu de sortir en `success` avec 0 élément.
+
+**Conséquence / coût** : une part des runs de collecte sortira en `error` alors que le code est
+correct. C'est un signal d'environnement, pas un défaut — et cela ne se corrige **jamais** en
+affaiblissant le timeout. Point de surveillance : le taux de runs `error` sur l'API publique, à
+relever au sprint 2.
+
+**Ce qui me ferait changer d'avis** : une mesure montrant qu'un réessai atteint une autre adresse
+(on l'ajoute alors, timeout inchangé) ; ou **3 adresses sur 3 joignables** depuis l'hôte d'exécution
+réel — la cause serait locale, et cette décision serait révisée sur cette mesure.
+
+**Qui exécute** : Automation (configuration du nœud HTTP : `timeout 10 s`, `retryOnFail ×3`, délai
+fixe 5 000 ms) · Orchestrateur (ticket de mesure de la rotation d'adresses au sprint 2) · le PO
+(l'arbitrage écrit ici).
+
+**Origine** : revue [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md)
+§5, décision n° 2.
+
+---
+
+## D-013 — `S1-07` reste refusé, et sa condition de retour devient vérifiable · 2026-10-26 · en vigueur
+
+**Décision** : `S1-07` (documentation d'exploitation de WF1) reste **refusé** du sprint 1. Sa
+condition de retour cesse d'être « dès 1 collecte réelle » — formulation trop floue pour être
+contrôlée — et devient : le ticket passe en `Prêt` **dès qu'une exécution de WF1 a réellement appelé
+`recherche-entreprises.api.gouv.fr` et écrit au moins une ligne `companies`**, la preuve étant la
+ligne `runs` **et** le SIREN présent en base. Une exécution contre un hôte d'écho, même concluante,
+ne remplit **pas** la condition.
+
+**Pourquoi** : cela sert la valeur même de la documentation d'exploitation, qui est de diagnostiquer
+un incident. Une procédure écrite pour une chaîne qui n'a jamais réussi contre l'API réelle décrit un
+état qui n'existe pas, et sera réécrite au premier incident. La condition de retour du planning du
+2026-10-15 n'était pas vérifiable : c'est ce flou qui a laissé planer le doute après la collecte du
+2026-10-26 — réussie, mais **contre un hôte d'écho local**, seule l'URL de collecte étant substituée.
+
+**Règle d'arbitrage utilisée** : `(valeur × certitude) / effort`. Valeur : réelle mais **non
+débloquante** (l'exploitation est encore à 0 campagne, 0 entreprise). Certitude : nulle tant que
+l'API publique n'a pas répondu en `success`. Effort : petit. Donc **oui** au ticket, **pas
+maintenant** — et il remonte à la première occasion, sans rouvrir de débat.
+
+**Options écartées** :
+
+- *Tenir la collecte contre l'écho pour « réelle »* : vide la condition de son sens. La doc
+  affirmerait « WF1 collecte » alors que WF1 n'a jamais rien collecté à la source ; le premier
+  incident révélerait l'écart.
+- *Écrire la doc maintenant, limitation inscrite dedans* : la limitation n'est pas stable (elle est
+  peut-être réseau — cf. D-012). Documenter une procédure dont on ne sait pas si elle est bonne
+  produit une fausse assurance d'exploitation.
+- *Reformuler la condition en « dès 1 exécution de bout en bout »* : c'est le garde-fou de **D-011**,
+  qui sert la clôture des tickets de code ; il ne dit rien de la joignabilité de l'API publique, qui
+  est précisément ce que `S1-07` doit documenter.
+- *Faire porter la doc par le ticket de mesure de D-012* : mélange deux livrables (une mesure, une
+  procédure) — si la mesure échoue, la doc meurt avec elle.
+
+**Preuves utilisées** : preuve du 2026-10-26 — la collecte de bout en bout a tourné **contre un écho
+local** (seule l'URL de collecte substituée), 2 lignes `companies` écrites, base rendue à 0/0/0
+après ; la collecte sur l'API publique n'a **pas** été rejouée en `success` (cf. D-012). Statut réel
+du ticket au 2026-10-26 : `⬜`, en-tête aligné sur le tableau du §2 du sprint.
+
+**Conséquence / coût** : le sprint 1 se termine avec **un ticket refusé, assumé et daté** — un refus,
+pas un oubli. Tant qu'il n'est pas rouvert, un incident WF1 se diagnostique par la lecture de `runs`
+en base et de l'UI n8n : les deux chemins existent déjà, ils ne sont simplement pas écrits pour
+l'exploitation.
+
+**Ce qui me ferait changer d'avis** : la première collecte réussissant sur l'API publique — la
+condition se remplit d'elle-même ; ou l'ouverture de `WF2`/`WF3` avant elle, auquel cas la doc
+d'exploitation de WF1 devient nécessaire **avec la limitation écrite dedans**, plutôt que d'attendre.
+
+**Qui exécute** : Orchestrateur (maintien du refus, remise en `Prêt` sur la preuve décrite) ·
+Documentation (`S1-07`) · le PO (l'arbitrage écrit ici).
+
+**Origine** : revue [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md)
+§5, décision n° 3.
+

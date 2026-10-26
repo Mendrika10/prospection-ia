@@ -111,22 +111,28 @@ l'item « à essayer » ci-dessus plutôt qu'en fusionnant les tickets.
 
 ---
 
-## 5. Décisions mises sur la table (aucune prise ici)
+## 5. Décisions mises sur la table — **tranchées le 2026-10-26**
 
-Cette review **n'ouvre pas de `D-0xx`** : les trois arbitrages ci-dessous engagent la suite, et deux
-d'entre eux ont un coût qu'il faut assumer explicitement. Ils sont écrits ici pour ne pas disparaître.
+Cette review avait laissé les trois arbitrages ci-dessous **sur la table, non tranchés**. Ils ont été
+**tranchés le jour même par écrit** : **D-011**, **D-012** et **D-013** de
+[`product-decisions.md`](../product-decisions.md). Les énoncés ci-dessous restent tels qu'ils ont été
+écrits dans la review, chacun suivi de sa décision.
 
 1. **Garde-fou de clôture** — exiger une exécution de bout en bout de WF1 (1 campagne, 1 couple, ≤ 25,
    la ligne `runs` à l'appui) avant tout `fait` sur un ticket touchant la chaîne de collecte.
    *Coût* : ~30 min par ticket concerné. *Ce qui le rendrait inutile* : une CI capable d'exercer WF1.
+   → **retenu tel quel : `D-011`** (il formalise la ligne « vérifié sur l'environnement cible » de la DoD).
 2. **Timeout de 10 s face à l'API publique** — mesuré le 2026-10-26 :
    `37.59.183.76` → HTTP 200 en 2,0 s, `37.59.183.77` → délai dépassé après 15,0 s, `37.59.183.78` →
    délai dépassé après 12,7 s ; aucun client ne réessaie une autre adresse. Monter le timeout
    **masquerait** la panne sans la traiter ; garder 10 s produit des runs `error` corrects et visibles.
    *Hypothèse assumée* : le défaut est côté réseau/API, pas côté WF1.
+   → **tranché : `D-012`** — 10 s conservés, rotation d'adresses **à mesurer** avant toute décision.
 3. **`S1-07`** — sa condition de retour est « dès 1 collecte réelle ». Une collecte réelle a bien
    tourné le 2026-10-26… **contre un hôte d'écho local** (pour prouver la robustesse), pas sur l'API
    publique. La condition n'est donc **pas remplie à la lettre**, et le ticket reste refusé.
+   → **tranché : `D-013`** — refus maintenu, condition de retour rendue **vérifiable** (1 ligne
+   `companies` écrite par un appel réel à `recherche-entreprises.api.gouv.fr`).
 
 ---
 
