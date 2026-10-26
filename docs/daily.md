@@ -55,8 +55,11 @@ Format :
   **`D-012`** (timeout de 10 s **conservé** ; la rotation d'adresses se mesure avant d'être décidée),
   **`D-013`** (`S1-07` reste refusé, condition de retour rendue vérifiable). PR #41 fusionnée en squash
   `41b6b86`, CI de `main` verte (run 40330489974).
+- **Fait (DoD)** : `D-011` **inscrit dans la Definition of Done** (`methode-equipe-agents.md` §2.4),
+  sur instruction du propriétaire — la ligne « Déployé et vérifié sur l'environnement cible » y porte
+  désormais l'exigence d'exécution de bout en bout pour tout ticket touchant WF1.
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
-  porter `D-011` dans la liste de la DoD (`methode-equipe-agents.md` §2.4, hors périmètre du PO).
+  le prévu du ticket de mesure de la rotation d'adresses (D-012) pour le sprint 2.
 - **Bloqué** : rien.
 
 ---
