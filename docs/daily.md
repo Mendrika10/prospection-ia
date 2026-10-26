@@ -89,8 +89,14 @@ Format :
   Relevé complet :
   [`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md).
   PR #47 fusionnée en squash `cd6bbb4`, CI de `main` verte (run 40339795807).
+- **Fait (backlog)** : **backlog du sprint 2 ouvert** ([`sprint-02.md`](sprint-02.md)) avec les deux
+  tickets de levée **en tête**, critères d'acceptation et *Definition of Ready* compris — **`S2-01`**
+  (défaut A : atteindre une adresse vivante, avec interdiction explicite de figer une IP hors dépôt)
+  et **`S2-02`** (défaut B : rattacher chaque page au bon couple par une **clé portée par la donnée** —
+  avec le critère qui attrape le défaut silencieux : deux couples de même NAF, contrôle par requête).
+  `S2-02` dépend de `S2-01` **pour sa preuve** ; le planning du sprint 2 reste à tenir.
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
-  ouvrir les deux tickets de levée (défauts A et B) et refaire la preuve sur un couple **multi-pages**.
+  tenir le **planning du sprint 2** et refaire la preuve sur un couple **multi-pages** après correctif.
 - **Bloqué** : rien.
 
 ---
