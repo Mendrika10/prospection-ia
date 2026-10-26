@@ -38,6 +38,7 @@ Format :
   transaction** (`started_at` identique à la microseconde), **une seule** clôturée, la seconde
   campagne **affamée** et sa ligne restée `running`. Observation **réelle mais non isolée** : elle
   n'a pas de critères vérifiables, donc pas de ticket — le planning l'instruira avec sa propre mesure.
+- **Fusion** : PR **#51** fusionnée en squash `e93d69e`, CI de `main` **verte** (run 40348892594).
 - **Prévu** : `S2-02` (rattacher chaque page au bon couple, par une clé **portée par la donnée**),
   désormais **débloqué** par ce constat : la collecte mono-page est prouvée apte, le rattachement des
   pages est le dernier défaut de la collecte. Puis le planning du sprint 2 (WF2, reports du §7).
