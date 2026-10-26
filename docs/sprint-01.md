@@ -1021,10 +1021,15 @@ Mesures, mode de mesure et limites de chaque métrique :
   que `S1-02`, `S1-03` et `S1-04` ont chacun passé leur CI et leur preuve locale, et que la chaîne
   entière n'avait jamais tourné d'un bout à l'autre.
 
-**Décisions mises sur la table, non prises** : garde-fou de clôture ci-dessus · timeout de 10 s face à
-l'API publique (deux de ses trois adresses sont muettes d'ici) · `S1-07` (sa condition de retour est
-« dès 1 collecte réelle » : une collecte a tourné le 2026-10-26, mais **contre un hôte d'écho**, donc
-la condition **n'est pas** remplie à la lettre).
+**Décisions prises le 2026-10-26** ([`product-decisions.md`](product-decisions.md)) — elles étaient
+restées « sur la table, non prises » pendant la review :
+
+- **`D-011`** — garde-fou de clôture : pour tout ticket touchant la chaîne de collecte, le « vérifié »
+  de la DoD est **une exécution de bout en bout de WF1**, la ligne `runs` lue en base à l'appui.
+- **`D-012`** — timeout de **10 s conservé** (le rallonger masquerait la panne) ; la rotation
+  d'adresses (deux des trois adresses sont muettes d'ici) est **à mesurer** avant toute décision.
+- **`D-013`** — `S1-07` **reste refusé**, avec une condition de retour désormais **vérifiable** :
+  1 ligne `companies` écrite par un appel réel à `recherche-entreprises.api.gouv.fr`.
 
 ---
 

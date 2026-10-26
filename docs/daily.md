@@ -50,8 +50,12 @@ Format :
 - **Fait (suite)** : rétrospective versée dans `AGENTS.md` §10 (**5 pièges mesurés**, réponse à la
   question 3 du §6, PR #38 fusionnée en squash `0ab43a9`) ; **Sprint Review et Rétrospective** tenues,
   §5/§6 de `docs/sprint-01.md` relevés (PR #39 fusionnée en squash `3313343`, CI de `main` verte).
+- **Fait (décisions)** : les trois arbitrages laissés « sur la table » par la review sont **tranchés
+  par écrit** — **`D-011`** (le « vérifié » d'un ticket de collecte = une exécution de bout en bout),
+  **`D-012`** (timeout de 10 s **conservé** ; la rotation d'adresses se mesure avant d'être décidée),
+  **`D-013`** (`S1-07` reste refusé, condition de retour rendue vérifiable).
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
-  trancher avec le PO si le timeout de 10 s reste tenable face à cette API.
+  porter `D-011` dans la liste de la DoD (`methode-equipe-agents.md` §2.4, hors périmètre du PO).
 - **Bloqué** : rien.
 
 ---
