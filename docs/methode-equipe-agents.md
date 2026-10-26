@@ -89,7 +89,7 @@ Quatre « chapeaux » suffisent : **Architecte → Développeur → QA/Reviewer 
 - [ ] Relecture par un agent Reviewer (contexte neuf) puis par toi
 - [ ] Aucun secret dans le code
 - [ ] Documentation mise à jour si nécessaire
-- [ ] Déployé et vérifié sur l'environnement cible
+- [ ] Déployé et vérifié sur l'environnement cible — pour un ticket qui touche la **chaîne de collecte** (WF1 : un nœud, une arête, un contrat de données, un réglage de robustesse), « vérifié » veut dire **une exécution de bout en bout** : 1 campagne due, 1 couple (code NAF × département), ≤ 25 éléments attendus, **la ligne `runs` lue en base** à l'appui (statut, `items_processed`, `details`, `error` — le statut de l'UI n8n ne suffit pas), et **un scénario d'échec provoqué** si le ticket touche la robustesse. Preuve faite sur une instance n8n **jetable**, avec une **copie** du workflow exporté. Un `fait` sans cette preuve vaut un `🟦` : le ticket repasse en review — **`D-011`**, 2026-10-26
 
 ---
 

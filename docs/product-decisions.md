@@ -490,8 +490,9 @@ autre voie (il serait alors mal placé, non inutile).
 
 **Qui exécute** : Automation (produit la preuve et l'écrit dans le ticket) · Orchestrateur (refuse
 la clôture sans elle) · le PO (l'arbitrage écrit ici). Inscrire la règle dans la liste de la DoD
-(`methode-equipe-agents.md` §2.4) sort du périmètre d'édition de ce rôle : à porter par le
-propriétaire du dépôt.
+(`methode-equipe-agents.md` §2.4) sortait du périmètre d'édition de ce rôle : **fait le 2026-10-26
+sur instruction du propriétaire du dépôt** — la ligne « Déployé et vérifié sur l'environnement
+cible » y porte désormais la règle, sans qu'une autre décision soit nécessaire.
 
 **Origine** : revue [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md)
 §5, décision n° 1.
