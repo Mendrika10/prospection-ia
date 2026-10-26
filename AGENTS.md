@@ -282,3 +282,32 @@ comme une preuve que le produit fonctionne.
   voie qui marche est `POST /rest/workflows/<id>/archive` puis `DELETE`. Un PATCH avec
   `{ isArchived: true }` renvoie 200 **sans effet** (mesuré) : ne pas conclure à l'archivage
   d'après un 200 — vérifier par le DELETE qui le prouve.
+- **`pairedItem.sourceOverwrite` n'existe pas dans un item n8n** (mesuré le 2026-10-26, preuve
+  `S1-04`) : le lire renvoie `undefined`. Un Code node qui en fait dépendre le contexte d'une page
+  (`if (!paired.sourceOverwrite) return null`) perd **tous** ses rattachements — et un échec réseau
+  complet (endpoint inexistant, délai dépassé) ressort alors en **`success` avec 0 élément**, sans
+  un mot. Le rattachement se fait sur `pairedItem.item` (l'index de l'item d'entrée du nœud amont),
+  et un rattachement raté doit être une **erreur**, jamais un `continue` : « je n'ai pas su
+  rattacher » et « il n'y avait rien à rattacher » ne sont pas la même chose.
+- **Un nœud sans arête entrante ne s'exécute jamais — et rien ne le signale** (mesuré le
+  2026-10-26, preuve `S1-04`) : « Conciliation des écritures (S1-02) » a porté la logique de statut
+  `partial` pendant deux tickets sans être branchée ; le contrôle passait à côté parce qu'il ne
+  regardait que les nœuds branchés. À lister dans toute relecture de workflow : les nœuds **sans
+  entrant** (hors déclencheurs et notes) — puis les brancher ou les supprimer.
+- **Un « département inexistant » n'est pas une « réponse vide »** pour l'API Recherche
+  d'entreprises (mesuré le 2026-10-26, preuve `S1-04`) : `departement=99` comme `departement=XX`
+  renvoient **HTTP 400** (« Au moins un paramètre `departement` est non valide. Les valeurs
+  valides : […] »). Le cas « aucune entreprise » s'éprouve avec un département **valide** × un NAF
+  **valide** sans résultat : `05.10Z` × `2A` → HTTP 200, `total_results: 0`. Confondre les deux,
+  c'est croire qu'on teste le silence alors qu'on teste une panne.
+- **`recherche-entreprises.api.gouv.fr` résout trois adresses, et elles ne se valent pas** (mesuré
+  le 2026-10-26) : `37.59.183.76` → HTTP 200 en 2,0 s, `37.59.183.77` → délai dépassé après 15,0 s,
+  `37.59.183.78` → délai dépassé après 12,7 s. Ni le nœud HTTP (axios) ni `http`/`https` de Node ne
+  réessaient une **autre** adresse après un échec de connexion : selon celle que le DNS rend, un
+  appel tient ou dépasse le timeout de 10 s. Un run en `error` là-dessus n'est donc pas
+  nécessairement un défaut de collecte — mais c'est au run de le dire, jamais au silence.
+- **Le message d'une erreur HTTP n'a pas de forme unique dans n8n** (mesuré le 2026-10-26, preuve
+  `S1-04`) : un délai dépassé porte `message` + `name` (`timeout of 10000ms exceeded`), une réponse
+  en erreur porte `statusCode` + `error` et **pas** de `message` (`{statusCode: 500, error: "…"}`).
+  Lire `error.message` seul affiche « erreur API » sur toutes les pannes HTTP : inexploitable, là
+  où le ticket en exige un exploitable.

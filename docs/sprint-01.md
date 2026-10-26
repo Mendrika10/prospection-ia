@@ -728,7 +728,7 @@ ci-dessus sont produites par l'auteur. À rattraper au sprint review.
 
 ---
 
-### S1-05 — Garde-fou de format des codes NAF 🟦 en review
+### S1-05 — Garde-fou de format des codes NAF ✅ fait
 
 **Objectif** : rendre impossible l'erreur qui a produit le bug du seed : un code NAF au mauvais format.
 
@@ -765,13 +765,19 @@ précise : sans lui, un refus pour *permission denied* ferait passer les tests n
 raison apparente alors qu'ils ne prouveraient rien. Chaque cas négatif vérifie donc que l'échec est
 bien une `check_violation` (23514) et pas une `insufficient_privilege` (42501).
 
-**Historique de la branche** : `feat/s1-05-garde-fou-naf` (commit non fusionné).
+**Historique de la branche** : `feat/s1-05-garde-fou-naf` — **PR #1 relue en contexte neuf** (un
+bloquant trouvé et corrigé : migration non réapplicable), rebasée puis **fusionnée**, CI de `main`
+verte (§4).
 
-**Reste à faire avant `fait`** (DoD) : revue par un agent **Reviewer** en contexte neuf, et validation PO.
+**Avancement** : relecture en contexte neuf **faite** le 2026-10-16 — un bloquant trouvé et corrigé
+(migration non réapplicable), rebasée, fusionnée ; CI de `main` verte (§4 et tableau du §2). Les deux
+lignes ci-dessus (« commit non fusionné », « reste à faire ») étaient **périmées** et ont été alignées
+sur le tableau le **2026-10-26**.
 
 > **Note du planning (2026-10-15)** : ce ticket annonçait que ces deux étapes dépendaient de `S0-05`.
-> C'est **périmé** : le dépôt existe, la protection est active et la PR #1 est ouverte. Il ne manque
-> que la relecture. C'est le seul ticket du sprint dont l'avancement n'attend rien d'autre qu'un agent.
+> C'est **périmé** : le dépôt existe, la protection est active et la PR #1 est ouverte. Il ne manquait
+> que la relecture. **Fait le 2026-10-16** — la note est conservée pour l'historique du planning,
+> elle n'est plus un état courant.
 
 **Périmètre** : `supabase/migrations/`, `supabase/tests/` · **Dépendances** : aucune
 **Taille** : S · **Rôle** : Backend/Data
@@ -837,7 +843,7 @@ Telegram est un **plus non bloquant**. Le ticket ne dépend donc plus de `S0-06`
 
 ---
 
-### S1-07 — Documentation d'exploitation de WF1 ⬜
+### S1-07 — Documentation d'exploitation de WF1 ❌ refusé du sprint 1
 
 **Objectif** : pouvoir relancer WF1 et diagnostiquer un échec sans relire le workflow.
 
@@ -851,6 +857,11 @@ Telegram est un **plus non bloquant**. Le ticket ne dépend donc plus de `S0-06`
 
 **Périmètre** : `n8n/workflows/README.md`, `README.md`, `docs/` · **Dépendances** : S1-04
 **Taille** : S · **Rôle** : Documentation
+
+**Statut (aligné le 2026-10-26)** : **refusé du sprint 1** par le planning du 2026-10-15 (voir §7) —
+l'état `⬜` de l'en-tête laissait croire à un ticket en attente alors que le tableau du §2 le porte
+refusé. Condition de retour **explicite** : « dès 1 collecte réelle », pour ne pas documenter une
+procédure qui n'a jamais tourné.
 
 ---
 
