@@ -504,7 +504,7 @@ l'agent qui ferme le ticket ne lit pas n'est pas encore appliquée.
 
 ---
 
-## D-012 — Le timeout de collecte reste à 10 s ; la rotation d'adresses se mesure avant d'être décidée · 2026-10-26 · en vigueur
+## D-012 — Le timeout de collecte reste à 10 s ; la rotation d'adresses se mesure avant d'être décidée · 2026-10-26 · **révisée par D-014** (mesure faite le 2026-10-26)
 
 **Décision** : le nœud de collecte garde `timeout = 10 s` et `retryOnFail = ×3` (délai **fixe**
 5 000 ms — plafond de n8n). On ne l'allonge pas, et on n'ajoute **aucun** réessai d'adresse tant que
@@ -612,4 +612,74 @@ Documentation (`S1-07`) · le PO (l'arbitrage écrit ici).
 
 **Origine** : revue [`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md)
 §5, décision n° 3.
+
+---
+
+## D-014 — La panne d'adresses de l'API est réelle mais absorbée par le client : le timeout reste à 10 s · 2026-10-26 · en vigueur
+
+**Décision** : trois choses, et la première est que **rien ne change** dans les réglages.
+
+1. Le nœud de collecte garde `timeout = 10 s` et `retryOnFail ×3` (délai fixe 5 000 ms) et
+   **aucune rotation d'adresses n'est ajoutée** : la mesure du 2026-10-26 montre que le client
+   **bascule tout seul** sur l'adresse vivante quand la première ne répond pas.
+2. Le **ticket de mesure** annoncé par `D-012` est **clos par cette mesure** : il n'y a pas de
+   rotation à ajouter, donc rien à ouvrir au sprint 2 sur ce sujet.
+3. La **prédiction** de `D-012` (« une part des runs sortira en `error` ») est **corrigée** : elle ne
+   se vérifie pas. Ce qui reste — et devient le point de surveillance — est un risque de nature
+   différente : l'API n'est joignable que par **une adresse vivante sur trois**, et la bascule du
+   client **masque** cette dépendance.
+
+**Pourquoi** : cela sert le critère d'acceptation v1 « un échec de collecte doit se voir », sans
+renier la règle de vérité d'état de `D-012` — on ne rallonge toujours pas un délai pour faire
+disparaître un échec. Mais une décision dont la conséquence prédite est démentie par sa **propre
+mesure** doit être révisée par écrit : sinon le prochain lecteur croira que WF1 échoue une fois sur
+deux et « corrigera » un timeout qui n'a rien à se reprocher. La mesure n'a pas changé le **réglage**
+(`D-012` reste appliquée telle quelle) : elle a changé le **motif** et le **risque**. C'est ce que
+cette décision consigne.
+
+**Règle d'arbitrage utilisée** : la même que `D-012` — la **vérité d'état** avant le confort de run —
+mais appliquée à l'envers : ici la mesure dit que l'état réel est **meilleur** que craint, donc l'effort
+justifié est **nul** (aucun réglage) et le seul livrable utile est le risque nouvellement identifié.
+Coût du délai : une prédiction fausse laissée dans le journal coûterait une « correction » inutile au
+premier run lent.
+
+**Options écartées** :
+
+- *Ajouter une rotation d'adresses dans WF1* : inutile — le repli existe déjà et a été mesuré 8 fois
+  sur 8, sur l'hôte comme dans le conteneur — et hors de portée du Code node (sans réseau,
+  `AGENTS.md` §10). La faire dans le nœud HTTP voudrait dire viser une IP figée en quittant le nom,
+  c'est-à-dire transformer la panne de `.76` en panne **définitive**.
+- *Allonger le timeout* : les adresses mortes ne répondent à **aucun** délai (6 essais sur 6 en
+  timeout à 12 s, et 15,0 s mesuré la veille, sans SYN-ACK) — cela ne changerait rien sinon la durée
+  d'un échec.
+- *Retirer `retryOnFail ×3`* : le retry reste utile là où il a été mesuré utile (503 → 200, `S1-04`),
+  son coût est nul et il ne peut pas nuire ici.
+- *Ne pas réviser `D-012` et laisser sa prédiction fausse* : c'est exactement l'écart entre la doc et
+  la réalité que le sprint 1 a payé une fois (`S1-04`).
+
+**Preuves utilisées** : mesure du 2026-10-26 — protocole, sorties brutes des deux relevés et limites
+in [`reviews/2026-10-26-mesure-rotation-api.md`](reviews/2026-10-26-mesure-rotation-api.md). En bref :
+`.77` et `.78` muettes au niveau **TCP** (SYN sans réponse, 6/6 en timeout à 12 s), `.76` à 199–209 ms
+au TCP et 263–656 ms en HTTP ; **8 appels sur 8 réussis** par le nom, sur l'hôte **et** dans le
+conteneur n8n, tous joints sur `.76` ; le résolveur renvoyait une adresse **muette** en premier (`.78`
+puis `.77`, 5 fois sur 5 chacune) ; marge du timeout de 10 s ≈ **8×** (265 ms en régime établi,
+1 196 ms à froid).
+
+**Conséquence / coût** : aucun réglage ne change — coût minimal. À surveiller, en revanche, un point de
+défaillance unique qui n'apparaissait pas dans le récit : **si `.76` devient muet, il n'existe plus
+aucune adresse de repli** et la collecte ne peut plus rien collecter, quel que soit le timeout. Le
+signal d'alerte est un run `error` de type timeout sur la collecte, sans autre explication.
+
+**Ce qui me ferait changer d'avis** : une **exécution réelle de WF1** montrant que le nœud HTTP, lui,
+**ne** bascule pas — c'est le seul maillon que cette mesure ne prouve pas ; on reviendrait alors à
+`D-012`, rotation et timeout à retravailler. Ou `.76` muet à son tour : le problème n'est plus un
+réglage mais une **dépendance**, et la réponse serait un plan de repli (autre voie d'accès à l'API),
+décidé à ce moment-là.
+
+**Qui exécute** : Automation (ne change rien à la configuration du nœud) · Orchestrateur (n'ouvre
+rien — le ticket de mesure est clos — et surveille le premier run `error` de collecte) · le PO
+(l'arbitrage écrit ici).
+
+**Origine** : ticket de mesure annoncé par `D-012`, exécuté le 2026-10-26 ; revue
+[`reviews/2026-10-26-sprint-1-review.md`](reviews/2026-10-26-sprint-1-review.md) §5, décision n° 2.
 

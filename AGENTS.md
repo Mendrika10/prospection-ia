@@ -300,12 +300,18 @@ comme une preuve que le produit fonctionne.
   valides : […] »). Le cas « aucune entreprise » s'éprouve avec un département **valide** × un NAF
   **valide** sans résultat : `05.10Z` × `2A` → HTTP 200, `total_results: 0`. Confondre les deux,
   c'est croire qu'on teste le silence alors qu'on teste une panne.
-- **`recherche-entreprises.api.gouv.fr` résout trois adresses, et elles ne se valent pas** (mesuré
-  le 2026-10-26) : `37.59.183.76` → HTTP 200 en 2,0 s, `37.59.183.77` → délai dépassé après 15,0 s,
-  `37.59.183.78` → délai dépassé après 12,7 s. Ni le nœud HTTP (axios) ni `http`/`https` de Node ne
-  réessaient une **autre** adresse après un échec de connexion : selon celle que le DNS rend, un
-  appel tient ou dépasse le timeout de 10 s. Un run en `error` là-dessus n'est donc pas
-  nécessairement un défaut de collecte — mais c'est au run de le dire, jamais au silence.
+- **`recherche-entreprises.api.gouv.fr` résout trois adresses, et une seule répond** (mesuré le
+  2026-10-26, re-mesuré le même jour : `docs/reviews/2026-10-26-mesure-rotation-api.md`, D-014) :
+  `37.59.183.76` → HTTP 200 en ~0,2 s (TCP) / ~0,27 s (HTTP) ; `37.59.183.77` et `37.59.183.78` →
+  **muettes au niveau TCP** (SYN sans réponse : 6 essais sur 6 en timeout à 12 s, 15,0 s à la
+  première mesure). Ce ne sont donc **pas** des adresses lentes qu'un timeout plus long sauverait.
+  **Correction du 2026-10-26** : la version précédente de ce piège affirmait qu'aucun client ne
+  réessaie une autre adresse — c'est **faux**, mesuré par différence : `http`/`https` de Node ≥ 20
+  bascule seul sur une autre adresse quand la première ne répond pas (`autoSelectFamily`, actif par
+  défaut), et **8 appels sur 8** ont réussi depuis un résolveur qui rendait l'adresse **muette** en
+  premier. Le vrai piège n'est donc pas le timeout : c'est que **l'API dépend d'une seule adresse
+  vivante**, et que cette dépendance est **masquée** par la bascule du client. Le jour où elle tombe,
+  aucun repli n'existe plus — et c'est au run de le dire (`error` + message), jamais au silence.
 - **Le message d'une erreur HTTP n'a pas de forme unique dans n8n** (mesuré le 2026-10-26, preuve
   `S1-04`) : un délai dépassé porte `message` + `name` (`timeout of 10000ms exceeded`), une réponse
   en erreur porte `statusCode` + `error` et **pas** de `message` (`{statusCode: 500, error: "…"}`).

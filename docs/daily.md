@@ -40,6 +40,9 @@ Format :
   jamais** depuis ce réseau (`.76` → 200 en 2,0 s ; `.77` → timeout 15,0 s ; `.78` → timeout
   12,7 s). Selon l'adresse tirée, l'appel dépasse le timeout de 10 s imposé par le ticket — et le
   run le dit (`error` + message) au lieu de le taire, ce qui est le comportement voulu.
+  → **Démenti le même jour** par la mesure de la rotation (`D-014`) : le client bascule seul sur
+  l'adresse vivante, **8 appels sur 8 réussissent** ; les deux adresses muettes restent muettes au
+  niveau TCP, mais le timeout de 10 s n'était pas l'obstacle.
 - **Sprint review + rétrospective** (dues le 23/10, tenues le 26/10) : métriques relevées — vélocité
   **8** tickets (croissante), lead time médian **0,1 h** (1 outlier à 89 h, `S1-02`), **1 échec de CI
   sur 91 runs (1,1 %)**, **0 PR refusée**, et surtout **1 bug critique échappé** : WF1 ne collectait
@@ -62,8 +65,15 @@ Format :
   `.github/PULL_REQUEST_TEMPLATE.md`), qui n'avaient pas cette ligne du tout : sans elle, l'agent qui
   ferme le ticket ne voyait pas l'exigence. PR #43 fusionnée en squash `afd196b`, CI de `main` verte
   (run 40333027573).
-- **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
-  le prévu du ticket de mesure de la rotation d'adresses (D-012) pour le sprint 2.
+- **Fait (mesure)** : **ticket de mesure de `D-012`** exécuté — sonde des trois adresses de
+  `recherche-entreprises.api.gouv.fr`, sur l'hôte **et** dans le conteneur n8n. Relevé : `.77` et
+  `.78` sont muettes **au niveau TCP** (SYN sans réponse, `TIMEOUT` 6 fois sur 6 à 12 s), `.76`
+  répond en 199–209 ms (TCP) ; le résolveur renvoie une adresse **muette en premier** (5 fois sur 5)
+  et pourtant **8 appels sur 8 réussissent** en 263–1 247 ms — le client **bascule tout seul**
+  d'adresse. Conclusion : **aucun réglage ne change** (`D-014` **révise `D-012`**), et le vrai risque
+  est que l'API dépende d'**une seule** adresse vivante. Protocole et sorties brutes :
+  [`reviews/2026-10-26-mesure-rotation-api.md`](reviews/2026-10-26-mesure-rotation-api.md).
+- **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket).
 - **Bloqué** : rien.
 
 ---
