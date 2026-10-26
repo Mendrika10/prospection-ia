@@ -699,6 +699,13 @@ c'est **le comportement voulu** que le run le dise (`error` + message) au lieu d
 preuve ci-dessus utilise la **même copie de workflow**, avec **seule l'URL de collecte substituée**
 par un hôte d'écho local (même pratique que S1-02/S1-06 : preuves sur copie, aucun harnais livré).
 
+> **Correction du même jour** : la dernière phrase ci-dessus (« selon l'adresse tirée, l'appel
+> dépasse le timeout de 10 s ») était une **hypothèse**, démentie par la mesure de la rotation
+> ([`reviews/2026-10-26-mesure-rotation-api.md`](reviews/2026-10-26-mesure-rotation-api.md), `D-014`) :
+> les deux adresses muettes le restent au niveau TCP, mais le client bascule seul sur la vivante —
+> **8 appels sur 8 réussis**, sur l'hôte comme dans le conteneur n8n. Le timeout de 10 s n'était donc
+> pas l'obstacle. Ce qui reste vrai : l'API n'est joignable que par **une** adresse sur trois.
+
 **Découvertes consignées (à porter dans `AGENTS.md` §10 à la rétro)**
 1. **`pairedItem.sourceOverwrite` n'existe pas dans un item n8n** : le lire renvoie `undefined`, et
    un garde-fou du type `if (!sourceData) return null` transforme alors **tout** échec réseau en
@@ -1027,7 +1034,11 @@ restées « sur la table, non prises » pendant la review :
 - **`D-011`** — garde-fou de clôture : pour tout ticket touchant la chaîne de collecte, le « vérifié »
   de la DoD est **une exécution de bout en bout de WF1**, la ligne `runs` lue en base à l'appui.
 - **`D-012`** — timeout de **10 s conservé** (le rallonger masquerait la panne) ; la rotation
-  d'adresses (deux des trois adresses sont muettes d'ici) est **à mesurer** avant toute décision.
+  d'adresses était **à mesurer** avant toute décision. **Mesure faite le 2026-10-26**
+  ([`reviews/2026-10-26-mesure-rotation-api.md`](reviews/2026-10-26-mesure-rotation-api.md)) : deux
+  adresses sur trois sont muettes au TCP, mais le client **bascule tout seul** sur la vivante —
+  **8/8 collectes réussies**, **→ révisée par `D-014`** (aucun réglage ne change ; ce qui apparaît,
+  c'est que l'API dépend d'**une seule** adresse vivante).
 - **`D-013`** — `S1-07` **reste refusé**, avec une condition de retour désormais **vérifiable** :
   1 ligne `companies` écrite par un appel réel à `recherche-entreprises.api.gouv.fr`.
 

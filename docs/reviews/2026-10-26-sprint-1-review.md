@@ -128,6 +128,12 @@ Cette review avait laissé les trois arbitrages ci-dessous **sur la table, non t
    **masquerait** la panne sans la traiter ; garder 10 s produit des runs `error` corrects et visibles.
    *Hypothèse assumée* : le défaut est côté réseau/API, pas côté WF1.
    → **tranché : `D-012`** — 10 s conservés, rotation d'adresses **à mesurer** avant toute décision.
+   → **mesuré le 2026-10-26, puis révisé : `D-014`** — deux adresses sur trois sont muettes **au
+   niveau TCP**, mais le client bascule tout seul sur la vivante (**8/8 collectes réussies**, sur
+   l'hôte et dans le conteneur n8n) : aucun réglage ne change, et le vrai risque est que l'API dépende
+   d'**une seule** adresse vivante. La phrase « aucun client ne réessaie une autre adresse » ci-dessus
+   est **démentie par la mesure** (c'était l'hypothèse, pas un fait).
+   Détail : [`2026-10-26-mesure-rotation-api.md`](2026-10-26-mesure-rotation-api.md).
 3. **`S1-07`** — sa condition de retour est « dès 1 collecte réelle ». Une collecte réelle a bien
    tourné le 2026-10-26… **contre un hôte d'écho local** (pour prouver la robustesse), pas sur l'API
    publique. La condition n'est donc **pas remplie à la lettre**, et le ticket reste refusé.
