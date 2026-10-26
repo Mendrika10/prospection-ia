@@ -95,6 +95,7 @@ Format :
   et **`S2-02`** (défaut B : rattacher chaque page au bon couple par une **clé portée par la donnée** —
   avec le critère qui attrape le défaut silencieux : deux couples de même NAF, contrôle par requête).
   `S2-02` dépend de `S2-01` **pour sa preuve** ; le planning du sprint 2 reste à tenir.
+  PR #49 fusionnée en squash `0f5ca02`, CI de `main` verte (run 40341246152).
 - **Prévu** : rattraper la **revue en contexte neuf** de `S1-04` (écart assumé, écrit au ticket) ;
   tenir le **planning du sprint 2** et refaire la preuve sur un couple **multi-pages** après correctif.
 - **Bloqué** : rien.
