@@ -768,5 +768,9 @@ la preuve sur un couple multi-pages) · le PO (l'arbitrage écrit ici).
 **Origine** : exécution de bout en bout exigée par `D-011` et par la condition de retour de `D-013`,
 faite le 2026-10-26 ; révise `D-014` ; complète `D-012`.
 
+**Tickets ouverts** : **`S2-01`** (défaut A — atteindre une adresse vivante) et **`S2-02`** (défaut B
+— rattacher chaque page au bon couple), en tête du backlog du sprint 2, critères d'acceptation et
+DoR compris : [`sprint-02.md`](sprint-02.md).
+
 **Consigné** : PR **#47** fusionnée en squash `cd6bbb4`, CI de `main` **verte** (run 40339795807).
 
