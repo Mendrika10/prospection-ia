@@ -144,6 +144,12 @@ attribuées à un **autre** — **silencieusement** si les deux partagent un cod
 cas de bord : sur 30 couples sondés, **2 seulement** tiennent sur une page ; `43.21A × 974` en compte
 **1 515** (61 pages).
 
+> **Précision du 2026-10-27 (`D-017`)** — le paragraphe ci-dessus est le relevé d'ouverture, pas le
+> mécanisme établi : le nœud HTTP **range** l'index de l'item d'**entrée** (`pairedItem: {item:
+> itemIndex}`), et c'est le nœud **suivant** qui **lit** l'index de **sortie**. Le symptôme relevé ici
+> reste exact, l'attribution (« l'index de page ») ne l'était pas. Voir
+> [la revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) § 1.
+
 **Critères d'acceptation**
 - [x] Sur un couple **multi-pages** : `runs.status = success`, `details.recuperees` = total annoncé
       par l'API **dans la même fenêtre**, `runs.error = null`, et `items_processed +
