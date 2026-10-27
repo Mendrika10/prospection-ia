@@ -11,16 +11,18 @@
 > [`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md)).
 > **`S2-01` est clos** : instruit par la mesure, il a **requalifié son propre défaut** — le nœud HTTP
 > de n8n bascule bien d'adresse, la panne du 26/10 n'était pas la sienne (`D-016`). Aucun correctif
-> n'était donc à écrire ; la collecte mono-page fonctionne, mesurée de bout en bout. **`S2-02` reste
-> le seul défaut de la collecte** — il écrit de fausses lignes en silence — et passe donc avant tout
-> élargissement de périmètre (WF2), comme le dit `D-015`.
+> n'était donc à écrire ; la collecte mono-page fonctionne, mesurée de bout en bout. **`S2-02`** — le
+> seul défaut de la collecte, celui qui écrivait de fausses lignes en silence — est **corrigé et en
+> review** (`D-017`) : le rattachement ne lit plus d'index, il lit **la donnée de chaque page**, et il
+> est prouvé de bout en bout sur des couples multi-pages. Ce qui reste ouvert n'est plus le
+> rattachement, mais la **robustesse** de la collecte devant un `429` de l'API (`D-017`, point 3).
 
 Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` · `✅ fait` · `⛔ bloqué`
 
 | ID | Ticket | Rôle | Taille | Dépend de | Statut |
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
-| S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | 🟦 **Prêt** |
+| S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | 🟦 **en review** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, relecture en attente · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
 
@@ -126,7 +128,7 @@ ouvert ici** : la DoR exige des critères vérifiables, et l'instruction revient
 
 ---
 
-## S2-02 — WF1 : rattacher chaque page au bon couple, sans index implicite (défaut B) · 🟦 Prêt
+## S2-02 — WF1 : rattacher chaque page au bon couple, sans index implicite (défaut B) · 🟦 **en review**
 
 **Objectif** : qu'un couple de **plus de 25 résultats** soit collecté en entier, chaque page
 attribuée **au bon couple**.
@@ -143,19 +145,29 @@ cas de bord : sur 30 couples sondés, **2 seulement** tiennent sur une page ; `4
 **1 515** (61 pages).
 
 **Critères d'acceptation**
-- [ ] Sur un couple **multi-pages** (`43.21A × 974` : 1 515 résultats, 61 pages) : `runs.status =
-      success`, `details.recuperees = 1515`, `runs.error = null`, et `items_processed +
-      details.ecartees = 1515` — la ligne `runs` lue en base **à l'appui**
-- [ ] Sur **deux couples partageant le même code NAF** (ex. `43.21A × 974` **et** `43.21A × 15`),
+- [x] Sur un couple **multi-pages** : `runs.status = success`, `details.recuperees` = total annoncé
+      par l'API **dans la même fenêtre**, `runs.error = null`, et `items_processed +
+      details.ecartees = recuperees` — la ligne `runs` lue en base **à l'appui**. **Écart de volume
+      assumé (`D-017`)** : le couple nommé ici (`43.21A × 974`, 1 515 résultats, 61 pages) est **hors
+      d'atteinte de l'API** aujourd'hui (limite de débit partagée, six tentatives, aucune passée) ; la
+      preuve est faite sur `43.21A × 05` (36 → 2 pages) et `43.21A × 70` (33 → 2 pages), `effectif_min
+      = 3` — voir le **Résultat**
+- [x] Sur **deux couples partageant le même code NAF** (ex. `43.21A × 974` **et** `43.21A × 15`),
       chaque ligne écrite appartient bien à son couple : le département lu dans la ligne est celui du
       couple — contrôle **par requête**, pas à l'œil. *(C'est le critère qui attrape le défaut
-      silencieux ; sans lui, le ticket peut être vert et faux.)*
-- [ ] Le rattachement **ne lit plus** `pairedItem.item` : la clé est **portée par la donnée**, et le
-      test le montre (faire varier l'index du nœud ne change plus l'attribution)
-- [ ] Le plafond de pagination (dernière page pleine = collecte tronquée) reste une **erreur**,
-      jamais un silence
+      silencieux ; sans lui, le ticket peut être vert et faux.)* → mesuré sur `43.21A × 05` **et**
+      `43.21A × 70` : **42** lignes, sièges `05` : **22** / `70` : **20**, **0 hors zone**, et aucun
+      établissement apparié d'un couple dans les lignes de l'autre
+- [x] Le rattachement **ne lit plus** `pairedItem.item` : la clé est **portée par la donnée**, et le
+      test le montre (faire varier l'index du nœud ne change plus l'attribution) → **rouge → vert** :
+      cinq dispositions de `pairedItem` rendent la **même** sortie ; le code de `S1-04` pris dans git
+      (`d156e99`) en rend **trois différentes**, dont `2 page(s) sans couple rattachable`
+- [x] Le plafond de pagination (dernière page pleine = collecte tronquée) reste une **erreur**,
+      jamais un silence → segment qui ne se ferme pas = erreur nommée (scénario hors réseau « collecte
+      tronquée »), et pages du couple interverties = refus anti-silence
 - [ ] Relecture par un **Reviewer en contexte neuf** — exigence de la DoD, non négociable ici :
       c'est précisément l'écart qui a laissé passer le défaut critique de `S1-04`
+      → **en attente** : c'est la revue de la PR
 
 **Definition of Ready** : objectif en une phrase ✓ · critères vérifiables ✓ · périmètre explicite ✓ ·
 dépendances identifiées ✓ · taille ≤ ½ journée ✓
@@ -166,6 +178,42 @@ SQL, le contrat d'upsert (ADR 0007), la CI
 **Dépendances** : **`S2-01` ✅ non bloquant** — sa preuve multi-pages exige une collecte qui atteint
 l'API, et c'est acquis : le nœud bascule (10/10 sans épinglage) et WF1 collecte de bout en bout
 (`D-016`). Le ticket est **débloqué** · **Taille** : M · **Rôle** : Automation (+ Reviewer)
+
+---
+
+### Résultat — le rattachement par la donnée, et ce qu'il a coûté de prouver (`D-017`, 2026-10-27)
+
+**Ce qui change** : un seul nœud — « Filtrage et compteurs » — et sa note. Le rattachement ne lit plus
+`pairedItem` ; il découpe les pages en **segments par la donnée** (une page `page = 1` ouvre le segment
+du couple suivant, un segment se ferme sur une page partielle ou une erreur), attribue le segment *k* au
+couple *k*, et **refuse** — en erreur nommée — tout ce que l'ordre ne permet pas de vérifier. Aucune
+modification du schéma, du contrat d'upsert (ADR 0007) ni de la CI.
+
+**Ce que la preuve a établi** (instance jetable, n8n 2.43.5, cadence **livrée** de 1 000 ms, base rendue
+à `0 / 0 / 0`) :
+
+| Scénario | Ce que la ligne `runs` dit | Contrôle par requête |
+|---|---|---|
+| `43.21A × 05` (36 → 2 pages) | `success` · `items_processed = 22` · `details = {recuperees: 36, ecartees: 14}` · `error = null` | 22 lignes, sièges **tous** en `05`, 0 hors zone |
+| `43.21A × 05 + 70` (**même NAF**, 2 pages chacun) | `success` · **42** lignes · `details = {recuperees: 69 = 36 + 33, ecartees: 27}` | 22 lignes en `05`, 20 en `70`, 0 hors zone — aucun apparié de l'autre couple |
+| `43.21A × 99` (échec provoqué) | `error` · `items_processed = 0` · `HTTP 400` **nommé** | 0 ligne écrite |
+
+Et **hors réseau**, sur le fichier **livré** : onze scénarios, 30 assertions, `exit 0` — dont six échecs
+provoqués et le **rouge → vert** du critère 3.
+
+**Ce que la preuve n'a pas pu établir** : le **volume** du couple nommé au critère 1. `43.21A × 974`
+n'a jamais pu être collecté — six tentatives, de la cadence livrée à 4 s par page, toutes en `error`
+(`429`, `retry-after: 4`). La cause est mesurée **en simultané** : la limite est côté **service** et
+partagée sur l'IP de sortie (le nœud et une sonde nue se font refuser au même instant). L'écart est
+assumé par `D-017`, il n'est pas contourné : la preuve porte sur les plus petits couples **réellement
+multi-pages** que la fenêtre admet, ce qui exerce bien le cas que le ticket visait — le défaut tombe dès
+la **page 2**.
+
+**Ce que la preuve a ouvert** : un `429` **unique** fait perdre tout un couple, parce que `retryOnFail
+×3` relance la **pagination entière** et non la page en échec. Constat mesuré, hors périmètre de ce
+ticket : `D-017` le renvoie au planning, **avant** WF2.
+
+**Consigné** : PR **#<numéro>** (relecture en contexte neuf = critère 5).
 
 ---
 

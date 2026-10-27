@@ -13,6 +13,41 @@ Format :
 
 ---
 
+## 2026-10-27 (mardi) — S2-02 : le rattachement cesse de lire un index, et la preuve dit ce qu'elle n'a pas pu prouver
+
+- **Fait** : `S2-02` corrigé. Le défaut B **abandonnait** toute collecte multi-pages (la page 2 lue comme
+  le couple suivant, puis index hors bornes) et, à deux couples de même NAF, pouvait attribuer les pages
+  d'un couple à l'autre **en silence**. Mesure avant correctif : n8n **range** l'index de l'item d'entrée
+  puis **fait lire** l'index de sortie (trois pages d'un couple + une page du suivant donnaient
+  `0, 1, 2, 3` là où les couples étaient `0, 0, 0, 1`), et le nœud HTTP **ne peut pas** transporter de clé
+  (`outputPropertyName` : branche JSON ignorée, lu **sur l'item 0 seulement** ; l'API n'écho pas la
+  requête ; `matching_etablissements` n'a pas de `departement`, 25 résultats sur 25). Le rattachement se
+  fait donc **sur la donnée de chaque page** : segments ouverts par `page = 1`, fermés par une page
+  partielle ou une erreur, et **tout écart est une erreur nommée**. Un seul nœud changé, plus sa note.
+- **Preuves** : hors réseau, **onze scénarios, 30 assertions, exit 0** (dont six échecs provoqués) et le
+  **rouge → vert** du critère 3 sur le code de `S1-04` pris dans git (`d156e99` rend **trois** sorties
+  différentes selon la disposition de `pairedItem`, dont `2 page(s) sans couple rattachable`) ; de bout en
+  bout sur instance jetable (n8n 2.43.5, cadence **livrée** de 1 000 ms, base relevée avant et rendue
+  après à `0 / 0 / 0`) : `43.21A × 05` → `success`, `items_processed = 22`, `{recuperees: 36, ecartees:
+  14}`, 22 sièges **tous** en `05` ; `43.21A × 05 + 70` (**même NAF**) → `success`, **42** lignes,
+  `{recuperees: 69 = 36 + 33, ecartees: 27}`, **22** en `05` / **20** en `70`, **0 hors zone** et aucun
+  apparié de l'autre couple ; `43.21A × 99` → `error`, `items_processed = 0`, **HTTP 400 nommé**, 0 ligne.
+- **L'écart, écrit au lieu d'être contourné** : `43.21A × 974` (1 515 résultats, 61 pages) **n'a pas pu**
+  être collecté — **six** tentatives, de la cadence livrée à 4 s par page, toutes en `429`
+  (`retry-after: 4`), la cause mesurée **en simultané** (limite de débit **côté service**, partagée sur
+  l'IP de sortie : le nœud de n8n et une sonde nue se font refuser au même instant). La preuve porte donc
+  sur les plus petits couples **réellement multi-pages** que la fenêtre admet (`effectif_min = 3`), et le
+  volume nommé reste **non prouvé** — décision **`D-017`**.
+- **Ouvert, hors périmètre** : un **seul** `429` fait perdre tout un couple (`retryOnFail ×3` relance la
+  **pagination entière**, pas la page en échec). Constat mesuré, proposé au planning **avant** WF2.
+- **Mémoire d'équipe** : `AGENTS.md` §10 — le piège de `pairedItem` **réécrit** (il disait l'inverse de ce
+  qui est mesuré), trois pièges ajoutés (le nœud HTTP ne peut pas porter de clé ; « ≤ 25 résultats » est
+  une prémisse fausse ; la limite de débit de l'API, avec le rappel que deux chemins ne se comparent
+  **jamais** sans être mesurés au même instant).
+- **Prévu** : revue de la PR en contexte neuf (critère 5 de `S2-02`, non négociable), puis le planning du
+  sprint 2 (WF2, reports du §7).
+- **Bloqué** : rien — le volume non prouvé est un écart assumé, pas un blocage.
+
 ## 2026-10-26 (lundi, soir) — S2-01 : le défaut A n'existe pas, la mesure le prouve et la décision le dit
 
 - **Fait** : `S2-01` **clos le soir même de son ouverture, sans un seul correctif** — l'instruction
