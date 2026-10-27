@@ -180,12 +180,14 @@ cas de bord : sur 30 couples sondés, **2 seulement** tiennent sur une page ; `4
 - [x] Le plafond de pagination (dernière page pleine = collecte tronquée) reste une **erreur**,
       jamais un silence → segment qui ne se ferme pas = erreur nommée (scénario hors réseau « collecte
       tronquée »), et pages du couple interverties = refus anti-silence
-- [ ] Relecture par un **Reviewer en contexte neuf** — exigence de la DoD, non négociable ici :
+- [x] Relecture par un **Reviewer en contexte neuf** — exigence de la DoD, non négociable ici :
       c'est précisément l'écart qui a laissé passer le défaut critique de `S1-04`
       → **revue faite** ([verdict](reviews/2026-10-27-revue-pr-53.md)) : **approuvé sous réserves**,
-      aucun bloquant, deux corrections **hors code**. **Case non cochée** à dessein : la revue a été
-      conduite dans la **même session** que l'auteur — une confirmation par un agent qui n'a jamais
-      vu l'implémentation reste due, et c'est tout l'objet du critère
+      aucun bloquant, deux corrections **hors code**. Puis **confirmée par une session
+      indépendante** (§ 11 du verdict) : processus séparé, isolé du dossier de revue et de
+      l'implémentation, ses **propres** cas sur le code livré — **même verdict**, et deux constats
+      mineurs qu'elle a vus et pas moi (`raw` recopié en entier, message tronqué à 900 caractères,
+      deux points **hors périmètre** et antérieurs)
 
 **Definition of Ready** : objectif en une phrase ✓ · critères vérifiables ✓ · périmètre explicite ✓ ·
 dépendances identifiées ✓ · taille ≤ ½ journée ✓

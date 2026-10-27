@@ -52,8 +52,14 @@ Format :
   mais la formulation le promettait ; et le harnais de preuve supprimé avant la PR rend les exécutions
   **non rejouables** par un relecteur). Critère 5 **non coché** à dessein : même session que l'auteur,
   donc une confirmation indépendante reste due — [verdict](reviews/2026-10-27-revue-pr-53.md).
-- **Prévu** : confirmation de la revue par un agent qui n'a jamais vu l'implémentation (critère 5), puis le
-  planning du sprint 2 (WF2, reports du §7).
+- **Confirmation indépendante** : la revue a été portée à une **session séparée** (processus distinct,
+  sans accès à cet historique), isolée sur un dossier contenant **le ticket tel qu'ouvert, le diff et le
+  code en clair** — ni le verdict, ni `D-017`, ni les revues. Elle a écrit **ses propres** cas sur le
+  code livré et rend **le même verdict** : *approuvé sous réserves*, aucun bloquant. Deux constats
+  mineurs qu’elle a vus et pas moi : `raw` recopie la réponse API entière dans chaque ligne, et le
+  message d’échec est tronqué à 900 caractères — deux points **hors périmètre** et antérieurs à la PR.
+  Le **critère 5 est satisfait** (verdict § 11).
+- **Prévu** : le planning du sprint 2 (WF2, reports du §7), puis la fusion de la PR #53.
 - **Bloqué** : rien — le volume non prouvé est un écart assumé, pas un blocage.
 
 ## 2026-10-26 (lundi, soir) — S2-01 : le défaut A n'existe pas, la mesure le prouve et la décision le dit
