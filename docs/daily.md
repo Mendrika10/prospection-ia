@@ -44,8 +44,16 @@ Format :
   qui est mesuré), trois pièges ajoutés (le nœud HTTP ne peut pas porter de clé ; « ≤ 25 résultats » est
   une prémisse fausse ; la limite de débit de l'API, avec le rappel que deux chemins ne se comparent
   **jamais** sans être mesurés au même instant).
-- **Prévu** : revue de la PR en contexte neuf (critère 5 de `S2-02`, non négociable), puis le planning du
-  sprint 2 (WF2, reports du §7).
+- **Revue (PR #53)** : conduite sur le diff et le code **livré**, avec un banc **indépendant** de celui
+  de l'auteur — **24 vérifications, 14 cas**, dont le **total exactement multiple de 25** (l'API rend
+  bien `200` + `results: []` au-delà de la dernière page : mesuré) — et **six mutations** du code livré,
+  toutes attrapées. Verdict **approuvé sous réserves** : **aucun bloquant**, deux points importants
+  **hors code** (le contrôle du critère 2 ne peut pas distinguer deux couples de même NAF — sans effet,
+  mais la formulation le promettait ; et le harnais de preuve supprimé avant la PR rend les exécutions
+  **non rejouables** par un relecteur). Critère 5 **non coché** à dessein : même session que l'auteur,
+  donc une confirmation indépendante reste due — [verdict](reviews/2026-10-27-revue-pr-53.md).
+- **Prévu** : confirmation de la revue par un agent qui n'a jamais vu l'implémentation (critère 5), puis le
+  planning du sprint 2 (WF2, reports du §7).
 - **Bloqué** : rien — le volume non prouvé est un écart assumé, pas un blocage.
 
 ## 2026-10-26 (lundi, soir) — S2-01 : le défaut A n'existe pas, la mesure le prouve et la décision le dit

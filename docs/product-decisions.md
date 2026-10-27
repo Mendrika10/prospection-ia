@@ -979,7 +979,7 @@ robustesse `429`, et fixer la cadence de production à la lumière de la limite 
 écart écrit) ; confirme `D-002` (compteurs) et `D-008` (filtre d'effectif, employé pour rendre la preuve
 admissible).
 
-**Tickets** : **`S2-02`** 🟦 **en review** — critères 1 à 4 vérifiés, 5 en attente de la revue de PR ·
+**Tickets** : **`S2-02`** 🟦 **en review** — critères 1 à 4 vérifiés ; 5 : **revue faite** ([verdict](reviews/2026-10-27-revue-pr-53.md), approuvé sous réserves, aucun bloquant), **confirmation par un agent indépendant encore due** ·
 **à ouvrir** : « la collecte ne survit pas à un `429` » (proposé au planning, avec la mesure du § 3 de
 la revue).
 

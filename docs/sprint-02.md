@@ -161,9 +161,18 @@ cas de bord : sur 30 couples sondés, **2 seulement** tiennent sur une page ; `4
 - [x] Sur **deux couples partageant le même code NAF** (ex. `43.21A × 974` **et** `43.21A × 15`),
       chaque ligne écrite appartient bien à son couple : le département lu dans la ligne est celui du
       couple — contrôle **par requête**, pas à l'œil. *(C'est le critère qui attrape le défaut
-      silencieux ; sans lui, le ticket peut être vert et faux.)* → mesuré sur `43.21A × 05` **et**
-      `43.21A × 70` : **42** lignes, sièges `05` : **22** / `70` : **20**, **0 hors zone**, et aucun
-      établissement apparié d'un couple dans les lignes de l'autre
+      silencieux ; sans lui, le ticket peut être vert et faux.)*
+      → **Reformulé après revue (PR #53, point important 1)** : la ligne écrite ne porte **rien** de
+      spécifique au couple (`siren`, `name`, `naf` — celui de l'entreprise —, adresse, et
+      `campaign_id`/`run_id` **partagés**), donc deux couples de **même NAF** intervertis produisent
+      la **même** sortie : le contrôle ne peut pas les distinguer, et **n'a pas à le faire** — une
+      interversion entre couples de même NAF est **sans effet**, rien de spécifique au couple
+      n'entrant dans la ligne. Ce qui est réellement vérifié, **par requête** : **aucune page perdue
+      ni comptée deux fois** (`recuperees` = somme des totaux annoncés), le filtre de zone appliqué,
+      les compteurs réconciliés — mesuré sur `43.21A × 05` **et** `43.21A × 70` : **42** lignes,
+      sièges `05` : **22** / `70` : **20**, **0 hors zone**, aucun établissement apparié d'un couple
+      dans les lignes de l'autre. Et entre couples de **NAF différents**, l'interversion est bien
+      **refusée** (vérification anti-silence, mesurée hors réseau).
 - [x] Le rattachement **ne lit plus** `pairedItem.item` : la clé est **portée par la donnée**, et le
       test le montre (faire varier l'index du nœud ne change plus l'attribution) → **rouge → vert** :
       cinq dispositions de `pairedItem` rendent la **même** sortie ; le code de `S1-04` pris dans git
@@ -173,7 +182,10 @@ cas de bord : sur 30 couples sondés, **2 seulement** tiennent sur une page ; `4
       tronquée »), et pages du couple interverties = refus anti-silence
 - [ ] Relecture par un **Reviewer en contexte neuf** — exigence de la DoD, non négociable ici :
       c'est précisément l'écart qui a laissé passer le défaut critique de `S1-04`
-      → **en attente** : c'est la revue de la PR
+      → **revue faite** ([verdict](reviews/2026-10-27-revue-pr-53.md)) : **approuvé sous réserves**,
+      aucun bloquant, deux corrections **hors code**. **Case non cochée** à dessein : la revue a été
+      conduite dans la **même session** que l'auteur — une confirmation par un agent qui n'a jamais
+      vu l'implémentation reste due, et c'est tout l'objet du critère
 
 **Definition of Ready** : objectif en une phrase ✓ · critères vérifiables ✓ · périmètre explicite ✓ ·
 dépendances identifiées ✓ · taille ≤ ½ journée ✓
