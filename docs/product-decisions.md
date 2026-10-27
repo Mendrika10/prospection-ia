@@ -983,4 +983,4 @@ admissible).
 **à ouvrir** : « la collecte ne survit pas à un `429` » (proposé au planning, avec la mesure du § 3 de
 la revue).
 
-**Consigné** : PR **#53** ouverte le 2026-10-27.
+**Consigné** : PR **#53** fusionnée en squash `e85c7ba`, CI de `main` **verte** (run 40507634553).
