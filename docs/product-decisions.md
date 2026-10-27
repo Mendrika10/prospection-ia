@@ -983,4 +983,4 @@ admissible).
 **à ouvrir** : « la collecte ne survit pas à un `429` » (proposé au planning, avec la mesure du § 3 de
 la revue).
 
-**Consigné** : PR **#<numéro>** ouverte le 2026-10-27.
+**Consigné** : PR **#53** ouverte le 2026-10-27.

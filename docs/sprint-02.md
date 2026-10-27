@@ -213,7 +213,7 @@ la **page 2**.
 ×3` relance la **pagination entière** et non la page en échec. Constat mesuré, hors périmètre de ce
 ticket : `D-017` le renvoie au planning, **avant** WF2.
 
-**Consigné** : PR **#<numéro>** (relecture en contexte neuf = critère 5).
+**Consigné** : PR **#53** (relecture en contexte neuf = critère 5).
 
 ---
 
