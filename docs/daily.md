@@ -62,7 +62,15 @@ Format :
 - **Fusion** : PR **#53** fusionnée en squash **`e85c7ba`** — CI de `main` **verte** (run
   40507634553). `S2-02` est **fait** : le seul défaut de la collecte est levé, la chaîne de collecte
   n’a plus de défaut connu.
-- **Prévu** : le planning du sprint 2 (WF2, reports du §7), et l’ouverture du ticket de robustesse
+- **Ouvert** : **`S2-03`** — « la collecte doit survivre à un refus de débit (un `429` ne coûte plus le
+  couple) ». Il vient des **deux** revues, qui l'ont levé séparément : le refus est sec (`429`,
+  `retry-after: 4`) et partagé sur l'IP de sortie, **ce n'est pas une cadence** (1 s → 3-6/10, 5 s →
+  6/10, 10 s → 4/10), 61 pages n'ont **jamais** abouti (six tentatives, la dernière refusée après cinq
+  pages), et le run qui en sort est honnête (`error`, 0 ligne) — c'est un défaut de **rendement**. Le
+  ticket commence par **mesurer** ce que n8n fait d'un item paginé refusé au milieu, au lieu de
+  supposer que le retry relance la pagination.
+- **Prévu** : le planning du sprint 2 (WF2, reports du §7), et l'arbitrage de l'ordre entre `S2-03`,
+  WF2 et les reports du sprint 1.
   `429` — que les **deux** relectures appellent, chacune de son côté.
 - **Bloqué** : rien — le volume non prouvé est un écart assumé, pas un blocage.
 

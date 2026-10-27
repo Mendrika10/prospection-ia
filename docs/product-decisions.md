@@ -980,7 +980,7 @@ robustesse `429`, et fixer la cadence de production à la lumière de la limite 
 admissible).
 
 **Tickets** : **`S2-02`** 🟦 **en review** — critères 1 à 4 vérifiés ; 5 : **revue faite puis confirmée par une session indépendante** ([verdict](reviews/2026-10-27-revue-pr-53.md) § 11 — même verdict, approuvé sous réserves, aucun bloquant) ·
-**à ouvrir** : « la collecte ne survit pas à un `429` » (proposé au planning, avec la mesure du § 3 de
+**`S2-03`** ⬜ **ouvert le 2026-10-27** sur instruction du propriétaire — « la collecte doit survivre à un refus de débit » ([`sprint-02.md`](sprint-02.md)) — le constat et les mesures du § 3 de
 la revue).
 
 **Consigné** : PR **#53** fusionnée en squash `e85c7ba`, CI de `main` **verte** (run 40507634553).

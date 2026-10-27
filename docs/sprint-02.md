@@ -6,6 +6,10 @@
 > reste sera construit ce jour-là, sans préempter son verdict. Les reports du sprint 1 sont listés
 > dans [`sprint-01.md`](sprint-01.md) §7.
 >
+> **`S2-03` a été ouvert le 2026-10-27**, sur instruction du propriétaire, à la sortie des deux revues de
+> `S2-02` — le constat « un `429` fait perdre le couple entier » a été levé **deux fois, séparément**. Il
+> entre au backlog sans préempter l'ordre du planning.
+>
 > **Pourquoi ces deux-là d'abord** : ils portent les deux défauts révélés par la **première
 > exécution réelle de WF1 sur l'API publique** (2026-10-26,
 > [`reviews/2026-10-26-execution-reelle-wf1-api-publique.md`](reviews/2026-10-26-execution-reelle-wf1-api-publique.md)).
@@ -15,7 +19,7 @@
 > seul défaut de la collecte, celui qui écrivait de fausses lignes en silence — est **corrigé, revu et fusionné**
 > (`D-017`) : le rattachement ne lit plus d'index, il lit **la donnée de chaque page**, et il
 > est prouvé de bout en bout sur des couples multi-pages. Ce qui reste ouvert n'est plus le
-> rattachement, mais la **robustesse** de la collecte devant un `429` de l'API (`D-017`, point 3).
+> rattachement : il reste la **robustesse** de la collecte devant un `429` de l'API (`D-017`, point 3) — désormais ouverte sous le ticket **`S2-03`**.
 
 Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` · `✅ fait` · `⛔ bloqué`
 
@@ -23,6 +27,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
+| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | ⬜ **à faire** — ouvert le 2026-10-27 sur instruction du propriétaire, issu des **deux** revues de `S2-02` (mesures au § Contexte) |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
 
@@ -237,11 +242,84 @@ ticket : `D-017` le renvoie au planning, **avant** WF2.
 
 ---
 
-## Ce que ces deux tickets ne sont pas
+## S2-03 — WF1 : la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) · ⬜ à faire
+
+**Objectif** : qu'un refus de débit de l'API (`HTTP 429`) ne fasse plus perdre à la fois les pages déjà
+servies **et** le couple entier — une campagne doit pouvoir aboutir en attendant ce que l'API demande
+d'attendre.
+
+**Contexte — ce qui est mesuré, pas supposé** (sources : les deux revues de `S2-02`,
+[`reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md`](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md)
+§ 3 et [`reviews/2026-10-27-revue-pr-53.md`](reviews/2026-10-27-revue-pr-53.md) — le constat a été levé
+**deux fois, séparément**, par la revue de PR puis par la session indépendante qui l'a confirmée) :
+
+- Le refus est **sec** et **partagé** : `HTTP 429`, corps `Too Many Requests.`, en-têtes relevés verbatim
+  (`server: nginx`, `retry-after: 4`, `annuaire-entreprises-instance-number: 02`) — relevés **au même
+  instant** dans le code de n8n **et** par une sonde nue, dans le même conteneur.
+- Ce n'est **pas une question de cadence** : espacer ne suffit pas, la fenêtre est consommée ailleurs sur
+  la même IP de sortie. Mesuré : 1 s → **3 à 6** requêtes servies sur 10 · 5 s → **6/10** · 10 s → **4/10**.
+  Le 2026-10-26, un conteneur avait servi **60 pages à 1 page/s** — la marge existe, elle est **variable**
+  et elle ne nous appartient pas.
+- **Conséquence mesurée** : une collecte de **61 pages** n'a **jamais** abouti — six tentatives, de la
+  cadence livrée (1 000 ms) à **4 s entre les pages**, la dernière refusée après **cinq** pages. L'échec
+  était **honnête** : `status = error`, `items_processed = 0`, message nommant le couple, **aucune** ligne
+  écrite. Ce n'est donc pas un défaut de silence (le garde-fou de `S1-04` tient) : c'est un défaut de
+  **rendement** — un refus passager annule un travail déjà fait.
+- **Ce que ce ticket mesure D'ABORD, et qui n'est pas isolé aujourd'hui** : le **mécanisme du retry** de
+  n8n sur un nœud **paginé**. `retryOnFail` (3 essais, 5 s entre) porte sur l'**item**, pas sur la page :
+  les pages déjà servies seraient jetées et la pagination repartirait de `page = 1`. Les relevés actuels
+  le **suggèrent** (`details.recuperees = 0` alors que des pages avaient été servies) **sans l'isoler** —
+  et ne pas l'isoler serait exactement l'écart que `D-016` a consigné : *un symptôme reproduit n'est pas
+  une cause attribuée*.
+
+**Critères d'acceptation**
+- [ ] **Le mécanisme est mesuré avant toute correction** : un `429` injecté au milieu d'une pagination
+      (stub local, page *N*) et la trace de ce que n8n fait des pages déjà reçues — d'où il reprend, et
+      ce qu'il jette. Aucune stratégie n'est choisie avant cette mesure.
+- [ ] Sur un couple **multi-pages**, un `429` isolé — ou une rafale — **ne fait plus perdre le couple** :
+      la collecte reprend à la page en échec, **ou** elle réessaie en respectant `retry-after`, **ou** le
+      couple sort en `partial` **avec ses pages acquises**. Celle des trois qui est retenue est **écrite**
+      et mesurée ; aucune n'est retenue d'avance.
+- [ ] Le délai annoncé par l'API (`retry-after`) est un **plancher**, jamais un objectif à optimiser :
+      aucune nouvelle tentative plus rapprochée que lui.
+- [ ] La politesse de crawl **n'est pas dégradée** : `requestInterval` (1 000 ms), `User-Agent` et
+      `maxRequests` restent ceux dont `S1-04` a fait l'observation, et le nouveau comportement ne peut pas
+      **augmenter** la pression sur l'API (`git diff` sur ces réglages à l'appui).
+- [ ] Le pire cas reste **honnête** : fenêtre fermée pour de bon → `error` (ou `partial` avec ce qui a été
+      obtenu), le message dit lequel des deux et nomme le couple ; **jamais** de `success` muet, et le
+      rattachement par la donnée de `S2-02` reste intact (aucune ligne attribuée au mauvais couple).
+- [ ] **Preuve de bout en bout** (règle `D-011` / `D-015`) : exécution réelle sur un couple **multi-pages**,
+      la ligne `runs` lue en base à l'appui, un **échec provoqué**, base rendue à son état d'avant
+      (comptes relevés avant/après).
+- [ ] Relecture par un **Reviewer en contexte neuf**, et — comme pour `S2-02` — confirmation par une
+      session **indépendante** si le verdict repose sur une mesure que personne d'autre ne peut rejouer.
+
+**Pistes à instruire (aucune retenue d'avance)** : (a) mesurer ce que n8n fait d'un item paginé en échec
+au milieu (retry d'item vs reprise de page) ; (b) une reprise **par page** portée par le nœud HTTP si son
+réglage le permet, sinon par un nœud amont qui découpe la pagination ; (c) accepter le `partial` **avec les
+pages acquises** plutôt que de tout jeter ; (d) sortir la collecte d'un item unique par couple si c'est ce
+qui rend la reprise impossible. Une piste n'entre dans le ticket qu'avec la mesure qui la justifie.
+
+**Definition of Ready** : objectif en une phrase ✓ · critères vérifiables ✓ · périmètre explicite ✓ ·
+dépendances identifiées ✓ · taille ≤ 1 journée ✓
+
+**Périmètre** : les Code nodes de `n8n/workflows/wf1-collecte.json` et, **si la mesure l'exige**, la
+configuration du nœud HTTP (`retryOnFail`, `maxTries`, `waitBetweenTries`, `requestInterval`,
+`paginationCompleteWhen`, `maxRequests`) ; `docs/`. **Interdit** : le schéma SQL, le contrat d'upsert
+(ADR 0007), la CI, et **toute** réduction de la politesse de crawl.
+**Dépendances** : **`S2-02` ✅ fait** — le rattachement par la donnée est ce qui rend une reprise par page
+*rattachables* : avant lui, une pagination reprise au milieu aurait été attribuée au mauvais couple.
+**Ouvert le 2026-10-27 sur instruction du propriétaire**, à la sortie des deux revues de `S2-02` ; son
+**ordre** d'exécution reste l'affaire du planning. · **Taille** : M · **Rôle** : Automation + Architecte
+(pour la stratégie de reprise)
+
+---
+
+## Ce que ces tickets ne sont pas
 
 - **Ils ne sont pas WF2.** L'enrichissement (recherche de site) est le périmètre naturel du sprint 2,
-  mais il suppose une collecte qui fonctionne : le planning tranchera, ces deux tickets passent
-  devant par décision (`D-015`), pas par préférence.
+  mais il suppose une collecte qui fonctionne : le planning tranchera, et les tickets de levée passent
+  devant par décision (`D-015`, puis les deux revues de `S2-02`), pas par préférence.
 - **Ils ne modifient ni le schéma, ni le contrat d'upsert, ni la CI.** Le document de `S1-02` et
   l'ADR 0007 restent la référence : le défaut B est dans le **rattachement des pages**, pas dans
   l'écriture.
