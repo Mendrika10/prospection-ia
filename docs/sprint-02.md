@@ -27,7 +27,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
-| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | ⬜ **à faire** — ouvert le 2026-10-27 sur instruction du propriétaire, issu des **deux** revues de `S2-02` (mesures au § Contexte) · entré dans `main` par la PR **#55**, fusionnée en squash **`608f3d0`** |
+| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | 🟡 **en cours** — ouvert le 2026-10-27 sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · stratégie à trancher · PR **#55** fusionnée en squash **`608f3d0`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
 
@@ -242,7 +242,7 @@ ticket : `D-017` le renvoie au planning, **avant** WF2.
 
 ---
 
-## S2-03 — WF1 : la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) · ⬜ à faire
+## S2-03 — WF1 : la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) · 🟡 en cours
 
 **Objectif** : qu'un refus de débit de l'API (`HTTP 429`) ne fasse plus perdre à la fois les pages déjà
 servies **et** le couple entier — une campagne doit pouvoir aboutir en attendant ce que l'API demande
@@ -273,9 +273,13 @@ d'attendre.
   une cause attribuée*.
 
 **Critères d'acceptation**
-- [ ] **Le mécanisme est mesuré avant toute correction** : un `429` injecté au milieu d'une pagination
+- [x] **Le mécanisme est mesuré avant toute correction** : un `429` injecté au milieu d'une pagination
       (stub local, page *N*) et la trace de ce que n8n fait des pages déjà reçues — d'où il reprend, et
       ce qu'il jette. Aucune stratégie n'est choisie avant cette mesure.
+      → **mesuré le 2026-10-27** ([revue de mesure](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) :
+      le refus tombe page 3, la **page 1** est redemandée **6,03 s** plus tard — **réessai de l'item
+      entier**, pas de reprise de page — et l'item d'erreur **remplace** les pages acquises. Voir le
+      Résultat ci-dessous.
 - [ ] Sur un couple **multi-pages**, un `429` isolé — ou une rafale — **ne fait plus perdre le couple** :
       la collecte reprend à la page en échec, **ou** elle réessaie en respectant `retry-after`, **ou** le
       couple sort en `partial` **avec ses pages acquises**. Celle des trois qui est retenue est **écrite**
@@ -312,6 +316,28 @@ configuration du nœud HTTP (`retryOnFail`, `maxTries`, `waitBetweenTries`, `req
 **Ouvert le 2026-10-27 sur instruction du propriétaire**, à la sortie des deux revues de `S2-02` ; son
 **ordre** d'exécution reste l'affaire du planning. · **Taille** : M · **Rôle** : Automation + Architecte
 (pour la stratégie de reprise)
+
+### Résultat du critère 1 — le mécanisme, mesuré (2026-10-27)
+
+[La mesure](reviews/2026-10-27-reprise-d-une-pagination-refusee.md) a été faite sur un **stub local** qui
+journalise **chaque requête**, avec le nœud HTTP de WF1 **copié tel quel** (seule déviation, écrite :
+l'`url`), dans une instance n8n **jetable** (2.43.5) — quatre scénarios, dont un témoin et un contrôle
+`500`.
+
+| Ce que la mesure établit | Le chiffre |
+|---|---|
+| Le réessai relance l'**item entier** depuis la **page 1** | refus page 3 → **page 1** redemandée **6,03 s** plus tard |
+| Le délai entre tentatives est **fixe** : `retry-after` n'est pas lu | 5 000 ms configurés → **6,03 s** observés |
+| Le travail déjà fait est **payé deux fois**, le coût croît avec la profondeur | **7** requêtes pour **5** pages (refus page 3) |
+| Une panne **définitive** jette les pages acquises | **9** requêtes servies, **0** page conservée — l'item d'erreur seul est émis |
+| Une panne **passagère** ne duplique **aucune** page | l'item réussi émet `1,2,3,4,5` — le rattachement de `S2-02` tient |
+| Le mécanisme ne dépend **pas** du statut | `429` et `500` : même forme, mêmes 9 requêtes |
+
+**Ce que la mesure ferme** : « reprendre à la page en échec » est **impossible avec ce nœud**, et
+« sortir en `partial` avec les pages acquises » l'est aussi — au moment de l'échec définitif, le nœud
+**jette** ce qu'il a déjà obtenu. **Ce qui reste ouvert** : les autres voies du ticket (réessai mieux
+réglé, ou collecte découpée en unités qui réussissent séparément) et **le choix entre elles** — c'est le
+travail restant, et il se tranche sur ces chiffres puis sur une nouvelle mesure.
 
 ---
 

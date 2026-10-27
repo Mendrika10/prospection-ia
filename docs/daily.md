@@ -71,6 +71,15 @@ Format :
   pages), et le run qui en sort est honnête (`error`, 0 ligne) — c'est un défaut de **rendement**. Le
   ticket commence par **mesurer** ce que n8n fait d'un item paginé refusé au milieu, au lieu de
   supposer que le retry relance la pagination.
+- **Mesure (`S2-03`, critère 1)** : le mécanisme est **isolé** — stub local qui journalise chaque
+  requête, nœud HTTP de WF1 **copié tel quel** (une seule déviation, écrite : l'`url`), instance n8n
+  **jetable**, quatre scénarios dont un témoin et un contrôle `500`. **Le réessai relance l'item entier
+  depuis la page 1** (refus page 3 → page 1 redemandée **6,03 s** plus tard), **`retry-after` n'est pas
+  lu** (5 000 ms fixes), le travail déjà fait est **payé deux fois** (**7** requêtes pour 5 pages), une
+  panne **définitive** **jette** les pages acquises (**9** requêtes servies, **0** page conservée), le
+  mécanisme ne dépend **pas** du statut — et, bonne nouvelle, une panne **passagère** ne duplique
+  **aucune** page : le rattachement de `S2-02` tient sous réessai. Deux des trois stratégies du ticket
+  sont **fermées par la mesure** ; le choix de la dernière reste à faire, sur ces chiffres.
 - **Prévu** : le planning du sprint 2 (WF2, reports du §7), et l'arbitrage de l'ordre entre `S2-03`,
   WF2 et les reports du sprint 1.
   `429` — que les **deux** relectures appellent, chacune de son côté.
