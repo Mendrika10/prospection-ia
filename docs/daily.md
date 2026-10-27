@@ -59,6 +59,8 @@ Format :
   mineurs qu’elle a vus et pas moi : `raw` recopie la réponse API entière dans chaque ligne, et le
   message d’échec est tronqué à 900 caractères — deux points **hors périmètre** et antérieurs à la PR.
   Le **critère 5 est satisfait** (verdict § 11).
+- **Fusion** : PR **#55** (ouverture de `S2-03`) fusionnée en squash **`608f3d0`** — CI de `main`
+  **verte** (run 40511195121).
 - **Fusion** : PR **#53** fusionnée en squash **`e85c7ba`** — CI de `main` **verte** (run
   40507634553). `S2-02` est **fait** : le seul défaut de la collecte est levé, la chaîne de collecte
   n’a plus de défaut connu.
