@@ -59,7 +59,11 @@ Format :
   mineurs qu’elle a vus et pas moi : `raw` recopie la réponse API entière dans chaque ligne, et le
   message d’échec est tronqué à 900 caractères — deux points **hors périmètre** et antérieurs à la PR.
   Le **critère 5 est satisfait** (verdict § 11).
-- **Prévu** : le planning du sprint 2 (WF2, reports du §7), puis la fusion de la PR #53.
+- **Fusion** : PR **#53** fusionnée en squash **`e85c7ba`** — CI de `main` **verte** (run
+  40507634553). `S2-02` est **fait** : le seul défaut de la collecte est levé, la chaîne de collecte
+  n’a plus de défaut connu.
+- **Prévu** : le planning du sprint 2 (WF2, reports du §7), et l’ouverture du ticket de robustesse
+  `429` — que les **deux** relectures appellent, chacune de son côté.
 - **Bloqué** : rien — le volume non prouvé est un écart assumé, pas un blocage.
 
 ## 2026-10-26 (lundi, soir) — S2-01 : le défaut A n'existe pas, la mesure le prouve et la décision le dit

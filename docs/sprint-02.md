@@ -12,8 +12,8 @@
 > **`S2-01` est clos** : instruit par la mesure, il a **requalifié son propre défaut** — le nœud HTTP
 > de n8n bascule bien d'adresse, la panne du 26/10 n'était pas la sienne (`D-016`). Aucun correctif
 > n'était donc à écrire ; la collecte mono-page fonctionne, mesurée de bout en bout. **`S2-02`** — le
-> seul défaut de la collecte, celui qui écrivait de fausses lignes en silence — est **corrigé et en
-> review** (`D-017`) : le rattachement ne lit plus d'index, il lit **la donnée de chaque page**, et il
+> seul défaut de la collecte, celui qui écrivait de fausses lignes en silence — est **corrigé, revu et fusionné**
+> (`D-017`) : le rattachement ne lit plus d'index, il lit **la donnée de chaque page**, et il
 > est prouvé de bout en bout sur des couples multi-pages. Ce qui reste ouvert n'est plus le
 > rattachement, mais la **robustesse** de la collecte devant un `429` de l'API (`D-017`, point 3).
 
@@ -22,7 +22,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 | ID | Ticket | Rôle | Taille | Dépend de | Statut |
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
-| S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | 🟦 **en review** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, relecture en attente · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) |
+| S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
 
@@ -128,7 +128,7 @@ ouvert ici** : la DoR exige des critères vérifiables, et l'instruction revient
 
 ---
 
-## S2-02 — WF1 : rattacher chaque page au bon couple, sans index implicite (défaut B) · 🟦 **en review**
+## S2-02 — WF1 : rattacher chaque page au bon couple, sans index implicite (défaut B) · ✅ **fait**
 
 **Objectif** : qu'un couple de **plus de 25 résultats** soit collecté en entier, chaque page
 attribuée **au bon couple**.
@@ -233,7 +233,7 @@ la **page 2**.
 ×3` relance la **pagination entière** et non la page en échec. Constat mesuré, hors périmètre de ce
 ticket : `D-017` le renvoie au planning, **avant** WF2.
 
-**Consigné** : PR **#53** (relecture en contexte neuf = critère 5).
+**Consigné** : PR **#53** fusionnée en squash **`e85c7ba`**, CI de `main` **verte** (run 40507634553) — revue de PR, puis **confirmation par une session indépendante** (critère 5).
 
 ---
 
