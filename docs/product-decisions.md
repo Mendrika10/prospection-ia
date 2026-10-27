@@ -887,3 +887,100 @@ la question ouverte par `D-014` ; confirme `D-011`, `D-012` et le point 3 de `D-
 
 **Consigné** : PR **#51** fusionnée en squash `e93d69e`, CI de `main` **verte** (run 40348892594).
 
+---
+
+## D-017 — Le rattachement des pages se fait sur la donnée, et la preuve se fait sur le plus grand couple multi-pages que l'API admet · 2026-10-27 · en vigueur
+
+**Décision** : trois choses, et elles se tiennent.
+
+1. **Le rattachement page ↔ couple ne lit plus aucun index.** `Filtrage et compteurs` attribue chaque
+   page à son couple **par la donnée que la page porte** : une page `page = 1` ouvre le segment du
+   couple suivant, dans l'ordre de « Préparation de collecte » ; un segment se ferme sur une dernière
+   page partielle (`< 25` résultats) ou sur une erreur. Et **tout écart est une erreur nommée** — nombre
+   de segments ≠ nombre de couples, page hors séquence, `total_results` qui varie, somme servie ≠ total
+   annoncé, segment jamais fermé (plafond de pagination). Jamais une attribution silencieuse.
+2. **L'écart de preuve est assumé, pas contourné.** Le critère 1 du ticket nommait `43.21A × 974`
+   (1 515 résultats, 61 pages) : l'API **ne le permet pas aujourd'hui** (limite de débit partagée sur
+   l'IP de sortie). La preuve se fait donc sur les **plus petits couples réellement multi-pages** que la
+   fenêtre admet — `43.21A × 05` (36 résultats, 2 pages) et `43.21A × 70` (33, 2 pages), avec le filtre
+   d'effectif de `D-008` à `effectif_min = 3`. Le volume nommé reste **non prouvé**, et c'est écrit au
+   ticket.
+3. **Le défaut de robustesse découvert n'est pas corrigé ici.** Un **seul** `429` fait échouer tout un
+   couple : `retryOnFail ×3` relance la **pagination entière**, pas la page en échec. C'est une question
+   de robustesse de la collecte, pas de rattachement : le planning l'instruit, et **avant** tout
+   élargissement de périmètre (WF2).
+
+**Pourquoi** : le défaut B n'était pas cosmétique — il **abandonnait** une collecte multi-pages (page 2
+lue comme le couple suivant, puis index hors bornes) et, à deux couples de même NAF, pouvait attribuer
+les pages d'un couple à l'autre **en silence**. Une seule voie tenait, et elle a été mesurée avant d'être
+écrite : n8n **range** l'index de l'item d'entrée puis **fait lire** l'index de sortie, et le nœud HTTP
+ne peut pas transporter de clé. La règle retenue est donc la seule qui ne dépende pas d'un comportement
+interne non contractuel — et elle **échoue bruyamment** quand l'ordre ne permet pas de la vérifier, ce
+que `S1-04` exigeait déjà.
+
+**Options écartées** :
+
+- *Garder `pairedItem` et corriger l'index par un décalage cumulé* (page − 1 + pages précédentes) : ce
+  serait encore un **index implicite**, recalculé sur un champ que n8n réécrit (mesuré) ; il casserait au
+  premier changement de `batchSize` ou d'ordre de sortie, et une page manquante resterait **silencieuse**.
+  Le décalage juste aujourd'hui, faux demain.
+- *Faire porter la clé par le nœud HTTP* (`outputPropertyName`, expression) : **impossible**, mesuré deux
+  fois — le champ ne s'applique qu'aux réponses `text`/`file` (la branche JSON l'ignore) et il est lu **une
+  seule fois, sur l'item 0**.
+- *Lire l'appartenance dans la réponse* : `matching_etablissements` **n'a pas** de champ `departement`
+  (25 résultats sur 25, mesuré), et le déduire du `code_postal` est faux pour la Corse et l'outre-mer, et
+  absent quand l'entreprise a été retenue sur son siège. L'API n'écho pas la requête.
+- *Attendre une fenêtre calme pour prouver `43.21A × 974` et clore sur elle* : six tentatives, de la
+  cadence livrée à 4 s par page, **toutes** en échec. Faire dépendre une clôture d'une marge qui
+  n'appartient pas au produit, c'est une loterie ; et le code prouvé serait le même.
+- *Clore sur les onze scénarios hors réseau* : la règle de preuve de `D-011` et `D-015` exige une
+  **exécution de bout en bout** et la ligne `runs` lue en base. Elle a été faite (§ Preuves).
+- *Corriger le `429` dans la foulée* : hors périmètre du ticket, et décider d'une stratégie de reprise sur
+  un épisode non isolé rejouerait l'écart que `D-016` vient de consigner.
+- *Requalifier le défaut B en défaut de l'API* (« les pages ne sont pas rattachables ») : faux, et
+  mesuré — l'API ne dit pas à quel couple appartient une page, mais elle **ordonne** les séries, et
+  l'ordre suffit **à condition d'être vérifié**. C'est ce que fait le correctif.
+
+**Preuves utilisées** :
+[`reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md`](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md)
+— le défaut reproduit de zéro (stub qui écho la demande, nœud de WF1 copié tel quel : `pairedItem` lu
+`0, 1, 2, 3` là où les couples étaient `0, 0, 0, 1`) ; l'impossibilité de faire porter la clé (deux
+mesures) ; **onze scénarios hors réseau, 30 assertions, exit 0**, dont six échecs provoqués, et le
+**rouge → vert** du critère 3 sur le code de `S1-04` pris dans git ; et **trois exécutions de bout en
+bout** sur instance jetable (n8n 2.43.5), à la **cadence livrée**, base relevée avant et rendue après
+(`0 / 0 / 0`) : `43.21A × 05` → `success`, `items_processed = 22`, `details = {recuperees: 36,
+ecartees: 14}`, `error = null`, 22 lignes dont **tous** les sièges en `05` ; `43.21A × 05 + 70` (même
+NAF) → `success`, **42** lignes, `details = {recuperees: 69 = 36 + 33, ecartees: 27}`, répartition
+**22 / 20** par département, **0 hors zone**, et **aucune** ligne d'un couple ne portant un établissement
+apparié de l'autre ; `43.21A × 99` → `status = error`, `items_processed = 0`, **HTTP 400** nommé, **0**
+ligne écrite.
+
+**Conséquence / coût** : `S2-02` passe **en review** (critères 1 à 4 vérifiés ; le cinquième — relecture en
+contexte neuf — est la revue de la PR). Le changement ne touche **qu'**un Code node, sa note et le
+`versionId` : ni le schéma SQL, ni le contrat d'upsert (ADR 0007), ni la CI. Deux coûts assumés : la
+**limite de débit de l'API** devient une contrainte de preuve et de cadence de production (elle était
+déjà une contrainte réelle, elle est maintenant écrite) ; et une **dette de robustesse** est ouverte
+(`429` → tout un couple perdu), à instruire avant WF2.
+
+**Ce qui me ferait changer d'avis** : une exécution de `43.21A × 974` **réussie** à la cadence livrée (ou à
+n'importe quel espacement ≤ 4 s), avec `recuperees = 1 515` — l'écart de preuve du point 2 tomberait
+alors ; ou une page qui **porterait** son couple (écho de la requête par l'API, ou `departement` dans
+`matching_etablissements`) — l'ordre des segments pourrait être remplacé par une vraie clé ; ou une
+exécution réelle où la segmentation **refuse** une collecte pourtant correcte (pages réordonnées par le
+nœud, par exemple) — la règle serait alors trop stricte, et c'est le correctif qu'il faudrait réviser,
+pas le ticket.
+
+**Qui exécute** : Automation (correctif, mesures, preuves — fait) · **Reviewer** en contexte neuf
+(critère 5 : relecture de la PR, non négociable) · Orchestrateur et planning (ouvrir le ticket de
+robustesse `429`, et fixer la cadence de production à la lumière de la limite mesurée).
+
+**Origine** : ticket **`S2-02`** (« rattacher chaque page au bon couple, sans index implicite »), traité le
+2026-10-27 ; applique la règle de `D-015` (défaut B) ; reprend la leçon de `D-016` (mesure simultanée,
+écart écrit) ; confirme `D-002` (compteurs) et `D-008` (filtre d'effectif, employé pour rendre la preuve
+admissible).
+
+**Tickets** : **`S2-02`** 🟦 **en review** — critères 1 à 4 vérifiés ; 5 : **revue faite puis confirmée par une session indépendante** ([verdict](reviews/2026-10-27-revue-pr-53.md) § 11 — même verdict, approuvé sous réserves, aucun bloquant) ·
+**à ouvrir** : « la collecte ne survit pas à un `429` » (proposé au planning, avec la mesure du § 3 de
+la revue).
+
+**Consigné** : PR **#53** ouverte le 2026-10-27.

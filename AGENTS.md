@@ -340,16 +340,42 @@ comme une preuve que le produit fonctionne.
   code, cohérente : « Préparation de collecte » et la clôture lisent
   `$('Pour chaque campagne (S1-02)').first()` et `$('Run démarré (campagne)').first()`. Le cas est
   atteignable avec le `batchSize: 10` du nœud : à mesurer isolément avant d'ouvrir un ticket.
-- **`pairedItem.item` d'un nœud HTTP paginé est l'index de PAGE, pas l'index de l'item d'entrée**
-  (mesuré le 2026-10-26 sur deux mini-workflows, `D-015`) : 1 couple sur 2 pages → `{item:0}` puis
-  **`{item:1}`** ; 2 couples (A sur 2 pages, B sur 1) → la page 2 de A est **attribuée à B**. Un
-  rattachement qui lit `pairedItem.item` comme « l'index du couple » (choix de `S1-04`) marche donc
-  uniquement quand **chaque couple tient sur une page** : au-delà, la collecte est soit abandonnée
-  (index hors bornes — visible), soit **mal attribuée en silence** (mauvais département → filtre de
-  siège d'ADR 0005 appliqué au mauvais couple). Le rattachement doit se faire sur une **clé portée
-  par la donnée**, jamais sur un index implicite. Et « ≤ 25 résultats » est une prémisse fausse :
-  sur 30 couples testés, 2 seulement tenaient sur une page (`43.21A` × `974` en compte **1 515**,
-  soit 61 pages).
+- **Pour un nœud qui rend PLUS d'items qu'il n'en reçoit, `pairedItem` est écrit puis RELU
+  différemment — il ne désigne donc pas ce qu'on croit** (mesuré le 2026-10-27, `S2-02`) : le nœud
+  HTTP **range** l'index de l'item d'ENTRÉE (`pairedItem: {item: itemIndex}`,
+  `n8n-nodes-base/dist/nodes/HttpRequest/V3/HttpRequestV3.node.js`, branches JSON et erreur) — lu
+  sur la sortie du nœud, trois pages d'un couple puis une page du suivant donnaient bien `0,0,0,1`.
+  Mais le Code node suivant **lit** l'index de **SORTIE** : `$input.all()` donnait `0,1,2,3`. Un
+  rattachement qui prend `pairedItem.item` pour « l'index du couple » (choix de `S1-04`) ne marche
+  donc que quand **chaque couple tient sur une page** ; au-delà, la collecte est soit abandonnée
+  (index hors bornes — visible), soit **mal attribuée** (les pages d'un couple lues comme celles
+  d'un autre). Ne jamais déduire une appartenance d'un index implicite : la rattacher à une
+  **donnée que la page porte elle-même**.
+- **On ne peut PAS faire porter une clé par le nœud HTTP de n8n** (mesuré le 2026-10-27, `S2-02`) :
+  `options.response.response.outputPropertyName` ne s'applique qu'aux réponses **text/file** (la
+  branche JSON l'ignore, mesuré à l'exécution) et il est lu **une seule fois, sur l'item 0**
+  (`getNodeParameter('options.response.response.outputPropertyName', 0, 'data')`) — donc une clé
+  par item est hors de portée. Le nœud ne recopie pas l'item d'entrée dans l'item de sortie. Et le
+  couple n'est pas lisible dans la réponse : `matching_etablissements` **n'a pas** de champ
+  `departement` (seul le siège en a un), et l'API n'écho pas la requête (clés de premier niveau :
+  `results`, `total_results`, `page`, `per_page`, `total_pages`). Conséquence : deux couples qui
+  partagent un code NAF sont **indiscernables par la donnée d'une page** — seul l'ORDRE des
+  segments de pages (une page `page = 1` ouvre le suivant) les sépare, et cet ordre doit être
+  **vérifié** (numérotation, `total_results` constant, nombre de segments = nombre de couples),
+  jamais supposé.
+- **« ≤ 25 résultats » est une prémisse fausse, et le cas normal est multi-pages** (mesuré le
+  2026-10-26, `D-015`) : sur 30 couples testés, 2 seulement tenaient sur une page (`43.21A` × `974`
+  en compte **1 515**, soit 61 pages ; `43.21A` × `15` en compte **196**, 8 pages). Toute preuve de
+  collecte se fait donc sur un couple **multi-pages**.
+- **L'API `recherche-entreprises` limite le débit par IP, et les refus sont intermittents** (mesuré
+  le 2026-10-27, `S2-02`) : à 1 requête/s, **3 à 6 sur 10** seulement passaient, à 5 s comme à 10 s
+  d'espacement — donc **pas** un plafond de cadence : une part de l'IP de sortie est consommée
+  ailleurs. Le refus est sec (`HTTP 429`, corps `Too Many Requests.`) et **une seule** réponse 429
+  fait échouer tout le lot (le `retryOnFail ×3` relance la pagination **depuis la page 1**, il ne
+  reprend pas). Corollaires : ne jamais comparer deux chemins d'exécution **non simultanément**
+  (« le conteneur est limité, l'hôte non » s'est révélé faux en mesurant les trois chemins **en
+  parallèle** : même limite partagée) ; et une preuve qui demande plusieurs dizaines de pages se
+  prépare (fenêtre calme, espacement) au lieu de s'attribuer à un défaut du workflow.
 - **Le message d'une erreur HTTP n'a pas de forme unique dans n8n** (mesuré le 2026-10-26, preuve
   `S1-04`) : un délai dépassé porte `message` + `name` (`timeout of 10000ms exceeded`), une réponse
   en erreur porte `statusCode` + `error` et **pas** de `message` (`{statusCode: 500, error: "…"}`).
