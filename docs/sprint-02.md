@@ -339,6 +339,8 @@ l'`url`), dans une instance n8n **jetable** (2.43.5) — quatre scénarios, dont
 réglé, ou collecte découpée en unités qui réussissent séparément) et **le choix entre elles** — c'est le
 travail restant, et il se tranche sur ces chiffres puis sur une nouvelle mesure.
 
+**Consigné** : PR **#57** fusionnée en squash **`efab294`**, CI de `main` **verte** (run 40513740230).
+
 ---
 
 ## Ce que ces tickets ne sont pas
