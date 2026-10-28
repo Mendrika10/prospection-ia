@@ -984,3 +984,100 @@ admissible).
 la revue).
 
 **Consigné** : PR **#53** fusionnée en squash `e85c7ba`, CI de `main` **verte** (run 40507634553).
+## D-018 — La collecte passe de l'item-couple à la page, et le `retry-after` devient un plancher lu · 2026-10-28 · en vigueur
+
+**Décision** : quatre choses, et elles se tiennent.
+
+1. **La page devient l'unité de collecte.** WF1 ne demande plus un couple entier en une pagination
+   native : il boucle **couple par couple**, et **une requête = une page**. Une panne ne coûte donc plus
+   que la page en échec — mesuré : **8 requêtes pour 5 pages** avec trois refus, contre **9 requêtes pour
+   0 page** à l'ancien réglage, dans la même fenêtre de refus.
+2. **Le délai de reprise se lit dans la réponse.** `retry-after` est un **plancher** : nouvelle tentative
+   de la **même page** après `retry-after + 1 s` (jamais moins de 5 s), **5 essais au plus** par page. La
+   marge d'une seconde est mesurée, pas prudente : le minuteur du nœud `Wait` rend la main **avant l'échéance demandée**
+   (474 ms pour 1 000, 4 069 ms pour 5 000). L'attente d'un refus est donc posée comme une
+   **échéance** relue à chaque tour, jamais comme une durée appliquée une fois.
+3. **Le pire cas est un abandon nommé.** Refus métier (`4xx` hors `408`/`429`), budget épuisé, ou attente
+   demandée au-delà de **60 s** → **le couple est abandonné**, le run sort en `error` (ou `partial` si
+   d'autres couples ont produit), le message **nomme le couple, la page et le statut**, et **aucune ligne**
+   n'est écrite pour ce couple. Un couple tronqué présenté comme complet serait un succès muet — ce que
+   `S1-04` interdit.
+4. **La politesse de crawl ne bouge pas.** 1 requête/s, tenue par une **garde horodatée** devant **chaque** requête
+   (`Rythme de la requête` → `Attendre encore ?` → `Attente de cadence`) — un simple nœud `Wait`
+   laissait passer des écarts de **0,85 s** et **0,52 s** (mesuré), `User-Agent` inchangé, **100 pages** au plus par couple (`MAX_PAGES`, l'ex-`maxRequests`),
+   `timeout` 10 s. Et la pression **baisse** au lieu de monter : un refus coûte **une** requête, plus la
+   profondeur du refus.
+
+**Pourquoi** : la mesure du critère 1 fermait deux des trois voies du ticket (reprendre à la page en
+échec ; sortir en `partial` avec les pages acquises), et la troisième — « réessayer en respectant
+`retry-after` » — ne tient pas non plus, pour deux raisons vérifiées et non supposées. D'abord
+`waitBetweenTries` est **plafonné à 5 000 ms** dans `n8n-core` (`Math.min(5000, …)`) : allonger l'attente
+est impossible, seule la **quantité** de tentatives est réglable. Ensuite, augmenter cette quantité
+**aggrave** le gaspillage quand la fenêtre ne se rouvre pas : mesuré, 5 tentatives = 15 requêtes pour
+zéro page, contre 9 pour le même résultat nul. Sur une API qui refuse **pour cause de débit**, réessayer
+plus fort est un amplificateur — le critère 4 du ticket l'interdit explicitement. Faire de la page
+l'unité est la seule structure qui rende la reprise **locale**, donc compatible à la fois avec la
+résilience (critère 2) et avec la pression (critère 4).
+
+**Options écartées** :
+
+- *Garder la pagination et augmenter `maxTries`* : mesuré au banc — 5 tentatives récupèrent un refus de
+  25 s, mais coûtent **15 requêtes pour 0 page** quand le refus dure, et le délai reste plafonné à 5 s.
+  Plus de pression pour un gain qui dépend de la durée de la fenêtre.
+- *Garder la pagination et lire `retry-after`* : impossible dans cette structure. Le `429` n'arrive avec
+  **aucun en-tête** quand le nœud est en `continueRegularOutput` (item `{message, name, code, status}`),
+  et de toute façon le délai du réessai d'item est plafonné par `n8n-core`.
+- *Reprendre à la page en échec dans la pagination native* : aucun point de reprise exposé — mesuré, le
+  réessai repart de `page = 1`.
+- *Sortir en `partial` avec les pages acquises du couple* : rejeté, et pas pour une raison technique.
+  Le `partial` existe au niveau du **run** (des couples réussis, d'autres non) ; l'étendre au **couple**
+  écrirait une entreprise sur deux pages sur deux et présenterait la moitié d'un couple comme un
+  résultat complet. Cela contredirait `S1-04` et `D-002`.
+- *Découper en lots de N pages plutôt qu'en pages* : moins de nœuds, mais une reprise par lot reperd
+  jusqu'à N pages par panne, et il faut la même boucle. Le gain d'écriture ne valait pas la perte de
+  précision.
+- *Déporter le rythme dans `requestInterval`* : il n'existe plus une fois la pagination retirée ; la
+  cadence est tenue par le nœud `Wait` que `S1-04` avait déjà posé, et **devant chaque requête**.
+
+**Preuves utilisées** :
+[`reviews/2026-10-28-collecte-page-par-page.md`](reviews/2026-10-28-collecte-page-par-page.md)
+— le banc A/B (ancien réglage : 9 requêtes, 0 page ; « plus patient » : 14 requêtes, 5 pages ; fenêtre
+fermée : 15 requêtes, 0 page) ; la lecture du code de `n8n-core` pour le plafond de 5 000 ms ; quatre
+scénarios sur stub avec le journal du serveur (**5** requêtes sans refus ; **8** avec 3 refus et des
+écarts de **8,05 / 8,05 / 8,14 s** pour un `retry-after: 7` ; **7** requêtes et un `error` nommé quand le
+refus ne cesse pas ; **10** requêtes et **240** lignes pour deux couples du même NAF) ; et **deux exécutions de bout en bout** sur l'API réelle et la base réelle, base
+relevée avant (`campaigns 0 / companies 0 / runs 0`) et **rendue après** (`0 / 0 / 0`) :
+`43.21A × 05` (2 pages) → `success`, `items_processed = 22`, `details = {recuperees: 36, ecartees: 14}`,
+**22** entreprises — **les mêmes chiffres qu'avant la refonte** ; `43.21A × 99` (échec provoqué) →
+`error`, `items_processed = 0`, message nommant `43.21A|99` et citant l'API, **0** ligne écrite.
+
+**Conséquence / coût** : WF1 gagne **huit nœuds** et l'état du tick (couples, page courante, pages
+acquises) vit dans les *static data* du workflow, remis à zéro à chaque tick — c'est le prix de la
+reprise locale, et c'est écrit dans le code comme dans la note collée. Trois coûts assumés : **la durée
+d'un run peut s'allonger** (jusqu'à 5 × 60 s par page durablement refusée, multiplié par le nombre de
+couples) ; **l'abandon après 5 essais est un choix**, pas un optimum démontré ; et le couple **abandonné
+n'écrit rien**, donc son travail est à refaire au tick suivant — c'est le compromis inverse de
+« conserver des pages tronquées ». `requestInterval` disparaît du nœud HTTP (il n'y a plus de
+pagination) : la cadence est tenue par `Wait 1 s`, le `git diff` et la mesure le montrent.
+
+**Ce qui me ferait changer d'avis** : une API qui annoncerait régulièrement un `retry-after` supérieur à
+60 s — le plafond d'abandon serait à revoir ; une fenêtre de débit si longue qu'aucun budget de 5 essais
+ne la couvre — le bon mécanisme serait alors le **report au tick suivant** (relancer la campagne plus
+tard) plutôt que plus d'essais ; ou une exécution réelle où la boucle **perd** une page sans le dire —
+alors c'est le réassemblage (`Pages collectées`) qu'il faudrait revoir, pas le principe. À l'inverse, si
+un jour n8n expose un point de reprise de pagination ou un délai de réessai non plafonné, la boucle
+maison redeviendrait inutile.
+
+**Qui exécute** : Automation + Architecte (structure, mesures, preuves — fait) · **Reviewer** en contexte
+neuf (relecture) · Orchestrateur (consignation, fusion, et la confirmation par une session indépendante
+si le verdict repose sur une mesure que personne d'autre ne peut rejouer).
+
+**Origine** : ticket **`S2-03`** (« la collecte doit survivre à un refus de débit »), ouvert le
+2026-10-27 ; applique le point 3 de `D-017` (« le défaut de robustesse n'est pas corrigé ici ») ; suit la
+mesure du critère 1 ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) ;
+confirme `D-002` (compteurs) et `D-011`/`D-015` (preuve de bout en bout, base rendue).
+
+**Tickets** : **`S2-03`** 🟡 **en cours** — critères 1 à 6 vérifiés le 2026-10-28 : mesure du mécanisme
+(1), couple multi-pages qui survit (2), `retry-after` plancher observé (3), politesse mesurée (4), pire
+cas honnête (5), preuve de bout en bout avec échec provoqué et base rendue (6). Reste le critère 7
+(relecture, et confirmation indépendante).
