@@ -27,7 +27,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
-| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | 🟡 **en cours** — ouvert le 2026-10-27 sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · stratégie à trancher · PR **#55** fusionnée en squash **`608f3d0`** |
+| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | 🟦 **en review** — ouvert le 2026-10-27 sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · **critères 1 à 6 vérifiés**, reste la relecture (7) · PR **#55** fusionnée en squash **`608f3d0`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
 
@@ -242,7 +242,7 @@ ticket : `D-017` le renvoie au planning, **avant** WF2.
 
 ---
 
-## S2-03 — WF1 : la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) · 🟡 en cours
+## S2-03 — WF1 : la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) · 🟦 en review
 
 **Objectif** : qu'un refus de débit de l'API (`HTTP 429`) ne fasse plus perdre à la fois les pages déjà
 servies **et** le couple entier — une campagne doit pouvoir aboutir en attendant ce que l'API demande
@@ -280,23 +280,53 @@ d'attendre.
       le refus tombe page 3, la **page 1** est redemandée **6,03 s** plus tard — **réessai de l'item
       entier**, pas de reprise de page — et l'item d'erreur **remplace** les pages acquises. Voir le
       Résultat ci-dessous.
-- [ ] Sur un couple **multi-pages**, un `429` isolé — ou une rafale — **ne fait plus perdre le couple** :
+- [x] Sur un couple **multi-pages**, un `429` isolé — ou une rafale — **ne fait plus perdre le couple** :
       la collecte reprend à la page en échec, **ou** elle réessaie en respectant `retry-after`, **ou** le
       couple sort en `partial` **avec ses pages acquises**. Celle des trois qui est retenue est **écrite**
       et mesurée ; aucune n'est retenue d'avance.
-- [ ] Le délai annoncé par l'API (`retry-after`) est un **plancher**, jamais un objectif à optimiser :
+      → **retenue : « elle réessaie en respectant `retry-after` », page par page** (voir `D-018`). Les
+      deux autres sont **mesurées impossibles** avec ce nœud : aucun point de reprise de pagination, et
+      l'échec définitif jette les pages acquises. Mesuré sur stub, journal du serveur à l'appui : refus
+      page 3 → **8 requêtes pour 5 pages** (3 refus) et **5 pages conservées**, contre **9 requêtes pour
+      0 page** à l'ancien réglage dans la même fenêtre.
+- [x] Le délai annoncé par l'API (`retry-after`) est un **plancher**, jamais un objectif à optimiser :
       aucune nouvelle tentative plus rapprochée que lui.
-- [ ] La politesse de crawl **n'est pas dégradée** : `requestInterval` (1 000 ms), `User-Agent` et
+      → **observé, pas déduit** : `retry-after: 7` → écarts mesurés **8,05 / 8,05 / 8,14 s** ;
+      `retry-after: 4` → **5,13 / 5,05 / 5,07 / 5,04 s**. L'attente est une **échéance** relue à chaque tour, avec une marge d'une
+      seconde : le minuteur du nœud `Wait` rend la main **avant** l'échéance demandée (mesuré :
+      474 ms pour 1 000, 4 069 ms pour 5 000). Au-delà de **60 s**
+      demandées, la reprise est **abandonnée** — jamais avancée.
+- [x] La politesse de crawl **n'est pas dégradée** : `requestInterval` (1 000 ms), `User-Agent` et
       `maxRequests` restent ceux dont `S1-04` a fait l'observation, et le nouveau comportement ne peut pas
       **augmenter** la pression sur l'API (`git diff` sur ces réglages à l'appui).
-- [ ] Le pire cas reste **honnête** : fenêtre fermée pour de bon → `error` (ou `partial` avec ce qui a été
+      → la **cadence** est tenue par une **garde horodatée** devant chaque requête (`Rythme de la
+      requête` → `Attendre encore ?` → `Attente de cadence`), parce qu'un simple `Wait 1 s` laissait
+      passer des écarts de **0,85 s** et **0,52 s** (mesuré) ; avec la garde, **aucun écart inférieur
+      à 1,04 s** sur les quatre scénarios ; `User-Agent` et `timeout 10 s`
+      inchangés ; l'ex-`maxRequests: 100` devient `MAX_PAGES = 100` dans le Code — **même plafond**.
+      La pression **baisse** : un refus coûte **une** requête, plus la profondeur du refus.
+- [x] Le pire cas reste **honnête** : fenêtre fermée pour de bon → `error` (ou `partial` avec ce qui a été
       obtenu), le message dit lequel des deux et nomme le couple ; **jamais** de `success` muet, et le
       rattachement par la donnée de `S2-02` reste intact (aucune ligne attribuée au mauvais couple).
-- [ ] **Preuve de bout en bout** (règle `D-011` / `D-015`) : exécution réelle sur un couple **multi-pages**,
+      → mesuré sur stub (refus définitif) **et** sur l'API réelle (département invalide) :
+      `status = error`, `items_processed = 0`, message **nommant le couple** (`43.21A|99`) et citant
+      l'API, **aucune** ligne écrite.
+- [x] **Preuve de bout en bout** (règle `D-011` / `D-015`) : exécution réelle sur un couple **multi-pages**,
       la ligne `runs` lue en base à l'appui, un **échec provoqué**, base rendue à son état d'avant
       (comptes relevés avant/après).
+      → deux exécutions réelles : `43.21A × 05` (2 pages) → `success`, `items_processed = 22`,
+      `details = {recuperees: 36, ecartees: 14}`, **22** entreprises écrites (chiffres **identiques** à
+      ceux de `S2-02` avant refonte) ; `43.21A × 99` → `error` nommé, **0** ligne. Base relevée avant
+      (`campaigns 0 / companies 0 / runs 0`) et **rendue après** (`0 / 0 / 0`).
 - [ ] Relecture par un **Reviewer en contexte neuf**, et — comme pour `S2-02` — confirmation par une
       session **indépendante** si le verdict repose sur une mesure que personne d'autre ne peut rejouer.
+      → **relecture faite** ([verdict](reviews/2026-10-28-revue-pr-s2-03.md)) : *approuvé sous réserves*,
+      aucun bloquant sur les critères 2 à 6, cinq réserves écrites — dont un **défaut pré-existant**
+      reproduit pendant la preuve (deux campagnes dues dans le même tick → une ligne `runs` reste
+      `running`, ce qui bloque la campagne : piège déjà noté dans `AGENTS.md` §10, à ouvrir en ticket).
+      **Non cochée** à dessein : la relecture vient de la **même session** que l'implémentation. La
+      mesure étant **rejouable** (stub, banc et harnais), une **seconde lecture** suffit à clore — elle
+      reste due.
 
 **Pistes à instruire (aucune retenue d'avance)** : (a) mesurer ce que n8n fait d'un item paginé en échec
 au milieu (retry d'item vs reprise de page) ; (b) une reprise **par page** portée par le nœud HTTP si son
@@ -341,9 +371,41 @@ travail restant, et il se tranche sur ces chiffres puis sur une nouvelle mesure.
 
 **Consigné** : PR **#57** fusionnée en squash **`efab294`**, CI de `main` **verte** (run 40513740230).
 
----
+### Résultat des critères 2 à 6 — la stratégie, choisie puis mesurée (2026-10-28)
 
-## Ce que ces tickets ne sont pas
+[Décision `D-018`](../product-decisions.md) · [mesure et preuves](reviews/2026-10-28-collecte-page-par-page.md).
+
+**Ce que la mesure a fermé avant de choisir** : « reprendre à la page en échec » est impossible avec le
+nœud paginé, et « sortir en `partial` avec les pages acquises » aussi. Restait « réessayer en respectant
+`retry-after` » — et le banc A/B a montré qu'avec la pagination native ce n'est pas un réglage mais un
+**amplificateur** : le délai de réessai est **plafonné à 5 000 ms** par `n8n-core`, donc la patience ne
+s'obtient qu'en multipliant les tentatives, chacune repayant la profondeur du refus. Même fenêtre de
+25 s : **9 requêtes / 0 page** à l'ancien réglage, **14 requêtes / 5 pages** en plus patient, et
+**15 requêtes / 0 page** quand le refus dure.
+
+**Ce qui a été retenu et construit** : WF1 ne pagine plus dans le nœud HTTP — il boucle **couple par
+couple** et demande **une page par requête** (`Pour chaque couple`, `Accumuler la page`,
+`Couple collecté ?`, `Réessai après refus ?`, `Attente après refus`, `Mémoriser le couple`,
+`Reste-t-il un couple ?`, `Pages collectées`). Le réessai devient **local** : seule la page en échec est
+redemandée, après `retry-after + 1 s` (plancher de 5 s), 5 essais au plus. Tout l'aval — filtrage,
+rattachement par la donnée de `S2-02`, écriture, clôtures — est **inchangé** et reçoit la même forme.
+
+| Ce que la correction établit | Le chiffre |
+|---|---|
+| Un refus ne coûte plus que la page en échec | **8** requêtes / **5** pages (3 refus) contre **9** / **0** avant |
+| Le `retry-after` est lu comme **plancher** | `retry-after: 7` → **8,05 / 8,05 / 8,14 s** ; `4` → **5,13 / 5,05 / 5,07 / 5,04 s** |
+| La politesse ne baisse pas | **1,04 à 1,21 s** entre requêtes servies (aucun écart < 1,04 s), `User-Agent` et `timeout` inchangés |
+| Deux couples du même NAF restent séparés | **10** requêtes, **240** lignes, **0** incohérence de rattachement |
+| Le pire cas reste honnête | `error` **nommé**, `items_processed = 0`, **0** ligne écrite |
+| La collecte réussit comme avant | `43.21A × 05` → `success`, **22** lignes, `recuperees: 36`, `ecartees: 14` |
+
+**Ce que la correction n'établit pas** : la **fréquence** des refus (elle ne nous appartient pas), le
+**très gros couple** `43.21A × 974` (toujours non prouvé, fenêtre de débit — l'écart de preuve de
+`D-017` reste ouvert), et le choix « 5 essais / 60 s » reste un **choix** écrit, pas un optimum
+démontré.
+
+**Consigné** : en attente de fusion (critère 7 — relecture).
+
 
 - **Ils ne sont pas WF2.** L'enrichissement (recherche de site) est le périmètre naturel du sprint 2,
   mais il suppose une collecte qui fonctionne : le planning tranchera, et les tickets de levée passent

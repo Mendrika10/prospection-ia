@@ -13,6 +13,46 @@ Format :
 
 ---
 
+## 2026-10-28 (mercredi) — S2-03 : la collecte passe de l'item-couple à la page, et le `retry-after` devient un plancher lu
+
+- **Fait** : `S2-03` corrigé, et la stratégie **choisie sur mesure**. Le critère 1 avait fermé deux des
+  trois voies du ticket ; la troisième (« réessayer en respectant `retry-after` ») ne tenait pas non plus,
+  et c'est **le code de n8n qui le dit** : `waitBetweenTries` est **plafonné à 5 000 ms** dans
+  `n8n-core` (`Math.min(5000, …)`), donc la patience ne s'obtient qu'en multipliant les tentatives —
+  chacune repayant la profondeur du refus. Mesuré au banc A/B, même fenêtre de refus de 25 s : ancien
+  réglage **9 requêtes / 0 page**, « plus patient » **14 requêtes / 5 pages**, et **15 requêtes / 0 page**
+  quand le refus dure. Sur une API qui refuse **pour cause de débit**, c'est un amplificateur.
+  WF1 ne pagine donc plus dans le nœud HTTP : il boucle **couple par couple** et demande **une page par
+  requête**. Une panne ne coûte plus que la page en échec, les pages acquises vivent dans l'état du tick
+  au lieu d'être jetées, et le délai de reprise se lit dans `retry-after` (+ 1 s de marge, jamais moins
+  de 5 s, 5 essais par page).
+- **Preuves (stub, journal du serveur)** : aucun refus → **5** requêtes, 120 lignes ; refus page 3 pendant
+  25 s avec `retry-after: 7` → **8** requêtes (3 refus), écarts **8,05 / 8,05 / 8,14 s**, **5 pages
+  conservées**, 120 lignes, aucun doublon ; refus définitif → **7** requêtes, `error` **nommé**
+  (`43.21A|05 : HTTP 429 — 5 tentative(s) sur la page 3`), 0 ligne ; deux couples du même NAF → **10**
+  requêtes, **240** lignes, aucune incohérence de rattachement.
+- **Preuves (bout en bout, API et base réelles)** : `43.21A × 05` (2 pages) → `success`,
+  `items_processed = 22`, `{recuperees: 36, ecartees: 14}`, **22** entreprises — les **mêmes chiffres**
+  qu'avant la refonte ; `43.21A × 99` (département invalide, échec provoqué) → `error`,
+  `items_processed = 0`, message nommant le couple et citant l'API, **0** ligne. Base relevée avant
+  (`0 / 0 / 0`) et **rendue après** (`0 / 0 / 0`).
+- **La cadence n'a pas été confiée à un minuteur** : avec un simple `Wait 1 s`, deux écarts sont tombés à
+  **0,85 s** et **0,52 s** (le minuteur de n8n rend la main avant l'échéance — mesuré : 474 ms pour
+  1 000 demandés). La cadence est donc vérifiée sur l'**horloge** (`Rythme de la requête` →
+  `Attendre encore ?` → `Attente de cadence`) : **aucun écart inférieur à 1,04 s** sur les quatre
+  scénarios, et `User-Agent`, `timeout`, 100 pages max sont inchangés. La pression **baisse** : un refus
+  coûte une requête, plus la profondeur.
+- **Décision** : **`D-018`** — la page comme unité de collecte, `retry-after` comme plancher lu, abandon
+  nommé au pire cas, et l'état de collecte **indexé par `$execution.id`** (deux exécutions simultanées ne
+  partagent rien).
+- **Mémoire d'équipe** : `AGENTS.md` §10 — quatre pièges mesurés (`waitBetweenTries` plafonné ; pas
+  d'unité `milliseconds` pour le nœud `Wait`, et réveil anticipé ; un `429` sans en-têtes sous
+  `continueRegularOutput`, d'où `fullResponse` + `neverError` ; `n8n execute` refuse un Schedule Trigger),
+  et la note « pagination native » corrigée.
+- **Prévu** : la relecture de la PR (critère 7) et, si le verdict en dépend, une confirmation par une
+  session indépendante — la mesure est rejouable (banc et harnais fournis dans la PR).
+- **Bloqué** : rien.
+
 ## 2026-10-27 (mardi) — S2-02 : le rattachement cesse de lire un index, et la preuve dit ce qu'elle n'a pas pu prouver
 
 - **Fait** : `S2-02` corrigé. Le défaut B **abandonnait** toute collecte multi-pages (la page 2 lue comme

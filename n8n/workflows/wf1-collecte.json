@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-16T11:45:08.037Z",
+  "updatedAt": "2026-10-28T12:09:28.697Z",
   "createdAt": "2026-10-15T11:36:16.502Z",
   "id": "4MEfhzNApVq1seJZ",
   "name": "WF1 - Collecte",
@@ -161,7 +161,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* S1-02 — préparation de la collecte : validation d'entrée, couples NAF × département,\n   bandes d'effectif D-008 (union). AUCUN appel réseau ici : le Code node de n8n 2.43.5\n   (JsTaskRunner) n'a pas de fetch — l'appel HTTP est fait par le nœud « Collecte API ».\n   Contrat : AGENTS.md §10 · ADR 0005 (siège) · D-002 (runs.details) · ADR 0006 (runs par campagne). */\nconst campagne = $('Pour chaque campagne (S1-02)').first().json;\nconst runsRow  = $('Run démarré (campagne)').first().json;\nconst runId      = runsRow && typeof runsRow.id === 'string' ? runsRow.id : null;\nconst campaignId = campagne && typeof campagne.id === 'string' ? campagne.id : null;\n\n/* 1) Tick à vide : l'item renvoyé par campaigns_due (alwaysOutputData) n'est pas une campagne. */\n\nif (!campagne || typeof campagne.id !== 'string') {\n  return [{ json: { run_id: runId, campaign_id: null, couple: false, vide: true, erreur: null,\n    conservees: [], details: { recuperees: 0, ecartees: 0, bandes_appliquees: [] } } }];\n}\n\n/* 2) Validation d'entrée (critère du ticket) : aucun appel si aucun couple (code NAF × département). */\nconst nafCodes = Array.isArray(campagne.naf_codes) ? campagne.naf_codes.filter((c) => typeof c === 'string' && c.trim() !== '') : [];\nconst cibles   = Array.isArray(campagne.departements) ? campagne.departements.filter((d) => typeof d === 'string' && d.trim() !== '') : [];\nif (nafCodes.length === 0 || cibles.length === 0) {\n  return [{ json: { run_id: runId, campaign_id: campaignId, couple: false, vide: false,\n    erreur: \"campagne impossible à cibler : naf_codes ou departements vides — aucun appel API\", conservees: [], details: null } }];\n}\n\n/* 3) Bandes d'effectif D-008 : la bande contenant effectif_min puis toutes les bandes supérieures,\n      en UNION dans une seule requête. Bornes inf INSEE des 15 codes du vocabulaire figé. */\nconst codesBande  = [\"00\",\"01\",\"02\",\"03\",\"11\",\"12\",\"21\",\"22\",\"31\",\"32\",\"41\",\"42\",\"51\",\"52\",\"53\"];\nconst bornesBasse = [0, 1, 3, 6, 10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000];\nconst effectifMin = typeof campagne.effectif_min === 'number' && campagne.effectif_min > 0 ? campagne.effectif_min : null;\nlet bandesAppliquees = [];\nif (effectifMin !== null) {\n  let indice = 0;\n  for (let i = 0; i < codesBande.length; i++) {\n    if (bornesBasse[i] <= effectifMin) indice = i; else break;\n  }\n  bandesAppliquees = codesBande.slice(indice);\n}\n\n/* 4) Un item par couple (code NAF × département). Les pages de chaque couple sont créées par le\n      nœud HTTP suivant (pagination native) ; le Code suivant vérifie anti-silence et règle du siège. */\nconst departementsCible = cibles.map((d) => d.trim().toLowerCase());\nconst items = [];\nfor (const nafCode of nafCodes) {\n  for (const departement of departementsCible) {\n    items.push({\n      json: {\n        couple: true, vide: false, erreur: null,\n        run_id: runId,\n        campaign_id: campaignId,\n        naf: nafCode.trim(),\n        departement: departement,\n        departements_cible: departementsCible,\n        naf_codes: nafCodes,\n        bandes_appliquees: bandesAppliquees,\n      },\n    });\n  }\n}\nreturn items;\n"
+        "jsCode": "/* S1-02 — préparation de la collecte : validation d'entrée, couples NAF × département,\n   bandes d'effectif D-008 (union). AUCUN appel réseau ici : le Code node de n8n 2.43.5\n   (JsTaskRunner) n'a pas de fetch — l'appel HTTP est fait par le nœud « Collecte API ».\n   Contrat : AGENTS.md §10 · ADR 0005 (siège) · D-002 (runs.details) · ADR 0006 (runs par campagne). */\n/* S2-03 — état de collecte de CETTE exécution. La boucle par couple et par page le lit et l'écrit\n   (elle ne peut pas transporter les pages dans un item : une panne remplacerait l'item par\n   l'erreur). L'état est INDEXÉ par `$execution.id` : deux exécutions simultanées de WF1\n   (deux campagnes dues, un run manuel pendant le tick) ne partagent donc rien, et l'état est\n   supprimé quand les pages ont été rendues. */\nconst etatCollecte = $getWorkflowStaticData('global');\netatCollecte.collecte_s203 = etatCollecte.collecte_s203 || {};\nconst CLE_EXECUTION = String($execution.id || 'sans-id');\n\nconst campagne = $('Pour chaque campagne (S1-02)').first().json;\nconst runsRow  = $('Run démarré (campagne)').first().json;\nconst runId      = runsRow && typeof runsRow.id === 'string' ? runsRow.id : null;\nconst campaignId = campagne && typeof campagne.id === 'string' ? campagne.id : null;\n\n/* 1) Tick à vide : l'item renvoyé par campaigns_due (alwaysOutputData) n'est pas une campagne. */\n\nif (!campagne || typeof campagne.id !== 'string') {\n  return [{ json: { run_id: runId, campaign_id: null, couple: false, vide: true, erreur: null,\n    conservees: [], details: { recuperees: 0, ecartees: 0, bandes_appliquees: [] } } }];\n}\n\n/* 2) Validation d'entrée (critère du ticket) : aucun appel si aucun couple (code NAF × département). */\nconst nafCodes = Array.isArray(campagne.naf_codes) ? campagne.naf_codes.filter((c) => typeof c === 'string' && c.trim() !== '') : [];\nconst cibles   = Array.isArray(campagne.departements) ? campagne.departements.filter((d) => typeof d === 'string' && d.trim() !== '') : [];\nif (nafCodes.length === 0 || cibles.length === 0) {\n  return [{ json: { run_id: runId, campaign_id: campaignId, couple: false, vide: false,\n    erreur: \"campagne impossible à cibler : naf_codes ou departements vides — aucun appel API\", conservees: [], details: null } }];\n}\n\n/* 3) Bandes d'effectif D-008 : la bande contenant effectif_min puis toutes les bandes supérieures,\n      en UNION dans une seule requête. Bornes inf INSEE des 15 codes du vocabulaire figé. */\nconst codesBande  = [\"00\",\"01\",\"02\",\"03\",\"11\",\"12\",\"21\",\"22\",\"31\",\"32\",\"41\",\"42\",\"51\",\"52\",\"53\"];\nconst bornesBasse = [0, 1, 3, 6, 10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000];\nconst effectifMin = typeof campagne.effectif_min === 'number' && campagne.effectif_min > 0 ? campagne.effectif_min : null;\nlet bandesAppliquees = [];\nif (effectifMin !== null) {\n  let indice = 0;\n  for (let i = 0; i < codesBande.length; i++) {\n    if (bornesBasse[i] <= effectifMin) indice = i; else break;\n  }\n  bandesAppliquees = codesBande.slice(indice);\n}\n\n/* 4) Un item par couple (code NAF × département). S2-03 : les pages ne sont plus créées par la\n      pagination native d'un nœud HTTP — c'est la boucle « Pour chaque couple » qui demande UNE page\n      à la fois, ce qui rend une panne réparable page par page. */\nconst departementsCible = cibles.map((d) => d.trim().toLowerCase());\nconst items = [];\nfor (const nafCode of nafCodes) {\n  for (const departement of departementsCible) {\n    items.push({\n      json: {\n        couple: true, vide: false, erreur: null,\n        run_id: runId,\n        campaign_id: campaignId,\n        naf: nafCode.trim(),\n        departement: departement,\n        departements_cible: departementsCible,\n        naf_codes: nafCodes,\n        bandes_appliquees: bandesAppliquees,\n      },\n    });\n  }\n}\n/* 5) État de la collecte (S2-03), dans un bac propre à cette exécution : les couples DANS L'ORDRE, chacun avec sa page courante, ses\n      pages acquises et son budget d'essais. C'est ce que la boucle par page alimente, et c'est\n      de là que « Pages collectées » rend les pages au filtrage — un couple en échec y laisse\n      une erreur nommée, jamais des pages tronquées présentées comme complètes. */\netatCollecte.collecte_s203[CLE_EXECUTION] = {\n  courant: 0,\n  couples: items.map((it) => ({\n    naf: it.json.naf,\n    departement: it.json.departement,\n    bandes_appliquees: it.json.bandes_appliquees,\n    page: 1,\n    essais: 0,\n    pages: [],\n    refus: [],\n    dernier_statut: null,\n    attente_ms: null,\n    erreur: null,\n    fini: false,\n  })),\n};\nfor (let i = 0; i < items.length; i++) {\n  items[i].json.idx = i;\n  items[i].json.page = 1;\n}\nreturn items;\n"
       },
       "id": "11111111-1111-4111-8111-111111111134",
       "name": "Préparation de collecte (S1-02)",
@@ -229,36 +229,21 @@
               "value": "25"
             },
             {
+              "name": "page",
+              "value": "={{ $json.page }}"
+            },
+            {
               "name": "tranche_effectif_salarie",
-              "value": "={{ $json.bandes_appliquees.length > 0 ? $json.bandes_appliquees.join(',') : undefined }}"
+              "value": "={{ $json.bandes_appliquees.length > 0 ? $json.bandes_appliquees.join(\",\") : undefined }}"
             }
           ]
         },
         "options": {
-          "pagination": {
-            "pagination": {
-              "paginationMode": "updateAParameterInEachRequest",
-              "parameters": {
-                "parameters": [
-                  {
-                    "type": "qs",
-                    "name": "page",
-                    "value": "={{ $pageCount + 1 }}"
-                  }
-                ]
-              },
-              "paginationCompleteWhen": "other",
-              "completeExpression": "={{ !$response.body || !Array.isArray($response.body.results) || $response.body.results.length < 25 }}",
-              "limitPagesFetched": true,
-              "maxRequests": 100,
-              "requestInterval": 1000
-            }
-          },
           "timeout": 10000,
-          "batching": {
-            "batch": {
-              "batchSize": 1,
-              "batchInterval": 1000
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
             }
           }
         },
@@ -281,9 +266,7 @@
         300
       ],
       "onError": "continueRegularOutput",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -295,7 +278,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1000,
+        1720,
         300
       ],
       "onError": "continueRegularOutput"
@@ -329,7 +312,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        1240,
+        1960,
         300
       ]
     },
@@ -379,7 +362,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1480,
+        2200,
         460
       ],
       "credentials": {
@@ -421,7 +404,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        1240,
+        1960,
         140
       ]
     },
@@ -471,7 +454,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1720,
+        2440,
         60
       ],
       "executeOnce": true,
@@ -527,7 +510,7 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1480,
+        2200,
         260
       ],
       "credentials": {
@@ -598,7 +581,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1480,
+        2200,
         60
       ]
     },
@@ -629,7 +612,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1720,
+        2440,
         60
       ],
       "onError": "continueErrorOutput",
@@ -650,7 +633,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1960,
+        2680,
         0
       ]
     },
@@ -672,7 +655,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2200,
+        2920,
         0
       ],
       "onError": "continueRegularOutput",
@@ -694,7 +677,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2440,
+        3160,
         0
       ]
     },
@@ -708,23 +691,23 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1960,
+        2680,
         300
       ]
     },
     {
       "parameters": {
         "resume": "timeInterval",
-        "amount": 1,
+        "amount": "={{ $json.attente_ms / 1000 }}",
         "unit": "seconds",
         "options": {}
       },
       "id": "11111111-1111-4111-8111-111111111147",
-      "name": "Wait 1 s entre lots (S1-04)",
+      "name": "Attente de cadence (S1-04)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        640,
+        1360,
         300
       ]
     },
@@ -741,6 +724,223 @@
       "typeVersion": 1,
       "position": [
         640,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "11111111-1111-4111-8111-111111111170",
+      "name": "Pour chaque couple (S2-03)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "/* S2-03 — après CHAQUE requête d'une page : garder ce que l'API a servi, et décider quoi faire.\n   La décision est écrite UNE fois, ici, et elle ne dépend que de la réponse :\n   - page servie et partielle (< 25 résultats) → le couple est terminé\n   - page servie et pleine → page suivante du même couple\n   - refus passager (429, 408, 5xx, panne réseau) → nouvelle tentative de CETTE page, après\n     retry-after annoncé + 1 s (et jamais moins de 5 000 ms) : le `retry-after` est un PLANCHER,\n     jamais un objectif — la marge couvre un réveil du nœud Wait mesuré jusqu'à ~0,9 s trop tôt\n   - refus métier (4xx hors 408/429), budget d'essais épuisé, ou attente demandée > 60 s → abandon\n     du couple, NOMMÉ. Les pages acquises ne sont pas écrites pour autant : un couple tronqué\n     présenté comme complet serait un succès muet, exactement ce que S1-04 interdit.\n   Mesuré le 2026-10-28 (stub, mêmes conditions) : refus page 3 → 6 requêtes pour 5 pages avec ce\n   mécanisme, contre 9 avec le réessai d'item, et les 5 pages conservées au lieu de 0.\n   Aucun appel réseau ici (le Code node de n8n n'a pas de fetch, AGENTS.md §10). */\n\nconst etat = ($getWorkflowStaticData('global').collecte_s203 || {})[String($execution.id || 'sans-id')];\nif (!etat || !Array.isArray(etat.couples) || etat.couples.length === 0) {\n  throw new Error(\"S2-03 : état de collecte absent — la boucle a été atteinte sans « Préparation de collecte (S1-02) »\");\n}\nconst couple = etat.couples[etat.courant];\nif (!couple) {\n  throw new Error(\"S2-03 : aucun couple en cours (index \" + etat.courant + \") — boucle désynchronisée\");\n}\n\nconst TAILLE_PAGE = 25;\nconst MAX_PAGES = 100;              /* même plafond que maxRequests de S1-04 */\nconst MAX_ESSAIS_PAR_PAGE = 5;      /* 1 requête + 4 reprises AU PLUS par page */\nconst ATTENTE_MIN_MS = 5000;        /* plancher de politesse : jamais plus rapproché */\nconst ATTENTE_MARGE_MS = 1000;      /* mesuré : le Wait de n8n 2.43.5 s'est réveillé jusqu'à 931 ms\n                                       avant l'échéance demandée (4 069 ms pour 5 000 demandés) —\n                                       sans marge, le plancher de l'API ne tiendrait pas */\nconst ATTENTE_MAX_MS = 60000;       /* au-delà, on abandonne au lieu d'attendre moins que demandé */\n\nconst reponse = $json || {};\nconst erreurNoeud = reponse.error != null ? reponse.error : null;\nconst statut = typeof reponse.statusCode === 'number'\n  ? reponse.statusCode\n  : (erreurNoeud && typeof erreurNoeud.statusCode === 'number' ? erreurNoeud.statusCode : null);\nconst enEchec = erreurNoeud !== null || (statut !== null && statut >= 400);\n\n/* Corps d'une réponse réussie : fullResponse renvoie { body, headers, statusCode } ; on garde le\n   corps à plat, comme le faisait la pagination native, pour que le filtrage le lise à l'identique. */\nconst corps = !enEchec && reponse.body && typeof reponse.body === 'object' ? reponse.body : reponse;\n\nfunction retryAfterMs(brut) {\n  if (brut == null) return null;\n  const texte = String(brut).trim();\n  if (/^\\d+$/.test(texte)) return Number(texte) * 1000;          /* secondes */\n  const date = Date.parse(texte);                                  /* forme date HTTP */\n  if (!Number.isNaN(date)) return Math.max(0, date - Date.now());\n  return null;\n}\n\nfunction lireRetryAfter(rep, err) {\n  const sources = [rep.headers, rep.response && rep.response.headers,\n                   err && err.response && err.response.headers, err && err.headers];\n  for (const entetes of sources) {\n    if (!entetes || typeof entetes !== 'object') continue;\n    const cle = Object.keys(entetes).find((k) => k.toLowerCase() === 'retry-after');\n    if (cle !== undefined) {\n      const ms = retryAfterMs(entetes[cle]);\n      if (ms !== null) return ms;\n    }\n  }\n  return null;\n}\n\nfunction messageErreur(e, st) {\n  const parties = [];\n  if (st !== null && st !== undefined) parties.push('HTTP ' + st);\n  if (e && typeof e === 'object') {\n    if (typeof e.error === 'string') parties.push(e.error.slice(0, 200));\n    if (typeof e.erreur === 'string') parties.push(e.erreur.slice(0, 200));   /* corps de l'API, en français */\n    if (e.message) parties.push(String(e.message).slice(0, 200));\n    if (parties.length === 0) parties.push(JSON.stringify(e).slice(0, 200));\n  } else if (e != null) {\n    parties.push(String(e).slice(0, 200));\n  }\n  return parties.join(' — ').slice(0, 400) || 'erreur inconnue';\n}\n\nlet etape;\n\nif (!enEchec && Array.isArray(corps.results)) {\n  couple.pages.push({ ...corps, statusCode: statut === null ? 200 : statut });\n  couple.essais = 0;\n  couple.attente_ms = null;\n  etat.reprise_apres_ms = null;\n  couple.dernier_statut = statut === null ? 200 : statut;\n  if (corps.results.length < TAILLE_PAGE) couple.fini = true;              /* dernière page */\n  else if (couple.pages.length >= MAX_PAGES) couple.fini = true;            /* plafond S1-04 */\n  else couple.page += 1;\n  etape = couple.fini ? 'fini' : 'page';\n} else if (!enEchec) {\n  couple.dernier_statut = statut;\n  couple.erreur = \"réponse sans tableau « results » à la page \" + couple.page + \" — contrat de l’API non respecté\";\n  couple.fini = true;\n  etape = 'fini';\n} else {\n  const statutEchec = statut;\n  const attenteApi = lireRetryAfter(reponse, erreurNoeud);\n  const corpsErreur = reponse.body && typeof reponse.body === 'object' ? reponse.body : null;\n  const message = messageErreur(erreurNoeud || corpsErreur, statutEchec);\n  couple.dernier_statut = statutEchec;\n  couple.refus.push({ statut: statutEchec, retry_after_ms: attenteApi, message });\n  const metier = statutEchec !== null && statutEchec >= 400 && statutEchec < 500\n    && statutEchec !== 408 && statutEchec !== 429;\n  const demandee = attenteApi !== null ? attenteApi : ATTENTE_MIN_MS;\n  if (metier) {\n    couple.erreur = \"refus définitif de l’API à la page \" + couple.page + \" : \" + message;\n    couple.fini = true;\n    etape = 'fini';\n  } else if (couple.essais + 1 >= MAX_ESSAIS_PAR_PAGE) {\n    couple.erreur = couple.essais + 1 + \" tentative(s) sur la page \" + couple.page\n      + \" sans réponse exploitable (\" + message + \") — couple abandonné\";\n    couple.fini = true;\n    etape = 'fini';\n  } else if (demandee > ATTENTE_MAX_MS) {\n    couple.erreur = \"l’API demande une attente de \" + Math.round(demandee / 1000) + \" s (retry-after), au-delà de la limite de \"\n      + Math.round(ATTENTE_MAX_MS / 1000) + \" s — nouvelle tentative abandonnée plutôt que trop rapprochée\";\n    couple.fini = true;\n    etape = 'fini';\n  } else {\n    couple.essais += 1;\n    couple.attente_ms = Math.max(demandee + ATTENTE_MARGE_MS, ATTENTE_MIN_MS);\n    /* Échéance, pas durée : la garde de rythme peut ainsi revérifier plusieurs fois sans jamais\n       reprolonger l'attente (mesuré : une durée réappliquée à chaque tour bouclait sans fin). */\n    etat.reprise_apres_ms = Date.now() + couple.attente_ms;\n    etape = 'reessai';\n  }\n}\n\n/* Horodatage de la dernière requête : c'est lui qui tient la cadence de S1-04 (1 req/s), et non le\n   minuteur du nœud Wait — mesuré, ce dernier rend la main avant l'échéance demandée. */\netat.dernier_appel_ms = Date.now();\n\nreturn {\n  json: {\n    etape,\n    attente_api_ms: etape === 'reessai' ? couple.attente_ms : null,\n    idx: etat.courant,\n    page: couple.page,\n    naf: couple.naf,\n    departement: couple.departement,\n    bandes_appliquees: couple.bandes_appliquees,\n    pages_recues: couple.pages.length,\n    essais: couple.essais,\n  },\n};"
+      },
+      "id": "11111111-1111-4111-8111-111111111171",
+      "name": "Accumuler la page (S2-03)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "11111111-1111-4111-8111-111111111172",
+              "leftValue": "={{ $json.etape === \"fini\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111172",
+      "name": "Couple collecté ? (S2-03)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "11111111-1111-4111-8111-111111111173",
+              "leftValue": "={{ $json.etape === \"reessai\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111173",
+      "name": "Réessai après refus ? (S2-03)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "/* S1-04 · S2-03 — tenir la cadence « 1 requête par seconde » AVANT chaque appel.\n   Pourquoi ce nœud existe : le minuteur du nœud Wait de n8n rend la main avant l'échéance demandée\n   (mesuré le 2026-10-28 : 474 ms et 799 ms pour 1 000 ms demandés, 4 069 ms pour 5 000). Confier la\n   politesse de crawl à ce seul minuteur, c'est publier une garantie que la mesure démentit. On calcule\n   donc l'attente depuis l'HORODATAGE de la dernière requête, et on revérifie au retour du Wait :\n   chaque passage ne peut que rapprocher de l'échéance, donc la boucle se termine.\n\n   Deux planchers, et on garde le plus grand :\n   - la cadence de S1-04 : 1 000 ms entre deux requêtes, mesurée sur l'horloge, pas sur un minuteur ;\n   - le délai demandé par l'API après un refus (attente_api_ms, déjà calculé dans « Accumuler la\n     page » : retry-after + 1 s, jamais moins de 5 s). */\nconst etat = ($getWorkflowStaticData('global').collecte_s203 || {})[String($execution.id || 'sans-id')];\nif (!etat) throw new Error(\"S2-03 : état de collecte absent dans « Rythme de la requête »\");\n\nconst CADENCE_MS = 1000;\nconst dernier = typeof etat.dernier_appel_ms === 'number' ? etat.dernier_appel_ms : null;\nconst ecoule = dernier === null ? CADENCE_MS : Date.now() - dernier;\nconst resteCadence = Math.max(0, CADENCE_MS - ecoule);\nconst echeance = typeof etat.reprise_apres_ms === 'number' ? etat.reprise_apres_ms : 0;\nconst resteApi = Math.max(0, echeance - Date.now());\nconst attente = Math.max(resteCadence, resteApi);\n\nreturn {\n  json: {\n    ...$json,\n    attente_ms: attente,\n    attendre: attente > 1,          /* 1 ms de tolérance : sous ce seuil, on n'attend pas */\n    ecoule_ms: ecoule,\n    reste_cadence_ms: resteCadence,\n    reste_api_ms: resteApi,\n  },\n};"
+      },
+      "id": "11111111-1111-4111-8111-111111111174",
+      "name": "Rythme de la requête (S1-04 · S2-03)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "11111111-1111-4111-8111-111111111179",
+              "leftValue": "={{ $json.attendre === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111179",
+      "name": "Attendre encore ? (S2-03)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "/* S2-03 — le couple a fini (collecté, ou abandonné avec son erreur) : on passe au suivant.\n   Les pages vivent dans l'état du tick ; ce nœud ne fait qu'avancer le curseur et dire s'il reste\n   un couple — la boucle suivante est pilotée par cette réponse, pas par le « done » implicite. */\nconst etat = ($getWorkflowStaticData('global').collecte_s203 || {})[String($execution.id || 'sans-id')];\nif (!etat || !Array.isArray(etat.couples) || etat.couples.length === 0) {\n  throw new Error(\"S2-03 : état de collecte absent — la boucle a été atteinte sans « Préparation de collecte (S1-02) »\");\n}\nconst courant = etat.couples[etat.courant];\nif (!courant) {\n  throw new Error(\"S2-03 : aucun couple en cours (index \" + etat.courant + \") — boucle désynchronisée\");\n}\netat.courant += 1;\nreturn {\n  json: {\n    reste: etat.courant < etat.couples.length,\n    couple_termine: { naf: courant.naf, departement: courant.departement,\n                      pages: courant.pages.length, erreur: courant.erreur, refus: courant.refus.length },\n  },\n};"
+      },
+      "id": "11111111-1111-4111-8111-111111111175",
+      "name": "Mémoriser le couple (S2-03)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "11111111-1111-4111-8111-111111111176",
+              "leftValue": "={{ $json.reste === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "11111111-1111-4111-8111-111111111176",
+      "name": "Reste-t-il un couple ? (S2-03)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* S2-03 — rendre au filtrage les pages collectées, DANS L'ORDRE des couples de « Préparation de\n   collecte » : un item par page, exactement la forme que produisait la pagination native, pour que\n   « Filtrage et compteurs » et le rattachement par la donnée de S2-02 n'aient rien à changer.\n   Un couple abandonné rend UN item en erreur (le filtrage le nomme et continue les autres) —\n   jamais ses pages tronquées : un couple incomplet serait un succès muet. */\nconst etat = ($getWorkflowStaticData('global').collecte_s203 || {})[String($execution.id || 'sans-id')];\nif (!etat || !Array.isArray(etat.couples)) {\n  throw new Error(\"S2-03 : état de collecte absent au moment de rendre les pages\");\n}\n\nconst sortie = [];\nfor (const couple of etat.couples) {\n  if (couple.erreur) {\n    sortie.push({ json: { error: { statusCode: couple.dernier_statut, message: couple.erreur } } });\n    continue;\n  }\n  if (!Array.isArray(couple.pages) || couple.pages.length === 0) {\n    sortie.push({ json: { error: { statusCode: null, message: \"aucune page reçue\" } } });\n    continue;\n  }\n  for (const page of couple.pages) sortie.push({ json: page });\n}\nif (sortie.length === 0) {\n  sortie.push({ json: { error: { statusCode: null, message: \"aucune page collectée\" } } });\n}\n\n/* L'état de cette exécution a fait son office : on le retire, pour qu'un tick ne laisse jamais\n   traîner les pages d'un autre. */\ndelete $getWorkflowStaticData('global').collecte_s203[String($execution.id || 'sans-id')];\nreturn sortie;"
+      },
+      "id": "11111111-1111-4111-8111-111111111177",
+      "name": "Pages collectées (S2-03)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## S2-03 — la collecte, page par page\n\nLa pagination native du nœud HTTP a été **retirée** : elle ne sait pas reprendre à la page en échec, et son réessai d'item relance tout depuis la page 1 en **jetant** les pages acquises (mesuré le 2026-10-27).\n\nBoucle : **un couple à la fois**, **une page par requête**.\n\n| Réponse | Ce que fait la boucle |\n|---|---|\n| page pleine (25) | page suivante, **après 1 s** |\n| page partielle | couple terminé |\n| 429 / 408 / 5xx / panne réseau | **reprise de CETTE page** après retry-after + 1 s (≥ 5 s) — 5 essais au plus par page |\n\nLa cadence est tenue par une **garde horodatée** (Rythme de la requête → Attendre encore ? → Attente de cadence) : le minuteur du nœud Wait rend parfois la main **avant** l’échéance (mesuré : 474 ms pour 1 000 demandés), on ne lui confie donc pas la garantie « 1 req/s ».\n| 4xx métier, budget épuisé, attente > 60 s | couple **abandonné et nommé** (jamais ses pages tronquées) |\n\n**Politesse inchangée** : 1 requête/s mesurée sur l’horloge, User-Agent identique, 100 pages max par couple (MAX_PAGES), timeout 10 s. **Pression jamais augmentée** : une panne coûte 1 requête, plus la profondeur du refus.",
+        "height": 460,
+        "width": 520
+      },
+      "id": "11111111-1111-4111-8111-111111111178",
+      "name": "Note — S2-03 collecte par page",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
         -260
       ]
     }
@@ -813,7 +1013,7 @@
       "main": [
         [
           {
-            "node": "Wait 1 s entre lots (S1-04)",
+            "node": "Pour chaque couple (S2-03)",
             "type": "main",
             "index": 0
           }
@@ -831,7 +1031,7 @@
       "main": [
         [
           {
-            "node": "Filtrage et compteurs (S1-02)",
+            "node": "Accumuler la page (S2-03)",
             "type": "main",
             "index": 0
           }
@@ -991,11 +1191,139 @@
         ]
       ]
     },
-    "Wait 1 s entre lots (S1-04)": {
+    "Pour chaque couple (S2-03)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Rythme de la requête (S1-04 · S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rythme de la requête (S1-04 · S2-03)": {
       "main": [
         [
           {
+            "node": "Attendre encore ? (S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attendre encore ? (S2-03)": {
+      "main": [
+        [
+          {
+            "node": "Attente de cadence (S1-04)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Collecte API (S1-02)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attente de cadence (S1-04)": {
+      "main": [
+        [
+          {
+            "node": "Rythme de la requête (S1-04 · S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accumuler la page (S2-03)": {
+      "main": [
+        [
+          {
+            "node": "Couple collecté ? (S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Couple collecté ? (S2-03)": {
+      "main": [
+        [
+          {
+            "node": "Mémoriser le couple (S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Réessai après refus ? (S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Réessai après refus ? (S2-03)": {
+      "main": [
+        [
+          {
+            "node": "Rythme de la requête (S1-04 · S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rythme de la requête (S1-04 · S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mémoriser le couple (S2-03)": {
+      "main": [
+        [
+          {
+            "node": "Reste-t-il un couple ? (S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reste-t-il un couple ? (S2-03)": {
+      "main": [
+        [
+          {
+            "node": "Pour chaque couple (S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pages collectées (S2-03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pages collectées (S2-03)": {
+      "main": [
+        [
+          {
+            "node": "Filtrage et compteurs (S1-02)",
             "type": "main",
             "index": 0
           }

@@ -237,9 +237,11 @@ comme une preuve que le produit fonctionne.
      silence. « Nul = aucun filtre » (D-008) signifie donc **omis** le paramètre, jamais envoyé vide
      (mesuré le 2026-10-16 : 422 reproduit puis fixé).
 - **Le Code node de n8n (JsTaskRunner) n'a ni `fetch` ni `node:http`** (mesuré le 2026-10-16, v 2.x) :
-  toute collecte réseau passe par le **nœud HTTP Request** avec sa pagination native
-  (`$pageCount + 1`), pas par du code. Un `ReferenceError: fetch is not defined` sur un tick
-  WF1 = une collecte qui a tenté le réseau depuis un Code node.
+  toute collecte réseau passe par le **nœud HTTP Request**, jamais par du code. Un
+  `ReferenceError: fetch is not defined` sur un tick WF1 = une collecte qui a tenté le réseau depuis
+  un Code node. **Depuis `S2-03` (2026-10-28), WF1 n'utilise PLUS la pagination native**
+  (`$pageCount + 1`) : elle ne sait pas reprendre à la page en échec, et son réessai d'item jette les
+  pages acquises. La boucle maison demande **une page par requête** ; voir les trois pièges suivants.
 - **Fichiers de test SQL** : ils sont joués par la CI dans l'ordre alphabétique et partagent la même
   base. Un test ne doit pas laisser de lignes derrière lui (sinon il fausse les comptes des autres) :
   utiliser `begin; … rollback;` ou ne tester que des cas qui échouent.
@@ -381,3 +383,33 @@ comme une preuve que le produit fonctionne.
   en erreur porte `statusCode` + `error` et **pas** de `message` (`{statusCode: 500, error: "…"}`).
   Lire `error.message` seul affiche « erreur API » sur toutes les pannes HTTP : inexploitable, là
   où le ticket en exige un exploitable.
+- **`waitBetweenTries` est plafonné à 5 000 ms par `n8n-core`, et la valeur au-delà est ignorée
+  en silence** (mesuré le 2026-10-28, `S2-03`) : `Math.min(5000, Math.max(0, node.waitBetweenTries ??
+  1000))` (`n8n-core/dist/execution-engine/workflow-execute.js`). Avec `maxTries: 5` et
+  `waitBetweenTries: 15000`, les écarts mesurés entre tentatives sont restés à **6,03 s**. Donc «
+  attendre plus longtemps » ne se règle pas : la seule patience réglable est le **nombre** de
+  tentatives — et chacune repayant le travail déjà fait, c'est un amplificateur quand la panne est un
+  refus de débit. Ne pas construire une stratégie de reprise sur ce réglage.
+- **Le nœud `Wait` n'accepte pas `milliseconds`, et il peut se réveiller AVANT l'échéance demandée**
+  (mesuré le 2026-10-28, `S2-03`) : unités valides `seconds`/`minutes`/`hours`/`days` seulement —
+  `milliseconds` lève `Invalid wait unit` à l'exécution, pas à l'import. Et sur cinq attentes de
+  5 000 ms demandées, une a duré **4 069 ms** (et une de 7 000 ms, **6 690 ms**) : un réveil ~0,9 s
+  trop tôt. Conséquence pour tout délai qui doit être un **plancher** (un `retry-after` par exemple) :
+  demander `attente + 1 s`, sinon le plancher ne tient pas — et pour une **cadence**, ne pas la
+  confier au minuteur : WF1 la vérifie sur l'horloge (`Rythme de la requête` recalcule l'attente depuis
+  l'horodatage de la dernière requête, `Attendre encore ?` revérifie après le réveil). Mesuré sans
+  cette garde : des écarts de **0,52 s** là où 1 s était demandée.
+- **Un `429` n'arrive pas avec ses en-têtes quand le nœud HTTP est en `continueRegularOutput`**
+  (mesuré le 2026-10-28, `S2-03`) : l'item d'erreur porte `{message, name, code, status}` — **pas** de
+  `response.headers`, donc **pas de `retry-after`** lisible. Pour lire un en-tête d'une réponse en
+  erreur, demander la réponse **complète** (`options.response.response.fullResponse = true`) **et**
+  `neverError = true` : le `429` revient alors comme une réponse ordinaire
+  `{body, headers, statusCode: 429}`, en-têtes compris. Le classement « refus passager / refus métier »
+  se fait alors sur `statusCode`, dans un Code node, et non sur la présence d'une erreur n8n.
+- **`n8n execute` en CLI refuse un workflow dont le déclencheur est un Schedule Trigger** (mesuré le
+  2026-10-28, `S2-03`) : « Missing node to start execution ». Pour rejouer un workflow de production
+  hors du serveur, en importer une **copie** dont le déclencheur est remplacé par un *Manual Trigger*
+  (même nom de nœud, pour que les arêtes tiennent), exécuter la copie, puis ne pas la confondre avec
+  l'original. Et pour lancer le CLI sur le volume d'une instance arrêtée, passer la **même**
+  `N8N_ENCRYPTION_KEY` : sans elle, les credentials ne se déchiffrent pas.
+
