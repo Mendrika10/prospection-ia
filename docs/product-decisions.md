@@ -1069,15 +1069,17 @@ un jour n8n expose un point de reprise de pagination ou un délai de réessai no
 maison redeviendrait inutile.
 
 **Qui exécute** : Automation + Architecte (structure, mesures, preuves — fait) · **Reviewer** en contexte
-neuf (relecture) · Orchestrateur (consignation, fusion, et la confirmation par une session indépendante
-si le verdict repose sur une mesure que personne d'autre ne peut rejouer).
+neuf (relecture) · Orchestrateur (consignation, fusion — **faite**). Reste **ouverte** la confirmation par une
+session indépendante : la mesure est rejouable, donc une seconde lecture suffit à clore le critère 7.
 
 **Origine** : ticket **`S2-03`** (« la collecte doit survivre à un refus de débit »), ouvert le
 2026-10-27 ; applique le point 3 de `D-017` (« le défaut de robustesse n'est pas corrigé ici ») ; suit la
 mesure du critère 1 ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) ;
 confirme `D-002` (compteurs) et `D-011`/`D-015` (preuve de bout en bout, base rendue).
 
-**Tickets** : **`S2-03`** 🟡 **en cours** — critères 1 à 6 vérifiés le 2026-10-28 : mesure du mécanisme
+**Tickets** : **`S2-03`** 🟦 **en review** — critères 1 à 6 vérifiés le 2026-10-28 : mesure du mécanisme
 (1), couple multi-pages qui survit (2), `retry-after` plancher observé (3), politesse mesurée (4), pire
 cas honnête (5), preuve de bout en bout avec échec provoqué et base rendue (6). Reste le critère 7
-(relecture, et confirmation indépendante).
+(relecture **faite** : approuvé sous réserves, aucun bloquant ; confirmation indépendante **due**).
+
+**Consigné** : PR **#59** fusionnée en squash `46b9696`, CI de `main` **verte** (run 40687098565).
