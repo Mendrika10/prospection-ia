@@ -27,7 +27,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
-| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | 🟦 **en review** — ouvert le 2026-10-27 sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · **critères 1 à 6 vérifiés**, reste la relecture (7) · PR **#55** fusionnée en squash **`608f3d0`** |
+| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | 🟦 **en review** — ouvert le 2026-10-27 sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · **critères 1 à 6 vérifiés**, relecture faite mais **critère 7 ouvert** (confirmation indépendante due) · PR **#59** fusionnée en squash **`46b9696`** · PR **#55** fusionnée en squash **`608f3d0`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
 
@@ -404,7 +404,7 @@ rattachement par la donnée de `S2-02`, écriture, clôtures — est **inchangé
 `D-017` reste ouvert), et le choix « 5 essais / 60 s » reste un **choix** écrit, pas un optimum
 démontré.
 
-**Consigné** : en attente de fusion (critère 7 — relecture).
+**Consigné** : PR **#59** fusionnée en squash `46b9696`, CI de `main` **verte** (run 40687098565).
 
 
 - **Ils ne sont pas WF2.** L'enrichissement (recherche de site) est le périmètre naturel du sprint 2,

@@ -51,6 +51,13 @@ Format :
   et la note « pagination native » corrigée.
 - **Prévu** : la relecture de la PR (critère 7) et, si le verdict en dépend, une confirmation par une
   session indépendante — la mesure est rejouable (banc et harnais fournis dans la PR).
+- **Fusion** : PR **#59** (collecte page par page) fusionnée en squash **`46b9696`** — CI de `main`
+  **verte** (run 40687098565). `S2-03` passe **en review** : critères 1 à 6 vérifiés, **critère 7 ouvert**
+  (relecture faite dans la même session, confirmation indépendante due — la mesure est rejouable).
+- **Ouvert, hors périmètre** : la preuve a **reproduit** un défaut pré-existant — deux campagnes dues
+  dans le même tick laissent une ligne `runs` en `running`, ce qui bloque la campagne suivante
+  (piège déjà noté dans `AGENTS.md` §10). À instruire **avant** WF2 : il gêne la collecte sans venir
+  d'elle.
 - **Bloqué** : rien.
 
 ## 2026-10-27 (mardi) — S2-02 : le rattachement cesse de lire un index, et la preuve dit ce qu'elle n'a pas pu prouver
