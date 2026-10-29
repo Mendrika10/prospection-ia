@@ -73,7 +73,10 @@ Format :
 - **Ouvert, hors périmètre** : la preuve a **reproduit** un défaut pré-existant — deux campagnes dues
   dans le même tick laissent une ligne `runs` en `running`, ce qui bloque la campagne suivante
   (piège déjà noté dans `AGENTS.md` §10). À instruire **avant** WF2 : il gêne la collecte sans venir
-  d'elle.
+  d'elle. → **`S2-04` ouvert le 2026-10-28** : il commence par **la mesure isolée** du mécanisme
+  (le constat a été levé trois fois séparément — 26/10, 28/10, relecture indépendante — et reste
+  **jamais isolé** : un symptôme reproduit n'est pas une cause attribuée, `D-016`) ; aucune stratégie
+  retenue d'avance. [`sprint-02.md`](sprint-02.md).
 - **Bloqué** : rien.
 
 ## 2026-10-27 (mardi) — S2-02 : le rattachement cesse de lire un index, et la preuve dit ce qu'elle n'a pas pu prouver

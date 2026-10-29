@@ -335,13 +335,15 @@ comme une preuve que le produit fonctionne.
   coupable que si les deux mesures sont prises **dans la même fenêtre et sur le même chemin
   d'exécution**. Sinon, écrire une **hypothèse** — jamais une cause.
 - **Un lot de campagnes n'est pas traité campagne par campagne** (observé incidemment le 2026-10-26,
-  `S2-01`, **non isolé** — à instruire) : avec **deux campagnes dues** dans le même lot, deux lignes
+  `S2-01`, **non isolé**, **reproduit à nouveau le 2026-10-28** pendant la preuve de `S2-03` puis
+  confirmé par la relecture indépendante) : avec **deux campagnes dues** dans le même lot, deux lignes
   `runs` ont été créées dans la **même transaction** (`started_at` identique à la microseconde),
   **une seule** a été clôturée (`success`, 20 items), et la seconde campagne n'a **rien** reçu — sa
   ligne restant `running`, donc comptée comme « dernier passage » par `campaigns_due`. Lecture du
   code, cohérente : « Préparation de collecte » et la clôture lisent
   `$('Pour chaque campagne (S1-02)').first()` et `$('Run démarré (campagne)').first()`. Le cas est
-  atteignable avec le `batchSize: 10` du nœud : à mesurer isolément avant d'ouvrir un ticket.
+  atteignable avec le `batchSize: 10` du nœud. **Ouvert le 2026-10-28 sous le ticket
+  [`S2-04`](docs/sprint-02.md)**, qui commence par la mesure isolée (`D-016`) avant tout correctif.
 - **Pour un nœud qui rend PLUS d'items qu'il n'en reçoit, `pairedItem` est écrit puis RELU
   différemment — il ne désigne donc pas ce qu'on croit** (mesuré le 2026-10-27, `S2-02`) : le nœud
   HTTP **range** l'index de l'item d'ENTRÉE (`pairedItem: {item: itemIndex}`,

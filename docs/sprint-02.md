@@ -6,9 +6,12 @@
 > reste sera construit ce jour-là, sans préempter son verdict. Les reports du sprint 1 sont listés
 > dans [`sprint-01.md`](sprint-01.md) §7.
 >
-> **`S2-03` a été ouvert le 2026-10-27**, sur instruction du propriétaire, à la sortie des deux revues de
-> `S2-02` — le constat « un `429` fait perdre le couple entier » a été levé **deux fois, séparément**. Il
-> entre au backlog sans préempter l'ordre du planning.
+> **`S2-03` est fait** (2026-10-28, les 7 critères — voir sa ligne). **`S2-04` a été ouvert le
+> 2026-10-28**, à la clôture de `S2-03` : le défaut qu'il porte a été **reproduit pendant la preuve de
+> `S2-03` avec les deux campagnes dues dans le même tick**, et **confirmé par la relecture indépendante**
+> — un défaut levé trois fois séparément (26/10, 28/10, relecture indépendante), toujours **non isolé**.
+> Il entre au backlog sans préempter l'ordre du planning — mais les deux relectures de `S2-03` le placent
+> **avant WF2** : il gêne la collecte sans venir d'elle.
 >
 > **Pourquoi ces deux-là d'abord** : ils portent les deux défauts révélés par la **première
 > exécution réelle de WF1 sur l'API publique** (2026-10-26,
@@ -27,6 +30,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
+| S2-04 | WF1 — un lot de campagnes n'est pas traité campagne par campagne (une ligne `runs` reste `running`) | Automation + Architecte | M | — | ⬜ **à faire** — ouvert le 2026-10-28 à la clôture de `S2-03` · défaut pré-existant **reproduit deux fois** (26/10 via `S2-01`, 28/10 pendant la preuve de `S2-03`) **et confirmé par la relecture indépendante** · deux campagnes dues dans le même tick → deux lignes `runs` créées, **une seule clôturée**, la seconde campagne **bloquée** (« dernier passage » = `running` pour `campaigns_due`) · lecture du code : « Préparation de collecte » et les clôtures lisent `.first()` — une ligne de run **par exécution** là où le lot en crée plusieurs · **commence par la mesure** (règle `D-016`), aucune stratégie retenue d'avance |
 | S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | ✅ **fait (2026-10-28)** — ouvert sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · critères **1 à 6** vérifiés ([mesure et preuves](reviews/2026-10-28-collecte-page-par-page.md)) · **critère 7 clos** : relecture ([verdict](reviews/2026-10-28-revue-pr-s2-03.md)) + **confirmation par une session indépendante** ([rapport](reviews/2026-10-28-confirmation-independent-s2-03.md)) — banc rejoué, 92 tests écrits par elle, même verdict *approuvé sous réserves*, **aucun bloquant** · PR **#59** fusionnée en squash **`46b9696`** · PR **#55** fusionnée en squash **`608f3d0`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
@@ -412,6 +416,76 @@ démontré.
 
 **Consigné** : PR **#59** fusionnée en squash `46b9696`, CI de `main` **verte** (run 40687098565).
 
+---
+
+## S2-04 — WF1 : un lot de campagnes n'est pas traité campagne par campagne (une ligne `runs` reste `running`) · ⬜ à faire
+
+**Objectif** : quand **plusieurs campagnes sont dues dans le même tick**, chaque campagne doit obtenir
+**sa** ligne `runs` — créée **puis clôturée** (`success` / `partial` / `error` nommé) — sans qu'une
+ligne restée `running` bloque la campagne suivante.
+
+**Contexte — ce qui est mesuré, pas supposé** (le constat a été levé **trois fois, séparément**) :
+
+- **2026-10-26** (`S2-01`, observation incidente) : deux campagnes dues dans le même lot → deux lignes
+  `runs` créées dans la **même transaction** (`started_at` identique à la microseconde), **une seule**
+  clôturée (`success`, 20 items), la **seconde campagne n'a rien reçu** — sa ligne restée `running`,
+  donc comptée comme « dernier passage » par `campaigns_due` : campagne **affamée**.
+- **2026-10-28** (preuve de `S2-03`) : **reproduit à volonté** — même tick, deux campagnes dues, deux
+  lignes `runs` créées, **une seule clôturée**, la seconde restée `running` (ce qui **bloque sa
+  campagne**) ; constat **consigné comme réserve importante de la relecture en contexte neuf** et
+  **confirmé par la session indépendante** (constat n° 2 important).
+- **Lecture du code**, cohérente avec les mesures : « Préparation de collecte » lit
+  `$('Pour chaque campagne (S1-02)').first()` et `$('Run démarré (campagne)').first()`, et les nœuds
+  de clôture font de même — **une seule ligne de run par exécution**, là où le lot dû peut en porter
+  plusieurs (`batchSize` 10).
+- **Ce que ce ticket mesure d'abord** : le **sort exact** de la deuxième campagne dans une exécution
+  multi-campagnes (quand la ligne `runs` est-elle créée, par qui, et pourquoi elle survit à
+  `running`) — un symptôme reproduit **n'est pas une cause attribuée** (`D-016`) : pas de correction
+  avant une mesure isolée qui la désigne.
+
+**Critères d'acceptation**
+- [ ] **Le mécanisme est mesuré avant toute correction** : reproduction **isolée et reproductible**
+      (deux campagnes actives, dues dans le même tick) — les lignes `runs` relevées **avant/après**
+      (`created / clôturée or not / error message`), un **scénario d'échec provoqué** inclus, et le
+      relevé de **pourquoi** la deuxième est restée `running`. Aucune stratégie n'est choisie avant
+      cette mesure.
+- [ ] Après correction, **chaque campagne due du tick a sa ligne `runs`** : créée, **puis clôturée**
+      (succès, partiel, ou `error` avec un message qui nomme la campagne) — vérifié sur les lignes de
+      base : **aucune** ligne restée `running`, et les **deux** campagnes ont été collectées.
+- [ ] **L'échec d'une campagne ne fait pas tomber l'autre** : campagne A en `error` nommé → campagne
+      B tout de même créée, collectée et clôturée. Pas de « succès » muet, pas de run orphelin.
+- [ ] **Aucune régression de ce qui est prouvé** : la boucle page par page de `S2-03` (`retry-after`
+      plancher, cadence horodatée) et le rattachement par la donnée de `S2-02` restent **intacts**
+      (`git diff` à l'appui) ; la politesse de crawl (1 s, User-Agent, timeout, 100 pages) n'est
+      **pas dégradée**.
+- [ ] **Preuve de bout en bout** (règle `D-011` / `D-015`) : exécution réelle sur **deux campagnes**
+      dues, **la ligne `runs` lue en base à l'appui**, les deux campagnes avec leurs lignes
+      `companies` rattachées à **leur** campagne, base rendue à son état d'avant (comptes relevés
+      avant/après).
+- [ ] Relecture par un **Reviewer en contexte neuf**, et confirmation par une session
+      **indépendante** si le verdict repose sur une mesure que personne d'autre ne peut rejouer.
+
+**Pistes à instruire (aucune retenue d'avance)** : (a) une **boucle par campagne** dans WF1 (chaque
+itération porte son run, sa préparation, sa collecte, sa clôture) ; (b) un **sous-workflow par
+campagne** appelé par le lot du tick ; (c) l'approche « un run par **élément** du lot » si la mesure
+le montre. Une piste n'entre dans le ticket qu'avec la mesure qui la justifie.
+
+**Definition of Ready** : objectif en une phrase ✓ · critères vérifiables ✓ · périmètre explicite ✓ ·
+dépendances identifiées ✓ · taille ≤ ½ journée (à re-estimer après la mesure — sera **découpé** si
+le correctif dépasse) ✓
+
+**Périmètre** : les nœuds **amont** de `n8n/workflows/wf1-collecte.json` (de `campaigns_due` jusqu'à
+la préparation, et les **clôtures** de `runs`) ; `docs/`. **Interdit** : le schéma SQL, le contrat
+d'upsert (ADR 0007), la CI, la collecte par page de `S2-03` (sauf si la mesure l'exige — alors écrit
+au ticket), et **toute** réduction de la politesse de crawl.
+**Dépendances** : **aucune** — la collecte est saine depuis la clôture de `S2-03` (les deux relectures
+du ticket l'ont confirmé). **Instruction** : à traiter **avant WF2**, comme les deux relectures le
+placent : il **gêne la collecte** sans venir d'elle. · **Ouvert le 2026-10-28** à la clôture de
+`S2-03`. · **Taille** : M · **Rôle** : Automation + Architecte (pour la structure lot/runs)
+
+---
+
+## Ce que ces tickets ne sont pas
 
 - **Ils ne sont pas WF2.** L'enrichissement (recherche de site) est le périmètre naturel du sprint 2,
   mais il suppose une collecte qui fonctionne : le planning tranchera, et les tickets de levée passent
