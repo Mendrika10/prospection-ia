@@ -13,6 +13,30 @@ Format :
 
 ---
 
+## 2026-10-29 (jeudi) — S2-04 : la relecture en contexte neuf rend son verdict — approuvé
+
+- **Fait** : le **critère 6 passe sa moitié** — la **relecture par un Reviewer en contexte neuf** est
+  faite (2026-10-29). Session **séparée** (`opencode run`, titre « Reviewer S2-04 PR#65 (contexte
+  neuf) »), prompt = rôle §7 de [`prompts/roles.md`](prompts/roles.md), dossier fermé (`.tmp-s204-rev/`,
+  jetable) : **PR #65 + critères 1 à 6 + grille du rôle §7, rien d'autre** — sans les revues, sans la
+  décision, sans l'historique. Confinement écrit dans le brief : lecture seule, fusion interdite,
+  banc interdit (écritures en base réelle).
+- **Le verdict** ([revue](reviews/2026-10-29-revue-pr-s2-04.md), verbatim) : **approuvé** —
+  **0 bloquant, 0 important, 2 mineurs**. Ce que la session a revérifié par ses propres commandes : le
+  diff en entier par analyse du JSON (35 nœuds des deux côtés, connexions 100 % identiques, exactement
+  **2 blocs de paramètres**, **0 ligne de `jsCode`**), le périmètre contre le ticket (l'écart sur le
+  nœud S2-03 rentre dans la clause « sauf si la mesure l'exige », il l'exigeait — écrit), les secrets
+  (aucun JWT, aucune clé), la CI (`sql` / `secrets` / `node` tous `SUCCESS`). Les 2 mineurs :
+  l'**invariant** `couple === true` (à tenir pour toute évolution de « Préparation de collecte » — sinon
+  le défaut de S2-04 réapparaît en silence) et le rappel de **déploiement de WF5** (`Wf5ErrS106Trace01`
+  doit être importé et activé sur l'instance cible). Rien de bloquant, rien d'important.
+- **Prévu** : la **confirmation par une session indépendante** (critère 6) reste **due** — le
+  verdict des critères 2, 3 et 5 repose sur le banc que personne d'autre n'a rejoué ; même séquence que
+  `S2-02` et `S2-03`. Le ticket reste 🟦 en review **avant WF2**.
+- **Bloqué** : rien.
+
+---
+
 ## 2026-10-29 (jeudi) — S2-04 : le correctif est écrit, et prouvé en rouge puis en vert
 
 - **Fait** : la correction de `S2-04` est **écrite dans le workflow délivré**

@@ -1167,5 +1167,7 @@ suit la mesure du mécanisme du [2026-10-29](reviews/2026-10-29-mesure-s2-04-lot
 **Tickets** : **`S2-04`** 🟦 **en review** — critère 1 ✅ mesuré ; **critères 2 à 5 ✅ prouvés le
 même jour** ([revue de correction](reviews/2026-10-29-s2-04-boucle-par-campagne.md), trois scénarios
 verts après un rouge) ; **fusion** : PR **#65** en squash **`51f4ca7`** — le correctif est dans
-`main` (CI des 3 checks verte) ; reste la relecture en contexte neuf + la confirmation par une
-session indépendante (critère 6) — avant WF2.
+`main` (CI des 3 checks verte) ; la **relecture en contexte neuf** est faite le 2026-10-29 —
+verdict **approuvé**, aucun bloquant, aucun important, 2 mineurs consignés
+([revue](reviews/2026-10-29-revue-pr-s2-04.md)) ; **reste la confirmation par une session
+indépendante** (critère 6) — avant WF2.
