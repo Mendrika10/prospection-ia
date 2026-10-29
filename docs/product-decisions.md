@@ -1049,11 +1049,7 @@ refus ne cesse pas ; **10** requêtes et **240** lignes pour deux couples du mê
 relevée avant (`campaigns 0 / companies 0 / runs 0`) et **rendue après** (`0 / 0 / 0`) :
 `43.21A × 05` (2 pages) → `success`, `items_processed = 22`, `details = {recuperees: 36, ecartees: 14}`,
 **22** entreprises — **les mêmes chiffres qu'avant la refonte** ; `43.21A × 99` (échec provoqué) →
-`error`, `items_processed = 0`, message nommant `43.21A|99` et citant l'API, **0** ligne écrite.
-
-**Conséquence / coût** : WF1 gagne **huit nœuds** et l'état du tick (couples, page courante, pages
-acquises) vit dans les *static data* du workflow, remis à zéro à chaque tick — c'est le prix de la
-reprise locale, et c'est écrit dans le code comme dans la note collée. Trois coûts assumés : **la durée
+`error`, `items_processed = 0`, message nommant `43.21A|99` et citant l'API, **0** ligne écrite.**Conséquence / coût** : WF1 gagne **huit nœuds** et l'état du tick (couples, page courante, pages acquises) vit dans les *static data* du workflow, remis à zéro à chaque tick — c'est le prix de la reprise locale, et c'est écrit dans le code comme dans la note collée. Trois coûts assumés : **la durée
 d'un run peut s'allonger** (jusqu'à 5 × 60 s par page durablement refusée, multiplié par le nombre de
 couples) ; **l'abandon après 5 essais est un choix**, pas un optimum démontré ; et le couple **abandonné
 n'écrit rien**, donc son travail est à refaire au tick suivant — c'est le compromis inverse de
@@ -1086,3 +1082,72 @@ neuf **puis confirmation par une session indépendante** (7) — *approuvé sous
 bloquant** sur aucun critère.
 
 **Consigné** : PR **#59** fusionnée en squash `46b9696`, CI de `main` **verte** (run 40687098565).
+
+---
+
+## D-019 — Le lot de campagnes est traité campagne par campagne : la boucle au `batchSize: 1` · 2026-10-29 · en vigueur
+
+**Décision** : quand **plusieurs campagnes sont dues dans le même tick**, le lot est traité
+**campagne par campagne** : le nœud **« Pour chaque campagne (S1-02) »** passe de `batchSize: 10` à
+**`batchSize: 1`**. L'invariant établi est **un passage = une campagne = un run** : chaque passage
+emporte la création de la ligne `runs` de SA campagne, sa préparation, sa collecte (boucle page par
+page de `S2-03` intacte), son rattachement (`S2-02` intact) et SA clôture. Les clôtures existantes
+(`$json.run_id ?? $('Run démarré (campagne)').first().json.id`) deviennent correctes **sans
+modification** — à `batchSize: 1`, le fallback `.first()` vise nécessairement le run du passage
+courant. La politesse entre campagnes tient par `waitBetweenBatches: 1000` (1 s entre campagnes, en
+plus de la garde horodatée de 1 s entre requêtes).
+
+**Pourquoi** : la [mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md) a
+reproduit isolément (trois fois, deux scénarios dont un échec provoqué, base 0/0/0 avant/après) le
+defaut levé trois fois séparément : lot de deux campagnes dues → **deux** lignes `runs` créées
+(`started_at` identiques à la microseconde — un POST multi-rows), **une seule** clôturée, la seconde
+restée `running` et `campaigns_due` bloquée (24 h minimum). Le code pointe la faille **structurelle** :
+« Préparation de collecte » est `runOnceForAllItems` et bâtit **tout l'aval** (couples, collecte,
+compteurs, écriture) sur `$('Run démarré (campagne)').first()` — la campagne B n'a **jamais existé**
+dans le passage. Corriger l'adressage seul (renvoyer le bon `run_id` à la clôture de B) ne clôturerait
+rien : l'aval de B **n'existe pas**. La seule structure qui rende l'aval de B **existent** est le
+passage par campagne.
+
+**Options écartées** (instruction complète dans [`reviews/2026-10-29-instruction-des-pistes-s2-04.md`](reviews/2026-10-29-instruction-des-pistes-s2-04.md)) :
+
+- *Un sous-workflow par campagne* : exige un second fichier de workflow — **hors du périmètre du
+ticket** (nœuds amont de `wf1-collecte.json`) ; la preuve de bout en bout passerait par N exécutions,
+et un sous-workflow interrompu après son POST « running » laisse **exactement** le run orphelin que
+la mesure condamne ; l'isolation par `$execution.id` qu'il fournirait existe déjà et (a) n'entremêle
+jamais deux campagnes.
+- *Un run par élément du lot (campagnes au même passage)* : les lignes `runs` par élément existent déjà
+— ce qui manque est **l'aval**, pas la création. Rendre l'aval multi-campagnes réécrirait préparation,
+compteurs de filtrage (agrégats mélangés), lot des entreprises (N campagnes en un POST), conciliation
+et clôtures — « l'échec d'une campagne ne fait pas tomber l'autre » deviendrait une preuve à
+corriger, là où (a) le donne **par construction**. La condition du ticket (« si la mesure le montre »)
+n'est pas remplie.
+- *Corriger seulement l'adressage des clôtures (mapping par campaign_id)* : la mesure l'exclut — l'aval
+de B (couples, collecte, écriture) **n'existe pas** dans le passage ; la clôture correcte ne clôturerait
+qu'une ligne sans collecte derrière.
+
+**Preuves utilisées** : [la mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md)
+(trois reproductions, deux scénarios, base 0/0/0 avant/après, traces de clôture à un seul id de run) ;
+la lecture du code exact (`batchSize: 10`, `runOnceForAllItems`, `.first()` dans la préparation et les
+trois clôtures, sortie `done` non branchée).
+
+**Conséquence / coût** : la collecte devient **séquentielle entre campagnes** (une campagne termine
+avant que la suivante commence) — pour un tick de 2 campagnes c'est au plus la somme des durées, et la
+politesse globale (1 requête/s sur la même API) ne se **dégrade pas** : elle devient simplement **plus
+certaine**. Coût assumé : le débit d'un tick de N campagnes est la **durée de N cycles**. Ce qui
+**ne bouge pas** : schéma SQL, contrat d'upsert (`D-0007`), la boucle page par page (`D-018`), la
+politesse de crawl, la CI.
+
+**Ce qui me ferait changer d'avis** : un besoin contré de collecte **parallèle** de campagnes (débit
+tick contraignant) : alors ce serait la piste (c) — aval refondé multi-campagnes avec compteurs par
+campagne — culminée par une mesure qui la justifie, jamais par préférence.
+
+**Qui exécute** : Automation + Architecte (implémentation `batchSize: 1`, preuves des critères 2 à 5 :
+deu campagnes réelles dues dans le même tick, échec provoqué inclus, base rendue 0/0/0) · Reviewer en
+contexte neuf.
+
+**Origine** : ticket **`S2-04`** (ouvert le 2026-10-28 à la clôture de `S2-03`, suite de `S2-01` /
+`S2-03` ; instruction des pistes le [2026-10-29](reviews/2026-10-29-instruction-des-pistes-s2-04.md)) ;
+suit la mesure du mécanisme du [2026-10-29](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md).
+
+**Tickets** : **`S2-04`** 🟡 **en cours** — critère 1 ✅ mesuré ; critères 2 à 5 à prouver à la
+correction ; relecture en contexte neuf, avant WF2.

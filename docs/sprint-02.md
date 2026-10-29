@@ -32,7 +32,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
-| S2-04 | WF1 — un lot de campagnes n'est pas traité campagne par campagne (une ligne `runs` reste `running`) | Automation + Architecte | M | — | 🟡 **en cours** — **critère 1 mesuré** (2026-10-29 : [mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md), **trois reproductions isolées**, base 0/0/0 avant/après) : deux campagnes dues dans le même tick → **deux lignes `runs`**, `started_at` **identiques à la microseconde**, **une seule clôturée**, `campaigns_due` bloquée pour la 2e (24 h minimum, ligne `running` jamais clôturée) ; la correction reste à **instruire sur ces chiffres** · défaut pré-existant reproduit **26/10**, **28/10**, confirmé par la relecture indépendante · lecture du code : `$('Run démarré (campagne)').first()` — **un seul id de run est adressé», là où le lot en crée plusieurs |
+| S2-04 | WF1 — un lot de campagnes n'est pas traité campagne par campagne (une ligne `runs` reste `running`) | Automation + Architecte | M | — | 🟡 **en cours** — **critère 1 mesuré** (2026-10-29 : [mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md), **trois reproductions isolées**, base 0/0/0 avant/après) : deux campagnes dues dans le même tick → **deux lignes `runs`**, `started_at` **identiques à la microseconde**, **une seule clôturée**, `campaigns_due` bloquée pour la 2e (24 h minimum) et **l'aval de la 2e campagne (couples, collecte) n'existe pas** (`Préparation` en `runOnceForAllItems`) · **stratégie tranchée le 29/10** ([instruction des pistes](reviews/2026-10-29-instruction-des-pistes-s2-04.md)) : la **boucle par campagne** — `batchSize: 10` → **1** — est retenue (1 paramètre ; (b) et (c) écartées), décision **`D-019`** · **reste** : implémenter + prouver les critères 2 à 5 (banc, deux campagnes réelles, échec provoqué inclus, base 0/0/0) **avant WF2** |
 | S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | ✅ **fait (2026-10-28)** — ouvert sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · critères **1 à 6** vérifiés ([mesure et preuves](reviews/2026-10-28-collecte-page-par-page.md)) · **critère 7 clos** : relecture ([verdict](reviews/2026-10-28-revue-pr-s2-03.md)) + **confirmation par une session indépendante** ([rapport](reviews/2026-10-28-confirmation-independent-s2-03.md)) — banc rejoué, 92 tests écrits par elle, même verdict *approuvé sous réserves*, **aucun bloquant** · PR **#59** fusionnée en squash **`46b9696`** · PR **#55** fusionnée en squash **`608f3d0`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
@@ -471,10 +471,28 @@ ligne restée `running` bloque la campagne suivante.
 - [ ] Relecture par un **Reviewer en contexte neuf**, et confirmation par une session
       **indépendante** si le verdict repose sur une mesure que personne d'autre ne peut rejouer.
 
-**Pistes à instruire (aucune retenue d'avance)** : (a) une **boucle par campagne** dans WF1 (chaque
-itération porte son run, sa préparation, sa collecte, sa clôture) ; (b) un **sous-workflow par
-campagne** appelé par le lot du tick ; (c) l'approche « un run par **élément** du lot » si la mesure
-le montre. Une piste n'entre dans le ticket qu'avec la mesure qui la justifie.
+**Pistes à instruire — instruction faite le 2026-10-29** ([instruction des pistes](reviews/2026-10-29-instruction-des-pistes-s2-04.md),
+sur les chiffres de la mesure et le code exact) :
+
+- **(a) une boucle par campagne dans WF1** — `Pour chaque campagne` : `batchSize: 10` → **1**.
+  **Trancher : retenue** — **1 paramètre, 0 ligne de code** ; l'invariant **un passage = une campagne
+  = un run** rend la préparation (`runOnceForAllItems`) et les trois clôtures (`.first()`) exactes
+  **sans modification**, et les pistes ne touchent **ni** `S2-03`, **ni** `S2-02`, **ni** la politesse,
+  **ni** le SQL. Décision **`D-019`** ouverte. Les risques notés (échec du POST « Run démarré » coupant
+  le passage, sans `onError`) sont à constater à la correction, au banc.
+- **(b) un sous-workflow par campagne** — **écartée** : exige un **second fichier** de workflow,
+  hors du périmètre verrouillé ; la preuve passe par N exécutions ; un sous-workflow interrompu
+  après son POST « running » laisse **exactement** le run orphelin que la mesure condamne ; son seul
+  bénéfice théorique (état par exécution) existe déjà (`collecte_s203` indexé par `$execution.id`) et
+  (a) n'entremêle jamais deux campagnes.
+- **(c) un run par élément du lot** — **écartée dans ce format** : les lignes `runs` par élément
+  **existent déjà** (la mesure) ; ce qui manque est **l'aval**, pas la création ; rendre l'aval
+  multi-campagnes réécrirait préparation, compteurs de filtrage (agrégats mélangés entre campagnes),
+  lot des entreprises (N campagnes en un POST), conciliation et clôtures — et la condition du ticket
+  (« si la mesure le montre ») n'est **pas remplie**.
+- **Corriger seulement l'adressage des clôtures** n'est pas une piste du ticket mais a été instruite
+  au passage et **exclue** : l'aval de B (couples, collecte, écriture) **n'existe pas** dans le
+  passage — la clôture correcte ne clôturerait qu'une ligne **sans collecte** derrière.
 
 ### Résultat du critère 1 — le mécanisme, mesuré (2026-10-29)
 
@@ -495,8 +513,9 @@ le montre. Une piste n'entre dans le ticket qu'avec la mesure qui la justifie.
 
 **Ce que la mesure ferme** : « traiter le lot campagne par campagne est satisfait par le code actuel »
 est **faux** — une seule exécution porte la préparation, la collecte et les clôtures, à un seul id de
-run près. **Ce qui reste ouvert** : le choix entre les **trois pistes** ci-dessus, à instruire sur ces
-chiffres (`D-016`) — aucune n'est retenue ici.
+run près. **Ce qui reste ouvert** : ~~le choix entre les **trois pistes** ci-dessus, à instruire sur ces
+chiffres (`D-016`)~~ **→ tranché le même jour** : la boucle par campagne (`batchSize: 1`) est retenue,
+décision **`D-019`** — [l'instruction des trois pistes](reviews/2026-10-29-instruction-des-pistes-s2-04.md).
 
 **Definition of Ready** : objectif en une phrase ✓ · critères vérifiables ✓ · périmètre explicite ✓ ·
 dépendances identifiées ✓ · taille ≤ ½ journée (à re-estimer après la mesure — sera **découpé** si

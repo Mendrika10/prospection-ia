@@ -30,12 +30,23 @@ Format :
   par la branche de clôture **sans jamais être adressé**. L'échec de la campagne A (**error nommé**,
   `items_processed = 0`) **ne fait pas tomber** l'exécution (`status: success` du CLI), mais les
   clôtures ré-adressent toujours le seul run de A.
-- **Mémoire d'équipe** : [consigne complète](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md) —
-  protocole, relevés, traces, mise à jour `sprint-02.md`. **Aucune stratégie de correction n'est
-  retenue** — trois pistes à instruire sur ces chiffres, avant WF2.
-- **Prévu** : instruire les trois pistes du ticket (une **boucle par campagne** dans WF1 · un
-  **sous-workflow par campagne** · **un run par élément du lot**) sur ces chiffres, aucune retenue
-  d'avance (`D-016`) — la correction visera les critères 2 à 5 du ticket, avant WF2.
+- **Instruction des pistes, le même jour** : les trois pistes du ticket sont **instruites sur les
+  chiffres de la mesure et le code exact** ([instruction](reviews/2026-10-29-instruction-des-pistes-s2-04.md)).
+  Le code pointe une faille **plus large** que l'adressage des clôtures : « Préparation de collecte »
+  est `runOnceForAllItems` et bâtit **tout l'aval** sur `$('Run démarré (campagne)').first()` — la
+  campagne B n'a reçu 
+  **ni couple, ni collecte, ni clôture** : son aval **n'a jamais existé** dans le passage.
+- **Décision** : **`D-019`** — le lot est traité **campagne par campagne** : « Pour chaque campagne »
+  passe de `batchSize: 10` à **`batchSize: 1`** (un seul paramètre, 0 ligne de code). L'invariant
+  **un passage = une campagne = un run** rend la préparation et les clôtures exactes **sans
+  modification** et donne « l'échec d'une campagne ne fait pas tomber l'autre » **par construction**.
+  Écartées : le sous-workflow par campagne (second fichier, hors périmètre, coût de preuve, run orphelin
+  garanti en cas d'interruption) et le run par élément du lot au même passage (aval multi-campagnes à
+  réécrire : compteurs mélangés, N campagnes en un POST ; la condition « si la mesure le montre » n'est
+  pas remplie). Correctif non écrit ici — la correction visera les critères 2 à 5 du ticket.
+- **Prévu** : implémenter `batchSize: 1`, puis **prouver les critères 2 à 5** par le même banc que la
+  mesure d'ouverture (deux campagnes réelles dues dans le même tick, échec provoqué inclus, relevés
+  `runs` et base 0/0/0) — **avant WF2**.
 - **Bloqué** : rien.
 
 ## 2026-10-28 (mercredi) — S2-03 : la collecte passe de l'item-couple à la page, et le `retry-after` devient un plancher lu
