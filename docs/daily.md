@@ -37,6 +37,9 @@ Format :
 - **Le banc** : reconstruit d'après le protocole de la mesure (`.tmp-s204-banc.mjs`, jetable —
   protocole décrit intégralement dans la revue § 6, scénarios `zero/echec/donnees`, reprise 429 de la
   sonde, nettoyage étendu à `companies`, jauge finale 0/0/0). Jetable selon la convention.
+- **Fusion** : PR **#65** fusionnée en squash **`51f4ca7`** (CI des 3 checks verte, `sql` / `secrets`
+  / `node`) sur instruction du propriétaire — le correctif est dans `main` ; le ticket passe en
+  🟦 **en review**.
 - **Prévu** : relecture en contexte neuf + confirmation par une session indépendante (critère 6 de
   `S2-04`) — la dernière case avant de fermer le ticket, **avant WF2**.
 - **Bloqué** : rien.
