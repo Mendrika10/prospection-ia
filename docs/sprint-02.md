@@ -32,7 +32,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
-| S2-04 | WF1 — un lot de campagnes n'est pas traité campagne par campagne (une ligne `runs` reste `running`) | Automation + Architecte | M | — | 🟡 **en cours** — **critère 1 mesuré** (2026-10-29 : [mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md), **trois reproductions isolées**, base 0/0/0 avant/après) : deux campagnes dues dans le même tick → **deux lignes `runs`**, `started_at` **identiques à la microseconde**, **une seule clôturée**, `campaigns_due` bloquée pour la 2e (24 h minimum) et **l'aval de la 2e campagne (couples, collecte) n'existe pas** (`Préparation` en `runOnceForAllItems`) · **stratégie tranchée le 29/10** ([instruction des pistes](reviews/2026-10-29-instruction-des-pistes-s2-04.md)) : la **boucle par campagne** — `batchSize: 10` → **1** — est retenue (1 paramètre ; (b) et (c) écartées), décision **`D-019`** · **reste** : implémenter + prouver les critères 2 à 5 (banc, deux campagnes réelles, échec provoqué inclus, base 0/0/0) **avant WF2** |
+| S2-04 | WF1 — un lot de campagnes n'est pas traité campagne par campagne (une ligne `runs` reste `running`) | Automation + Architecte | M | — | 🟡 **en cours — correction écrite et prouvée** (2026-10-29) : **critère 1 mesuré** ([mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md)) · stratégie retenue **`D-019`** ([instruction des pistes](reviews/2026-10-29-instruction-des-pistes-s2-04.md)) · **critères 2 à 5 ✅ vérifiés au banc** ([revue de correction](reviews/2026-10-29-s2-04-boucle-par-campagne.md)) : **deux paramètres** écrits (`batchSize: 1` + `options.reset` conditionnel sur « Pour chaque couple », le banc a prouvé en **rouge** que le premier seul ne suffit pas), trois scénarios verts, 6 lignes `runs` **toutes clôturées**, échec provoqueé de A **sans** tomber B, 20 lignes `companies` rattachées à **leur** campagne, base rendue 0/0/0 chaque fois, `git diff` = 2 blocs de paramètres · **reste** : relecture en contexte neuf + confirmation session indépendante (critère 6) — **avant WF2** |
 | S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | ✅ **fait (2026-10-28)** — ouvert sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · critères **1 à 6** vérifiés ([mesure et preuves](reviews/2026-10-28-collecte-page-par-page.md)) · **critère 7 clos** : relecture ([verdict](reviews/2026-10-28-revue-pr-s2-03.md)) + **confirmation par une session indépendante** ([rapport](reviews/2026-10-28-confirmation-independent-s2-03.md)) — banc rejoué, 92 tests écrits par elle, même verdict *approuvé sous réserves*, **aucun bloquant** · PR **#59** fusionnée en squash **`46b9696`** · PR **#55** fusionnée en squash **`608f3d0`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
@@ -455,21 +455,35 @@ ligne restée `running` bloque la campagne suivante.
       le « pourquoi » est **attribué** : les clôtures s'adressent au run de la
       **première** campagne du lot ($('Run démarré (campagne)').first()) — chaque item du lot côté
       clôture **ré-adresse** ce même id, jamais les autres.
-- [ ] Après correction, **chaque campagne due du tick a sa ligne `runs`** : créée, **puis clôturée**
+- [x] Après correction, **chaque campagne due du tick a sa ligne `runs`** : créée, **puis clôturée**
       (succès, partiel, ou `error` avec un message qui nomme la campagne) — vérifié sur les lignes de
       base : **aucune** ligne restée `running`, et les **deux** campagnes ont été collectées.
-- [ ] **L'échec d'une campagne ne fait pas tomber l'autre** : campagne A en `error` nommé → campagne
+      **→ vérifié le 2026-10-29** ([revue de correction](reviews/2026-10-29-s2-04-boucle-par-campagne.md),
+      § 4) : trois scénarios verts × 2 campagnes = **6 lignes toutes clôturées** (`success` ou
+      `error` nommé), zéro `running`.
+- [x] **L'échec d'une campagne ne fait pas tomber l'autre** : campagne A en `error` nommé → campagne
       B tout de même créée, collectée et clôturée. Pas de « succès » muet, pas de run orphelin.
-- [ ] **Aucune régression de ce qui est prouvé** : la boucle page par page de `S2-03` (`retry-after`
+      **→ vérifié au banc** : `echec` et `donnees` greens — A en `error` nommé (message qui
+      nomme son couple, `finished_at` renseigné), B créée, exécutée et clôturée la fois suivante.
+- [x] **Aucune régression de ce qui est prouvé** : la boucle page par page de `S2-03` (`retry-after`
       plancher, cadence horodatée) et le rattachement par la donnée de `S2-02` restent **intacts**
       (`git diff` à l'appui) ; la politesse de crawl (1 s, User-Agent, timeout, 100 pages) n'est
       **pas dégradée**.
-- [ ] **Preuve de bout en bout** (règle `D-011` / `D-015`) : exécution réelle sur **deux campagnes**
+      **→ vérifié** : `git diff` = **2 blocs de paramètres, rien d'autre** (aucun `jsCode`) ; la
+      politesse tient (`waitBetweenBatches` entre campagnes *en plus* de la garde horodatée par
+      requête) ; le `donnees` vert prouve le rattachement intact à travers la boucle (22 pages sur 2,
+      écartées comptées, 20 lignes toutes rattachées à B).
+- [x] **Preuve de bout en bout** (règle `D-011` / `D-015`) : exécution réelle sur **deux campagnes**
       dues, **la ligne `runs` lue en base à l'appui**, les deux campagnes avec leurs lignes
       `companies` rattachées à **leur** campagne, base rendue à son état d'avant (comptes relevés
       avant/après).
+      **→ vérifié** : scénario `donnees` — deux campagnes dues créées en un POST, 20 lignes
+      `companies` **toutes rattachées à B** (aucune fournée par A, aucun orphelin), base **0/0/0**
+      avant et après **chaque** scénario.
 - [ ] Relecture par un **Reviewer en contexte neuf**, et confirmation par une session
       **indépendante** si le verdict repose sur une mesure que personne d'autre ne peut rejouer.
+      **→ restant ouvert** : c'est la prochaine étape du ticket — le banc est décrit pour être
+      rejoué ([revue § 6](reviews/2026-10-29-s2-04-boucle-par-campagne.md)).
 
 **Pistes à instruire — instruction faite le 2026-10-29** ([instruction des pistes](reviews/2026-10-29-instruction-des-pistes-s2-04.md),
 sur les chiffres de la mesure et le code exact) :
@@ -480,6 +494,13 @@ sur les chiffres de la mesure et le code exact) :
   **sans modification**, et les pistes ne touchent **ni** `S2-03`, **ni** `S2-02`, **ni** la politesse,
   **ni** le SQL. Décision **`D-019`** ouverte. Les risques notés (échec du POST « Run démarré » coupant
   le passage, sans `onError`) sont à constater à la correction, au banc.
+  **→ rectifié au banc le même jour** ([revue de correction](reviews/2026-10-29-s2-04-boucle-par-campagne.md)) :
+  la promesse « sans modification » ne tient que pour la **préparation et les clôtures** — le seau
+  interne de « Pour chaque couple (S2-03) » **ne reprend pas** l'arrivée de la campagne suivante sans
+  `options.reset` conditionnel (`={{ $json.couple === true }}`), et **la démonstration est un rouge** :
+  `batchSize: 1` seul laisse la seconde campagne `running` à jamais, **0** ligne `companies`. Le
+  toucher de `S2-03` est réalisé **sous la clause du périmètre** (« sauf si la mesure l'exige — alors
+  écrit au ticket ») — il l'exigeait, et il est écrit ici.
 - **(b) un sous-workflow par campagne** — **écartée** : exige un **second fichier** de workflow,
   hors du périmètre verrouillé ; la preuve passe par N exécutions ; un sous-workflow interrompu
   après son POST « running » laisse **exactement** le run orphelin que la mesure condamne ; son seul
@@ -520,6 +541,21 @@ décision **`D-019`** — [l'instruction des trois pistes](reviews/2026-10-29-in
 **Definition of Ready** : objectif en une phrase ✓ · critères vérifiables ✓ · périmètre explicite ✓ ·
 dépendances identifiées ✓ · taille ≤ ½ journée (à re-estimer après la mesure — sera **découpé** si
 le correctif dépasse) ✓
+
+### Résultat de la correction — rouge puis vert (2026-10-29)
+
+[La correction](reviews/2026-10-29-s2-04-boucle-par-campagne.md) est écrite (**deux paramètres**) et
+prouvée au même banc que la mesure, base réelle chaque fois :
+
+| Étape | Ce qui est prouvé | Le chiffre |
+|---|---|---|
+| Rouge — `batchSize: 1` **seul** | le correctif partiel **reproduit le défaut du ticket** | campagne B **`running` à jamais**, `finished_at` NULL, **0** ligne `companies` malgré 37 résultats réels à la sonde |
+| Vert — correctif complet | le lot est traité **campagne par campagne** | trois scénarios (`zero`, `echec`, `donnees`), **6 lignes `runs` toutes clôturées**, **0** `running`, `started_at` distincts (un passage par campagne) | 
+| Vert — `donnees` | l'échec de A n'empêche **ni** la collecte **ni** le rattachement de B | A `error` nommé `43.21A\|99`, B `success` `items_processed = 20`, **20 lignes `companies` toutes rattachées à B** |
+| Vert — politesse | aucune régression prouvée | `git diff` = 2 blocs de paramètres ; 1 s entre campagnes **en plus** de la garde horodatée par requête ; `retry-after` plancher de `S2-03` non touché |
+
+Base relevée **0 / 0 / 0** avant et rendue **0 / 0 / 0** après **chaque** exécution. Reste ouvert :
+la relecture en contexte neuf + la confirmation par une session indépendante (critère 6).
 
 **Périmètre** : les nœuds **amont** de `n8n/workflows/wf1-collecte.json` (de `campaigns_due` jusqu'à
 la préparation, et les **clôtures** de `runs`) ; `docs/`. **Interdit** : le schéma SQL, le contrat
