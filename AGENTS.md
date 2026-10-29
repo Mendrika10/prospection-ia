@@ -344,6 +344,18 @@ comme une preuve que le produit fonctionne.
   `$('Pour chaque campagne (S1-02)').first()` et `$('Run démarré (campagne)').first()`. Le cas est
   atteignable avec le `batchSize: 10` du nœud. **Ouvert le 2026-10-28 sous le ticket
   [`S2-04`](docs/sprint-02.md)**, qui commence par la mesure isolée (`D-016`) avant tout correctif.
+- **Le seau interne d'un `splitInBatches` ne rouvre pas une arrivée qui suit son épuisement — et le
+  `batchSize: 1` du lot ne change rien à ça** (mesuré le 2026-10-29, `S2-04`,
+  [revue](docs/reviews/2026-10-29-s2-04-boucle-par-campagne.md)) : la boucle de campagne passée à
+  `batchSize: 1`, la **seconde campagne est restée `running` à jamais, 0 ligne `companies`** tant que
+  « Pour chaque couple (S2-03) » — un `splitInBatches` **imbriqué** — n'a pas reçu `options.reset` :
+  une fois son seau épuisé (`nodeContext.items` vide dans
+  `DynamicSplitAndBatchNode`), l'arrivée suivante prolonge le nœud en « terminé » au lieu d'ouvrir un
+  nouveau lot ; `reset` évalué vrai rouvre l'entrée fraîche, et il est évalué **à chaque arrivée** —
+  donc on peut le rendre **conditionnel par la donnée** (`={{ $json.couple === true }}` : vrai sur
+  les items neufs de la préparation, faux sur les rendus de la boucle interne, qui continuent du
+  même passage). Un correctif de lot qui touche l'amont ne doit pas conclure tant que son **aval
+  imbriqué** n'a pas exécuté **deux passages** au banc — c'est le cas de la deuxième campagne.
 - **Pour un nœud qui rend PLUS d'items qu'il n'en reçoit, `pairedItem` est écrit puis RELU
   différemment — il ne désigne donc pas ce qu'on croit** (mesuré le 2026-10-27, `S2-02`) : le nœud
   HTTP **range** l'index de l'item d'ENTRÉE (`pairedItem: {item: itemIndex}`,

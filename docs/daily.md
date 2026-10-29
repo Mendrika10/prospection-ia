@@ -13,6 +13,34 @@ Format :
 
 ---
 
+## 2026-10-29 (jeudi) — S2-04 : le correctif est écrit, et prouvé en rouge puis en vert
+
+- **Fait** : la correction de `S2-04` est **écrite dans le workflow délivré**
+  (`n8n/workflows/wf1-collecte.json`) et prouvée au banc du même jour
+  ([revue](reviews/2026-10-29-s2-04-boucle-par-campagne.md)). **Deux paramètres**, aucune logique
+  réécrite : `batchSize: 10 → 1` sur « Pour chaque campagne » (`D-019`), et — **écart exigé par le
+  banc** — `options.reset = {{ $json.couple === true }}` sur « Pour chaque couple (S2-03) ».
+- **Le rouge qui a écrit le deuxième paramètre** : le banc rejoué avec le seul `batchSize: 1` a
+  **reproduit le défaut du ticket** — scénario `donnees` : campagne B restée **`running` à jamais**,
+  `finished_at` NULL, **0** ligne `companies` malgré 37 résultats réels à la sonde — le seau interne
+  de « Pour chaque couple », épuisé au passage de A, ne rouvre rien à l'arrivée de B sans `reset`.
+  La promesse de `D-019` (« sans modification ») avait raison pour la préparation et les clôtures,
+  tort pour le tampon interne — **rectifiée dans `D-019` même** (addendum).
+- **Le vert** (fichier délivré, restauré et diff revérifié après le rouge) : **trois scénarios**,
+  base réelle **0/0/0** avant et après chaque fois — `zero` : 2 runs, deux `success`, passages
+  séquentiels ; `echec` : A en **`error` nommé** (`1 couple(s) en echec — 43.21A|99 : HTTP 400…`),
+  B créée, exécutée et clôturée ; `donnees` : B `success` avec `items_processed = 20` et **20 lignes
+  `companies` toutes rattachées à B** (aucune attribuée à A par méprise, aucun orphelin) — le rattachement par
+  la donnée de `S2-02` tient à travers la boucle. **Six lignes `runs`, toutes clôturées, aucune
+  `running`.** Critères 2 à 5 **✅** ; `git diff` = **2 blocs de paramètres, rien d'autre** —
+  la politesse tient (1 s entre campagnes en plus de la garde horodatée par requête).
+- **Le banc** : reconstruit d'après le protocole de la mesure (`.tmp-s204-banc.mjs`, jetable —
+  protocole décrit intégralement dans la revue § 6, scénarios `zero/echec/donnees`, reprise 429 de la
+  sonde, nettoyage étendu à `companies`, jauge finale 0/0/0). Jetable selon la convention.
+- **Prévu** : relecture en contexte neuf + confirmation par une session indépendante (critère 6 de
+  `S2-04`) — la dernière case avant de fermer le ticket, **avant WF2**.
+- **Bloqué** : rien.
+
 ## 2026-10-29 (jeudi) — S2-04 : le mécanisme mesuré — le lot crée deux lignes `runs` et n'en clôt qu'une
 
 - **Fait** : le critère 1 de `S2-04` est **mesuré**, sur une reproduction **isolée et rejouable**

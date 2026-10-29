@@ -1145,9 +1145,26 @@ campagne — culminée par une mesure qui la justifie, jamais par préférence.
 deu campagnes réelles dues dans le même tick, échec provoqué inclus, base rendue 0/0/0) · Reviewer en
 contexte neuf.
 
+**Rectification au banc — même jour 2026-10-29**
+([revue de correction](reviews/2026-10-29-s2-04-boucle-par-campagne.md)) : la promesse « les clôtures
+deviennent correctes **sans modification** » ne tient que pour la préparation et les clôtures —
+`.first()` vise bien le run du passage. Mais l'aval du passage **dépend aussi du seau interne** de
+« Pour chaque couple (S2-03) » : une fois ce nœud épuisé à la fin du passage d'une campagne, l'arrivée
+de la campagne suivante **ne rouvre rien** sans `options.reset` — et le banc l'a prouvé **en rouge** :
+avec `batchSize: 1` seul, la seconde campagne du scénario `donnees` est restée **`running` à jamais**,
+**0** ligne `companies` malgré 37 résultats réels à la sonde. Le correctif livré porte donc **deux
+paramètres** : `batchSize: 1` sur « Pour chaque campagne », et `options.reset =
+{{ $json.couple === true }}` sur « Pour chaque couple » (vrai sur les couples neufs de la préparation,
+faux sur les rendus de la boucle) — touché **sous la clause du périmètre du ticket** (« sauf si la
+mesure l'exige »), puis écrit au ticket. La présente décision reste en vigueur : son invariant
+(**un passage = une campagne = un run**) est ce que le banc a vérifié en vert, une fois le tampon
+interne réparé.
+
 **Origine** : ticket **`S2-04`** (ouvert le 2026-10-28 à la clôture de `S2-03`, suite de `S2-01` /
 `S2-03` ; instruction des pistes le [2026-10-29](reviews/2026-10-29-instruction-des-pistes-s2-04.md)) ;
 suit la mesure du mécanisme du [2026-10-29](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md).
 
-**Tickets** : **`S2-04`** 🟡 **en cours** — critère 1 ✅ mesuré ; critères 2 à 5 à prouver à la
-correction ; relecture en contexte neuf, avant WF2.
+**Tickets** : **`S2-04`** 🟡 **en cours** — critère 1 ✅ mesuré ; **critères 2 à 5 ✅ prouvés le
+même jour** ([revue de correction](reviews/2026-10-29-s2-04-boucle-par-campagne.md), trois scénarios
+verts après un rouge) ; reste la relecture en contexte neuf + la confirmation par une session
+indépendante (critère 6) — avant WF2.
