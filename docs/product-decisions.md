@@ -1069,17 +1069,20 @@ un jour n8n expose un point de reprise de pagination ou un délai de réessai no
 maison redeviendrait inutile.
 
 **Qui exécute** : Automation + Architecte (structure, mesures, preuves — fait) · **Reviewer** en contexte
-neuf (relecture) · Orchestrateur (consignation, fusion — **faite**). Reste **ouverte** la confirmation par une
-session indépendante : la mesure est rejouable, donc une seconde lecture suffit à clore le critère 7.
+neuf (relecture — [verdict](reviews/2026-10-28-revue-pr-s2-03.md)) · Orchestrateur (consignation, fusion —
+faite) · **session indépendante** (confirmation du critère 7 — [rapport](reviews/2026-10-28-confirmation-independent-s2-03.md) :
+**faite** — elle a rejeté le banc elle-même, écrit 92 tests à elle, et rendu le même verdict *approuvé
+sous réserves*, aucun bloquant, aucune réserve ne portant sur les critères 2 à 5).
 
 **Origine** : ticket **`S2-03`** (« la collecte doit survivre à un refus de débit »), ouvert le
 2026-10-27 ; applique le point 3 de `D-017` (« le défaut de robustesse n'est pas corrigé ici ») ; suit la
 mesure du critère 1 ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) ;
 confirme `D-002` (compteurs) et `D-011`/`D-015` (preuve de bout en bout, base rendue).
 
-**Tickets** : **`S2-03`** 🟦 **en review** — critères 1 à 6 vérifiés le 2026-10-28 : mesure du mécanisme
+**Tickets** : **`S2-03`** ✅ **fait (2026-10-28)** — critères **1 à 7** vérifiés : mesure du mécanisme
 (1), couple multi-pages qui survit (2), `retry-after` plancher observé (3), politesse mesurée (4), pire
-cas honnête (5), preuve de bout en bout avec échec provoqué et base rendue (6). Reste le critère 7
-(relecture **faite** : approuvé sous réserves, aucun bloquant ; confirmation indépendante **due**).
+cas honnête (5), preuve de bout en bout avec échec provoqué et base rendue (6), relecture en contexte
+neuf **puis confirmation par une session indépendante** (7) — *approuvé sous réserves*, **aucun
+bloquant** sur aucun critère.
 
 **Consigné** : PR **#59** fusionnée en squash `46b9696`, CI de `main` **verte** (run 40687098565).
