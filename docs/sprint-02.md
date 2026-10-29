@@ -9,8 +9,10 @@
 > **`S2-03` est fait** (2026-10-28, les 7 critères — voir sa ligne). **`S2-04` a été ouvert le
 > 2026-10-28**, à la clôture de `S2-03` : le défaut qu'il porte a été **reproduit pendant la preuve de
 > `S2-03` avec les deux campagnes dues dans le même tick**, et **confirmé par la relecture indépendante**
-> — un défaut levé trois fois séparément (26/10, 28/10, relecture indépendante), toujours **non isolé**.
-> Il entre au backlog sans préempter l'ordre du planning — mais les deux relectures de `S2-03` le placent
+> — un défaut levé trois fois séparément (26/10, 28/10, relecture indépendante), **puis reproduit
+> isolément le 2026-10-29** ([mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md),
+> trois reproductions, deux scénarios dont un échec provoqué). Il entre au backlog sans préempter
+> l'ordre du planning — mais les deux relectures de `S2-03` le placent
 > **avant WF2** : il gêne la collecte sans venir d'elle.
 >
 > **Pourquoi ces deux-là d'abord** : ils portent les deux défauts révélés par la **première
@@ -30,7 +32,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
-| S2-04 | WF1 — un lot de campagnes n'est pas traité campagne par campagne (une ligne `runs` reste `running`) | Automation + Architecte | M | — | ⬜ **à faire** — ouvert le 2026-10-28 à la clôture de `S2-03` · défaut pré-existant **reproduit deux fois** (26/10 via `S2-01`, 28/10 pendant la preuve de `S2-03`) **et confirmé par la relecture indépendante** · deux campagnes dues dans le même tick → deux lignes `runs` créées, **une seule clôturée**, la seconde campagne **bloquée** (« dernier passage » = `running` pour `campaigns_due`) · lecture du code : « Préparation de collecte » et les clôtures lisent `.first()` — une ligne de run **par exécution** là où le lot en crée plusieurs · **commence par la mesure** (règle `D-016`), aucune stratégie retenue d'avance |
+| S2-04 | WF1 — un lot de campagnes n'est pas traité campagne par campagne (une ligne `runs` reste `running`) | Automation + Architecte | M | — | 🟡 **en cours** — **critère 1 mesuré** (2026-10-29 : [mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md), **trois reproductions isolées**, base 0/0/0 avant/après) : deux campagnes dues dans le même tick → **deux lignes `runs`**, `started_at` **identiques à la microseconde**, **une seule clôturée**, `campaigns_due` bloquée pour la 2e (24 h minimum, ligne `running` jamais clôturée) ; la correction reste à **instruire sur ces chiffres** · défaut pré-existant reproduit **26/10**, **28/10**, confirmé par la relecture indépendante · lecture du code : `$('Run démarré (campagne)').first()` — **un seul id de run est adressé», là où le lot en crée plusieurs |
 | S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | ✅ **fait (2026-10-28)** — ouvert sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · critères **1 à 6** vérifiés ([mesure et preuves](reviews/2026-10-28-collecte-page-par-page.md)) · **critère 7 clos** : relecture ([verdict](reviews/2026-10-28-revue-pr-s2-03.md)) + **confirmation par une session indépendante** ([rapport](reviews/2026-10-28-confirmation-independent-s2-03.md)) — banc rejoué, 92 tests écrits par elle, même verdict *approuvé sous réserves*, **aucun bloquant** · PR **#59** fusionnée en squash **`46b9696`** · PR **#55** fusionnée en squash **`608f3d0`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
@@ -444,11 +446,15 @@ ligne restée `running` bloque la campagne suivante.
   avant une mesure isolée qui la désigne.
 
 **Critères d'acceptation**
-- [ ] **Le mécanisme est mesuré avant toute correction** : reproduction **isolée et reproductible**
+- [x] **Le mécanisme est mesuré avant toute correction** : reproduction **isolée et reproductible**
       (deux campagnes actives, dues dans le même tick) — les lignes `runs` relevées **avant/après**
       (`created / clôturée or not / error message`), un **scénario d'échec provoqué** inclus, et le
       relevé de **pourquoi** la deuxième est restée `running`. Aucune stratégie n'est choisie avant
-      cette mesure.
+      cette mesure. **→ mesuré le 2026-10-29**, [trois reproductions sur deux scénarios]
+      ([mesure du mécanisme](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md)) — détail ci-dessous ;
+      le « pourquoi » est **attribué** : les clôtures s'adressent au run de la
+      **première** campagne du lot ($('Run démarré (campagne)').first()) — chaque item du lot côté
+      clôture **ré-adresse** ce même id, jamais les autres.
 - [ ] Après correction, **chaque campagne due du tick a sa ligne `runs`** : créée, **puis clôturée**
       (succès, partiel, ou `error` avec un message qui nomme la campagne) — vérifié sur les lignes de
       base : **aucune** ligne restée `running`, et les **deux** campagnes ont été collectées.
@@ -469,6 +475,28 @@ ligne restée `running` bloque la campagne suivante.
 itération porte son run, sa préparation, sa collecte, sa clôture) ; (b) un **sous-workflow par
 campagne** appelé par le lot du tick ; (c) l'approche « un run par **élément** du lot » si la mesure
 le montre. Une piste n'entre dans le ticket qu'avec la mesure qui la justifie.
+
+### Résultat du critère 1 — le mécanisme, mesuré (2026-10-29)
+
+[La mesure](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md) a été faite sur une reproduction
+**isolée et rejouable** : instance n8n **jetable**, copie de WF1 (seule déviation écrite : le
+**déclencheur manuel**, piège §10), base Supabase **réelle** relevée **0 / 0 / 0** avant et rendue
+**0 / 0 / 0** après chaque exécution. Trois reproductions, deux scénarios : les deux campagnes dues
+à `total_results = 0` ; puis l'**échec provoqué** de A (`43.21A × 99`, banc `S2-03`) et B à 0 résultat.
+
+| Ce que la mesure établit | Le chiffre |
+|---|---|
+| Un lot de 2 campagnes crée **2** lignes `runs` | relevées après chacune des trois exécutions |
+| Les deux lignes sont créées **dans la même transaction** | `started_at` **identiques à la microseconde**, trois fois sur trois |
+| **Une seule** campagne obtient sa clôture | A : `success` (zero) / `error` nommé (échec provoqué), `finished_at` renseigné · **B : `running`, `finished_at` NULL, jamais clôturée** |
+| L'échec d'une campagne **ne fait pas tomber** l'exécution | exécution n8n `status: success` après l'`error` de A — mais la clôture en erreur **ré-adresse** le run de A, pas ceux des autres campagnes |
+| La campagne B est **bloquée** pour les prochains ticks | `campaigns_due` renvoie **0 campagnes dues** après chaque exécution (`dernier_run` tous statuts confondus, ligne `running` jamais clôturée) |
+| Le « pourquoi » est **attribué** | traces : les sorties de clôture ne portent qu'**un seul id** de run — celui de la **première** campagne du lot ; la seconde ligne ne reçoit **aucune** clôture |
+
+**Ce que la mesure ferme** : « traiter le lot campagne par campagne est satisfait par le code actuel »
+est **faux** — une seule exécution porte la préparation, la collecte et les clôtures, à un seul id de
+run près. **Ce qui reste ouvert** : le choix entre les **trois pistes** ci-dessus, à instruire sur ces
+chiffres (`D-016`) — aucune n'est retenue ici.
 
 **Definition of Ready** : objectif en une phrase ✓ · critères vérifiables ✓ · périmètre explicite ✓ ·
 dépendances identifiées ✓ · taille ≤ ½ journée (à re-estimer après la mesure — sera **découpé** si

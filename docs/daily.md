@@ -13,6 +13,31 @@ Format :
 
 ---
 
+## 2026-10-29 (jeudi) — S2-04 : le mécanisme mesuré — le lot crée deux lignes `runs` et n'en clôt qu'une
+
+- **Fait** : le critère 1 de `S2-04` est **mesuré**, sur une reproduction **isolée et rejouable**
+  (instance n8n jetable, copie de WF1 — seule déviation écrite : le déclencheur manuel —, base réelle
+  **0/0/0** avant et après chaque mesure). **Trois reproductions**, **deux scénarios** : les deux
+  campagnes dues dans le même tick, à `total_results = 0` ; puis un **échec provoqué** (`43.21A × 99`)
+  et une campagne à 0 résultat.
+- **Ce que la mesure établit** : un lot de **deux** campagnes dues crée **deux** lignes `runs` aux
+  `started_at` **identiques à la microseconde** — et **une seule** est clôturée. La seconde, restée
+  `running` et **jamais clôturée** dans **aucun des deux scénarios** ; `campaigns_due` renvoie
+  **0 campagnes dues** après chaque exécution (le `dernier_run` prend le dernier run **tous statuts
+  confondus**) ; la campagne B reste donc **affamée** (24 h au moins, `interval_minutes` = 1 440).
+  Le « pourquoi » est **attribué** : les clôtures s'adressent à **un seul id de run**
+  ($('Run démarré (campagne)').first() — celui de la **première** campagne du lot) ; l'item de B passe
+  par la branche de clôture **sans jamais être adressé**. L'échec de la campagne A (**error nommé**,
+  `items_processed = 0`) **ne fait pas tomber** l'exécution (`status: success` du CLI), mais les
+  clôtures ré-adressent toujours le seul run de A.
+- **Mémoire d'équipe** : [consigne complète](reviews/2026-10-29-mesure-s2-04-lot-de-campagnes.md) —
+  protocole, relevés, traces, mise à jour `sprint-02.md`. **Aucune stratégie de correction n'est
+  retenue** — trois pistes à instruire sur ces chiffres, avant WF2.
+- **Prévu** : instruire les trois pistes du ticket (une **boucle par campagne** dans WF1 · un
+  **sous-workflow par campagne** · **un run par élément du lot**) sur ces chiffres, aucune retenue
+  d'avance (`D-016`) — la correction visera les critères 2 à 5 du ticket, avant WF2.
+- **Bloqué** : rien.
+
 ## 2026-10-28 (mercredi) — S2-03 : la collecte passe de l'item-couple à la page, et le `retry-after` devient un plancher lu
 
 - **Fait** : `S2-03` corrigé, et la stratégie **choisie sur mesure**. Le critère 1 avait fermé deux des
