@@ -27,7 +27,7 @@ Statuts : `⬜ à faire` · `🟦 Prêt` · `🟡 en cours` · `🟦 en review` 
 |---|---|---|---|---|---|
 | S2-01 | WF1 — la collecte doit atteindre une adresse vivante de l'API (**défaut A**) | Automation + Architecte | S | — | ✅ **fait — sans correctif** (`D-016`) : le nœud bascule, le défaut n'existe pas · preuve de bout en bout sans épinglage · [revue](reviews/2026-10-26-requalification-defaut-a-bascule-adresse.md) |
 | S2-02 | WF1 — rattacher chaque page au bon couple, sans index implicite (**défaut B**) | Automation | M | **S2-01** ✅ | ✅ **fait** (`D-017`) : crédité sur la donnée de la page · prouvé de bout en bout sur deux couples multi-pages · critères 1 à 4 vérifiés, revue en contexte neuf **et confirmation par une session indépendante** · [revue](reviews/2026-10-27-rattachement-des-pages-par-la-donnee.md) · fusion squash **`e85c7ba`** |
-| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | 🟦 **en review** — ouvert le 2026-10-27 sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · **critères 1 à 6 vérifiés**, relecture faite mais **critère 7 ouvert** (confirmation indépendante due) · PR **#59** fusionnée en squash **`46b9696`** · PR **#55** fusionnée en squash **`608f3d0`** |
+| S2-03 | WF1 — la collecte doit survivre à un refus de débit (un `429` ne coûte plus le couple) | Automation + Architecte | M | **S2-02** ✅ | ✅ **fait (2026-10-28)** — ouvert sur instruction du propriétaire, issu des **deux** revues de `S2-02` · **critère 1 mesuré** ([reprise d'une pagination refusée](reviews/2026-10-27-reprise-d-une-pagination-refusee.md)) : le réessai relance l'item **entier** depuis la page 1 et **jette** les pages acquises · **stratégie tranchée et mesurée** ([collecte page par page](reviews/2026-10-28-collecte-page-par-page.md)) : la **page** est l'unité de collecte, le `retry-after` est un **plancher lu** · décision **`D-018`** · critères **1 à 6** vérifiés ([mesure et preuves](reviews/2026-10-28-collecte-page-par-page.md)) · **critère 7 clos** : relecture ([verdict](reviews/2026-10-28-revue-pr-s2-03.md)) + **confirmation par une session indépendante** ([rapport](reviews/2026-10-28-confirmation-independent-s2-03.md)) — banc rejoué, 92 tests écrits par elle, même verdict *approuvé sous réserves*, **aucun bloquant** · PR **#59** fusionnée en squash **`46b9696`** · PR **#55** fusionnée en squash **`608f3d0`** |
 
 ## Règle de preuve applicable aux deux tickets (`D-011` + `D-015`)
 
@@ -318,15 +318,21 @@ d'attendre.
       `details = {recuperees: 36, ecartees: 14}`, **22** entreprises écrites (chiffres **identiques** à
       ceux de `S2-02` avant refonte) ; `43.21A × 99` → `error` nommé, **0** ligne. Base relevée avant
       (`campaigns 0 / companies 0 / runs 0`) et **rendue après** (`0 / 0 / 0`).
-- [ ] Relecture par un **Reviewer en contexte neuf**, et — comme pour `S2-02` — confirmation par une
+- [x] Relecture par un **Reviewer en contexte neuf**, et — comme pour `S2-02` — confirmation par une
       session **indépendante** si le verdict repose sur une mesure que personne d'autre ne peut rejouer.
       → **relecture faite** ([verdict](reviews/2026-10-28-revue-pr-s2-03.md)) : *approuvé sous réserves*,
       aucun bloquant sur les critères 2 à 6, cinq réserves écrites — dont un **défaut pré-existant**
       reproduit pendant la preuve (deux campagnes dues dans le même tick → une ligne `runs` reste
-      `running`, ce qui bloque la campagne : piège déjà noté dans `AGENTS.md` §10, à ouvrir en ticket).
-      **Non cochée** à dessein : la relecture vient de la **même session** que l'implémentation. La
-      mesure étant **rejouable** (stub, banc et harnais), une **seconde lecture** suffit à clore — elle
-      reste due.
+      `running`, ce qui bloque la campagne : piège déjà noté dans `AGENTS.md` §10).
+      → **confirmation indépendante faite** ([rapport](reviews/2026-10-28-confirmation-independent-s2-03.md)) :
+      session **séparée**, protocole identique à celui de `S2-02` (dossier fermé, **sans** le verdict —
+      ni les revues, ni `D-018`). Elle a **rejeté le banc elle-même** (numéros identiques : 8 requêtes /
+      8,05 s de reprise / 5 pages conservées, aucun écart < 1 s), écrit **92 tests** à elle
+      (l'unique échec de la première passe était dans **l'attente du test** — plancher nu au lieu de
+      plancher + marge — corrigé côté test, jamais côté code) et rend le **même verdict** :
+      *approuvé sous réserves*, **aucun bloquant**, aucune réserve ne portant sur les critères 2 à 5.
+      Le critère 6, non rejouable depuis le dossier (ni API réelle ni base), a été vérifié **en base
+      réelle** par la relecture interne — aucune session n'a validé seule ses propres assertions.
 
 **Pistes à instruire (aucune retenue d'avance)** : (a) mesurer ce que n8n fait d'un item paginé en échec
 au milieu (retry d'item vs reprise de page) ; (b) une reprise **par page** portée par le nœud HTTP si son

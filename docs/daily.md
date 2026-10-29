@@ -49,8 +49,24 @@ Format :
   d'unité `milliseconds` pour le nœud `Wait`, et réveil anticipé ; un `429` sans en-têtes sous
   `continueRegularOutput`, d'où `fullResponse` + `neverError` ; `n8n execute` refuse un Schedule Trigger),
   et la note « pagination native » corrigée.
-- **Prévu** : la relecture de la PR (critère 7) et, si le verdict en dépend, une confirmation par une
-  session indépendante — la mesure est rejouable (banc et harnais fournis dans la PR).
+- **Critère 7 clos** : la relecture en contexte neuf avait rendu *approuvé sous réserves* — aucun
+  bloquant ; la mesure étant rejouable, la confirmation est passée par une **session indépendante**
+  (processus séparé, protocole identique à celui de `S2-02` : dossier fermé avec le ticket, la
+  description de PR, le diff et le workflow livré, **sans** le verdict ni les revues ni `D-018`).
+  Elle a **rejeté le banc elle-même** — numéros identiques : 8 requêtes / reprises 8,05 s / 5 pages
+  conservées, aucun écart < 1 s — et écrit **92 tests** à elle ; l'unique échec de sa première passe
+  était dans **l'attente de son test** (plancher nu au lieu de plancher + marge), corrigé du côté du
+  test. Verdict **le même** : *approuvé sous réserves*, **aucun bloquant**, aucune réserve ne portant
+  sur les critères 2 à 5. Le critère 6, non rejouable depuis un dossier isolé, garde ses preuves
+  vérifiées **en base réelle** par la relecture interne — aucune session n'a validé seule ses
+  propres assertions. Rapport : [reviews/2026-10-28-confirmation-independent-s2-03.md](reviews/2026-10-28-confirmation-independent-s2-03.md).
+- **Réserves consignées (hors ticket, avec leur ticket à ouvrir)** : deux campagnes dues dans le
+  même tick → ligne `runs` en `running` (confirme le défaut pré-existant, ticket dédié requis) ;
+  état de collecte orphelin si le conteneur meurt pendant la boucle (le `delete` protège le cas
+  nominal, pas le crash) ; les deux branches de `Réessai après refus ?` pointent vers le même nœud
+  (l'IF est redondant, pas mort, mais une valeur d'`etape` inattendue passerait sans bruit) ; note
+  sticky `S1-04` périmée ; forme de l'expression `tranche_effectif_salarie` à re-vérifier
+  (comportement antérieur à cette PR).
 - **Fusion** : PR **#59** (collecte page par page) fusionnée en squash **`46b9696`** — CI de `main`
   **verte** (run 40687098565). `S2-03` passe **en review** : critères 1 à 6 vérifiés, **critère 7 ouvert**
   (relecture faite dans la même session, confirmation indépendante due — la mesure est rejouable).
